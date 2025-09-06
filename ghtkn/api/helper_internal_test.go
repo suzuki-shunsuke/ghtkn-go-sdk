@@ -49,7 +49,7 @@ func (m *testKeyring) Set(key string, token *keyring.AccessToken) error {
 	return nil
 }
 
-func TestController_checkExpired(t *testing.T) {
+func TestTokenManager_checkExpired(t *testing.T) {
 	t.Parallel()
 
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
@@ -112,9 +112,9 @@ func TestController_checkExpired(t *testing.T) {
 				MinExpiration: tt.minExpiration,
 				Now:           func() time.Time { return tt.now },
 			}
-			controller := &TokenManager{input: input}
+			tm := &TokenManager{input: input}
 
-			got, err := controller.checkExpired(tt.exDate)
+			got, err := tm.checkExpired(tt.exDate)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("checkExpired() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -171,11 +171,11 @@ func TestController_createToken(t *testing.T) {
 			input := &Input{
 				AppTokenClient: tt.client,
 			}
-			controller := &TokenManager{input: input}
+			tm := &TokenManager{input: input}
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := controller.createToken(t.Context(), logger, tt.clientID)
+			got, err := tm.createToken(t.Context(), logger, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -189,7 +189,7 @@ func TestController_createToken(t *testing.T) {
 	}
 }
 
-func TestController_getAccessTokenFromKeyring(t *testing.T) {
+func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 	t.Parallel()
 
 	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
@@ -274,11 +274,11 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 				Now:           func() time.Time { return tt.now },
 				Logger:        NewLogger(),
 			}
-			controller := &TokenManager{input: input}
+			tm := &TokenManager{input: input}
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := controller.getAccessTokenFromKeyring(logger, tt.clientID)
+			got, err := tm.getAccessTokenFromKeyring(logger, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getAccessTokenFromKeyring() error = %v, wantErr %v", err, tt.wantErr)
 				return

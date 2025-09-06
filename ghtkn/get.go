@@ -14,7 +14,7 @@ import (
 // Get executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
-func (c *Controller) Get(ctx context.Context, logger *slog.Logger) (*keyring.AccessToken, *config.App, error) {
+func (c *Client) Get(ctx context.Context, logger *slog.Logger) (*keyring.AccessToken, *config.App, error) {
 	cfg := &config.Config{}
 	if err := c.readConfig(cfg); err != nil {
 		return nil, nil, err
@@ -38,7 +38,7 @@ func (c *Controller) Get(ctx context.Context, logger *slog.Logger) (*keyring.Acc
 
 // readConfig loads and validates the configuration from the configured file path.
 // It returns an error if the configuration cannot be read or is invalid.
-func (c *Controller) readConfig(cfg *config.Config) error {
+func (c *Client) readConfig(cfg *config.Config) error {
 	if err := c.input.ConfigReader.Read(cfg, c.input.ConfigFilePath); err != nil {
 		return fmt.Errorf("read config: %w", slogerr.With(err, "config", c.input.ConfigFilePath))
 	}

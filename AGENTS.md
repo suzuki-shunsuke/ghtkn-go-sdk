@@ -65,21 +65,43 @@ Both commands should pass before committing changes.
 
 ```
 ghtkn-go-sdk/
-├── ghtkn/          # Go packages
-│   ├── config/     # Configuration management
-│   └── controller/ # Utility functions
-└── json-schema/    # JSON schema definitions
+├── cmd/           # Command-line tools
+│   └── gen-jsonschema/  # JSON schema generator
+├── ghtkn/         # Core Go packages
+│   ├── api/       # GitHub API client and token management
+│   ├── apptoken/  # GitHub App token generation
+│   ├── config/    # Configuration management
+│   ├── github/    # GitHub API interaction
+│   ├── keyring/   # Token caching and keyring operations
+│   └── log/       # Logging utilities
+└── json-schema/   # JSON schema definitions
 ```
 
 ## Package Responsibilities
 
-### pkg/config
+### ghtkn/api
 
-Configuration management including reading, parsing, and validating .ghtkn.yaml files.
+High-level API client for GitHub token management. Provides the main interface for token retrieval, combining app token generation, keyring caching, and GitHub API calls.
 
-### pkg/controller
+### ghtkn/apptoken
 
-Business logic layer containing:
+GitHub App token generation functionality. Handles browser-based OAuth flow for obtaining access tokens from GitHub Apps.
+
+### ghtkn/config
+
+Configuration management including reading, parsing, and validating .ghtkn.yaml files. Handles app selection and environment variable processing.
+
+### ghtkn/github
+
+GitHub API client for making authenticated requests. Provides abstraction over GitHub's REST API.
+
+### ghtkn/keyring
+
+Token persistence and caching using the system keyring. Manages secure storage and retrieval of access tokens across sessions.
+
+### ghtkn/log
+
+Logging utilities and configuration for structured logging throughout the application.
 
 ## Testing
 

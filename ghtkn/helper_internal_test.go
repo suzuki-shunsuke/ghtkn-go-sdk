@@ -22,7 +22,7 @@ func (m *testConfigReader) Read(cfg *config.Config, _ string) error {
 	return nil
 }
 
-func TestController_readConfig(t *testing.T) {
+func TestClient_readConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -74,10 +74,10 @@ func TestController_readConfig(t *testing.T) {
 				ConfigReader:   tt.configReader,
 				ConfigFilePath: tt.configFilePath,
 			}
-			controller := &Controller{input: input}
+			client := &Client{input: input}
 
 			cfg := &config.Config{}
-			err := controller.readConfig(cfg)
+			err := client.readConfig(cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("readConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}

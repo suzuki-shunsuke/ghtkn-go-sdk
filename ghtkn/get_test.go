@@ -16,7 +16,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
-func TestController_Run(t *testing.T) {
+func TestClient_Get(t *testing.T) {
 	t.Parallel()
 
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
@@ -33,7 +33,6 @@ func TestController_Run(t *testing.T) {
 			setupInput: func() *ghtkn.Input {
 				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -67,7 +66,6 @@ func TestController_Run(t *testing.T) {
 			setupInput: func() *ghtkn.Input {
 				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -101,7 +99,6 @@ func TestController_Run(t *testing.T) {
 			setupInput: func() *ghtkn.Input {
 				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -165,7 +162,6 @@ func TestController_Run(t *testing.T) {
 			setupInput: func() *ghtkn.Input {
 				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -193,7 +189,6 @@ func TestController_Run(t *testing.T) {
 			setupInput: func() *ghtkn.Input {
 				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -224,7 +219,6 @@ func TestController_Run(t *testing.T) {
 			setupInput: func() *ghtkn.Input {
 				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -244,40 +238,6 @@ func TestController_Run(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name: "JSON output format",
-			setupInput: func() *ghtkn.Input {
-				return &ghtkn.Input{
-					ConfigFilePath: "test.yaml",
-					OutputFormat:   "json",
-					FS:             afero.NewMemMapFs(),
-					ConfigReader: &mockConfigReader{
-						cfg: &config.Config{
-							Persist: false,
-							Apps: []*config.App{
-								{
-									Name:     "test-app",
-									ClientID: "test-client-id",
-								},
-							},
-						},
-					},
-					Env: &config.Env{App: "test-app"},
-					TokenManager: api.NewMockTokenManager(&keyring.AccessToken{
-						AccessToken:    "test-token-json",
-						ExpirationDate: keyring.FormatDate(futureTime),
-						Login:          "test-user",
-					}, nil),
-					Stdout: &bytes.Buffer{},
-				}
-			},
-			wantErr: false,
-			wantAccessToken: &keyring.AccessToken{
-				AccessToken:    "test-token-json",
-				ExpirationDate: keyring.FormatDate(futureTime),
-				Login:          "test-user",
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -285,10 +245,10 @@ func TestController_Run(t *testing.T) {
 			t.Parallel()
 
 			input := tt.setupInput()
-			controller := ghtkn.New(input)
+			client := ghtkn.New(input)
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			token, _, err := controller.Get(t.Context(), logger)
+			token, _, err := client.Get(t.Context(), logger)
 			if err != nil {
 				if tt.wantErr {
 					return
