@@ -161,9 +161,9 @@ func NewDeviceCodeUI(stderr io.Writer) *SimpleDeviceCodeUI {
 }
 
 func (d *SimpleDeviceCodeUI) Show(deviceCode *DeviceCodeResponse, expirationDate time.Time) {
-	fmt.Fprintf(d.stderr, "Please visit: %s\n", deviceCode.VerificationURI)
-	fmt.Fprintf(d.stderr, "And enter code: %s\n", deviceCode.UserCode)
-	fmt.Fprintf(d.stderr, "Expiration date: %s\n", expirationDate.Format(time.RFC3339))
+	fmt.Fprintf(d.stderr, "Please visit: %s\n", deviceCode.VerificationURI)             //nolint:errcheck
+	fmt.Fprintf(d.stderr, "And enter code: %s\n", deviceCode.UserCode)                  //nolint:errcheck
+	fmt.Fprintf(d.stderr, "Expiration date: %s\n", expirationDate.Format(time.RFC3339)) //nolint:errcheck
 }
 
 // getDeviceCode requests a device code from GitHub's OAuth device endpoint.
@@ -191,7 +191,7 @@ func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCod
 	if err != nil {
 		return nil, fmt.Errorf("send a request for device code: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -284,7 +284,7 @@ func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode stri
 	if err != nil {
 		return nil, fmt.Errorf("send a request for access token: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -88,7 +88,7 @@ func (r *Reader) Read(cfg *Config, configFilePath string) error {
 	if err != nil {
 		return fmt.Errorf("open a configuration file: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 	if err := yaml.NewDecoder(f).Decode(cfg); err != nil {
 		return fmt.Errorf("decode a configuration file as YAML: %w", err)
 	}
