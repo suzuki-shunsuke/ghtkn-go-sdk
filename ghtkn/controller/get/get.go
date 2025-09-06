@@ -7,6 +7,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -14,10 +15,10 @@ import (
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary,
 // and outputs the result in the requested format.
-func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) (*keyring.AccessToken, error) {
 	cfg := &config.Config{}
 	if err := c.readConfig(cfg); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Select the app config
@@ -30,15 +31,10 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		UseKeyring: cfg.Persist,
 	})
 	if err != nil {
-		return fmt.Errorf("get access token: %w", slogerr.With(err, logFields...))
+		return nil, fmt.Errorf("get access token: %w", slogerr.With(err, logFields...))
 	}
 
-	// Output access token
-	if err := c.output(token); err != nil {
-		return err
-	}
-
-	return nil
+	return token, nil
 }
 
 // readConfig loads and validates the configuration from the configured file path.

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
@@ -22,11 +23,11 @@ func TestController_Run(t *testing.T) {
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
-		name         string
-		setupInput   func() *get.Input
-		wantErr      bool
-		wantOutput   string
-		checkKeyring bool
+		name            string
+		setupInput      func() *get.Input
+		wantErr         bool
+		wantAccessToken *keyring.AccessToken
+		checkKeyring    bool
 	}{
 		{
 			name: "successful token creation without persistence",
@@ -55,8 +56,7 @@ func TestController_Run(t *testing.T) {
 					Stdout: &bytes.Buffer{},
 				}
 			},
-			wantErr:    false,
-			wantOutput: "test-token-123\n",
+			wantErr: false,
 		},
 		{
 			name: "successful token retrieval from keyring",
@@ -85,8 +85,7 @@ func TestController_Run(t *testing.T) {
 					Stdout: &bytes.Buffer{},
 				}
 			},
-			wantErr:    false,
-			wantOutput: "cached-token\n",
+			wantErr: false,
 		},
 		{
 			name: "expired token in keyring triggers new token creation",
@@ -115,8 +114,7 @@ func TestController_Run(t *testing.T) {
 					Stdout: &bytes.Buffer{},
 				}
 			},
-			wantErr:    false,
-			wantOutput: "new-token\n",
+			wantErr: false,
 		},
 		{
 			name: "config read error",
@@ -272,17 +270,18 @@ func TestController_Run(t *testing.T) {
 			ctx := context.Background()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			err := controller.Run(ctx, logger)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !tt.wantErr && input.OutputFormat != "json" {
-				output := input.Stdout.(*bytes.Buffer).String()
-				if output != tt.wantOutput {
-					t.Errorf("Run() output = %v, want %v", output, tt.wantOutput)
+			token, err := controller.Run(ctx, logger)
+			if err != nil {
+				if tt.wantErr {
+					return
 				}
+				t.Error("Run() unexpected error:", err)
+			}
+			if tt.wantErr {
+				t.Error("Run() expected error but got none")
+			}
+			if diff := cmp.Diff(tt.wantAccessToken, token); diff != "" {
+				t.Error(diff)
 			}
 		})
 	}
