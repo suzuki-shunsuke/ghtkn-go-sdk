@@ -115,10 +115,6 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 				input: input,
 			}
 
-			// Since we can't easily override the URL, we'll use a different approach
-			// We need to modify the actual request URL
-			ctx := t.Context()
-
 			// Create a custom transport that redirects requests
 			transport := &testTransport{
 				server: server,
@@ -126,7 +122,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 			}
 			client.input.HTTPClient = &http.Client{Transport: transport}
 
-			got, err := client.getDeviceCode(ctx, tt.clientID)
+			got, err := client.getDeviceCode(t.Context(), tt.clientID)
 			if err != nil {
 				if !tt.wantErr {
 					t.Fatalf("unexpected error: %v", err)
