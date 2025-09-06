@@ -19,6 +19,8 @@ type Input struct {
 	API        API
 }
 
+const DefaultServiceKey = "github.com/suzuki-shunsuke/ghtkn"
+
 // New creates a new Keyring instance with the specified service name.
 // The keyService parameter is used as the service identifier in the system keychain.
 func New(input *Input) *Keyring {
@@ -32,9 +34,9 @@ type API interface {
 	Set(service, user, password string) error
 }
 
-func NewInput(key string) *Input {
+func NewInput() *Input {
 	return &Input{
-		KeyService: key,
+		KeyService: DefaultServiceKey,
 		API:        NewAPI(),
 	}
 }

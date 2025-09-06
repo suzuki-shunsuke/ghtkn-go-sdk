@@ -293,13 +293,11 @@ func TestNew(t *testing.T) {
 	}
 }
 
-const serviceKey = "github.com/suzuki-shunsuke/ghtkn"
-
 // TestNewInput tests the NewInput function.
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := keyring.NewInput(serviceKey)
+	input := keyring.NewInput()
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
