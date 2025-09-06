@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
 )
 
 type mockAppTokenClient struct {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 func TestController_output(t *testing.T) {

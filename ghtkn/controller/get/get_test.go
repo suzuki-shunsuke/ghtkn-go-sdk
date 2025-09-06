@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/controller/get"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/controller/get"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 func TestController_Run(t *testing.T) {

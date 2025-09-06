@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 type testAppTokenClient struct {

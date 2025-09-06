@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 )
 
 func TestNewEnv(t *testing.T) { //nolint:funlen

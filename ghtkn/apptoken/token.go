@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
