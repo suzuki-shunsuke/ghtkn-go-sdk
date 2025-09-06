@@ -26,8 +26,8 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 
 	input := &api.Input{}
-	controller := api.New(input)
-	if controller == nil {
+	tm := api.New(input)
+	if tm == nil {
 		t.Error("New() returned nil")
 	}
 }

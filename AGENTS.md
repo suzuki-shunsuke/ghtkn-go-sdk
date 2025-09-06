@@ -65,21 +65,16 @@ Both commands should pass before committing changes.
 
 ```
 ghtkn-go-sdk/
-├── ghtkn/          # Go packages
-│   ├── config/     # Configuration management
-│   └── controller/ # Utility functions
-└── json-schema/    # JSON schema definitions
+├── ghtkn/       # Go packages
+│   └── config/  # Configuration management
+└── json-schema/ # JSON schema definitions
 ```
 
 ## Package Responsibilities
 
-### pkg/config
+### ghtkn/config
 
 Configuration management including reading, parsing, and validating .ghtkn.yaml files.
-
-### pkg/controller
-
-Business logic layer containing:
 
 ## Testing
 
