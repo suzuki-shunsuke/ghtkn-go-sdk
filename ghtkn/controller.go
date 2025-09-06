@@ -1,7 +1,7 @@
 // Package get provides functionality to retrieve GitHub App access tokens.
 // It serves both the standard 'get' command and the 'git-credential' helper command.
 // It handles token retrieval from the keyring cache and token generation/renewal when needed.
-package get
+package ghtkn
 
 import (
 	"context"

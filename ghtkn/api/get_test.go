@@ -190,10 +190,9 @@ func TestTokenManager_Get(t *testing.T) {
 
 			input := tt.setupInput()
 			tm := api.New(input)
-			ctx := t.Context()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			token, err := tm.Get(ctx, logger, tt.input)
+			token, err := tm.Get(t.Context(), logger, tt.input)
 			if err != nil {
 				if !tt.wantErr {
 					t.Error(err)

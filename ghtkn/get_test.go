@@ -1,9 +1,8 @@
 //nolint:forcetypeassert,funlen,maintidx
-package get_test
+package ghtkn_test
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"log/slog"
 	"testing"
@@ -11,9 +10,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/controller/get"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
@@ -24,15 +23,15 @@ func TestController_Run(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		setupInput      func() *get.Input
+		setupInput      func() *ghtkn.Input
 		wantErr         bool
 		wantAccessToken *keyring.AccessToken
 		checkKeyring    bool
 	}{
 		{
 			name: "successful token creation without persistence",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
@@ -65,8 +64,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "successful token retrieval from keyring",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
@@ -99,8 +98,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "expired token in keyring triggers new token creation",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
@@ -133,8 +132,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "config read error",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
@@ -147,8 +146,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "invalid config",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
@@ -163,8 +162,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "token creation error",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
@@ -191,8 +190,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "GitHub API GetUser error",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
@@ -222,8 +221,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "cached token without login and GitHub API error",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
 					FS:             afero.NewMemMapFs(),
@@ -247,8 +246,8 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name: "JSON output format",
-			setupInput: func() *get.Input {
-				return &get.Input{
+			setupInput: func() *ghtkn.Input {
+				return &ghtkn.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "json",
 					FS:             afero.NewMemMapFs(),
@@ -286,11 +285,10 @@ func TestController_Run(t *testing.T) {
 			t.Parallel()
 
 			input := tt.setupInput()
-			controller := get.New(input)
-			ctx := context.Background()
+			controller := ghtkn.New(input)
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			token, err := controller.Run(ctx, logger)
+			token, err := controller.Run(t.Context(), logger)
 			if err != nil {
 				if tt.wantErr {
 					return

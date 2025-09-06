@@ -1,4 +1,4 @@
-package get
+package ghtkn
 
 import (
 	"errors"
