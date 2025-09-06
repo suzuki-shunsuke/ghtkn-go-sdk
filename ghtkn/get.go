@@ -11,14 +11,13 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
-// Run executes the main logic for retrieving a GitHub App access token.
+// Get executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
-// retrieves the authenticated user's login for Git Credential Helper if necessary,
-// and outputs the result in the requested format.
-func (c *Controller) Run(ctx context.Context, logger *slog.Logger) (*keyring.AccessToken, error) {
+// retrieves the authenticated user's login for Git Credential Helper if necessary.
+func (c *Controller) Get(ctx context.Context, logger *slog.Logger) (*keyring.AccessToken, *config.App, error) {
 	cfg := &config.Config{}
 	if err := c.readConfig(cfg); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Select the app config
@@ -31,10 +30,10 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) (*keyring.Acc
 		UseKeyring: cfg.Persist,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get access token: %w", slogerr.With(err, logFields...))
+		return nil, app, fmt.Errorf("get access token: %w", slogerr.With(err, logFields...))
 	}
 
-	return token, nil
+	return token, app, nil
 }
 
 // readConfig loads and validates the configuration from the configured file path.

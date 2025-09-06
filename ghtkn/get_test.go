@@ -288,7 +288,7 @@ func TestController_Run(t *testing.T) {
 			controller := ghtkn.New(input)
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			token, err := controller.Run(t.Context(), logger)
+			token, _, err := controller.Get(t.Context(), logger)
 			if err != nil {
 				if tt.wantErr {
 					return
