@@ -173,10 +173,9 @@ func TestController_createToken(t *testing.T) {
 			}
 			controller := &TokenManager{input: input}
 
-			ctx := context.Background()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := controller.createToken(ctx, logger, tt.clientID)
+			got, err := controller.createToken(t.Context(), logger, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
