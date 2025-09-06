@@ -3,8 +3,8 @@ package ghtkn_test
 import (
 	"testing"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/controller/get"
 )
 
 type mockConfigReader struct {
@@ -25,8 +25,8 @@ func (m *mockConfigReader) Read(cfg *config.Config, _ string) error {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	input := &get.Input{}
-	controller := get.New(input)
+	input := &ghtkn.Input{}
+	controller := ghtkn.New(input)
 	if controller == nil {
 		t.Error("New() returned nil")
 	}
@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := get.NewInput("/path/to/config")
+	input := ghtkn.NewInput("/path/to/config")
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
@@ -91,7 +91,7 @@ func TestInput_IsJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := &get.Input{
+			input := &ghtkn.Input{
 				OutputFormat: tt.outputFormat,
 			}
 
@@ -132,7 +132,7 @@ func TestInput_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := &get.Input{
+			input := &ghtkn.Input{
 				OutputFormat: tt.outputFormat,
 			}
 
