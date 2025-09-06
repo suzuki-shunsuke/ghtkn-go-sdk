@@ -12,9 +12,9 @@ import (
 	"runtime"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
 )
 
 // Controller manages the process of retrieving GitHub App access tokens.

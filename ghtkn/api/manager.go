@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.

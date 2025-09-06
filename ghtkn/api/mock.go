@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
 )
 
 func NewMockGitHub(user *github.User, err error) func(ctx context.Context, token string) GitHub {

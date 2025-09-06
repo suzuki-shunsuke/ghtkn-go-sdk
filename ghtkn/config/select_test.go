@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
 )
 
 func TestConfig_SelectApp(t *testing.T) { //nolint:funlen

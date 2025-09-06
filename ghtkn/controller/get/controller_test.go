@@ -3,8 +3,8 @@ package get_test
 import (
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/controller/get"
 )
 
 type mockConfigReader struct {

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/log"
 )
 
 func TestNew(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
 )
 
 const serviceKey = "github.com/suzuki-shunsuke/ghtkn"

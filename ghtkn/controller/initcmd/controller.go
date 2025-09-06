@@ -4,7 +4,7 @@ package initcmd
 
 import (
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
 )
 
 // Controller manages the initialization of ghtkn configuration.

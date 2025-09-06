@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
 )
 
 type testConfigReader struct {

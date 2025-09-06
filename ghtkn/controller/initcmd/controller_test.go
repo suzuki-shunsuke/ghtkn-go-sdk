@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/controller/initcmd"
 )
 
 func TestNew(t *testing.T) {

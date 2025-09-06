@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/pkg/keyring"
 	zkeyring "github.com/zalando/go-keyring"
 )
 
