@@ -29,8 +29,7 @@ type InputGet struct {
 
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
-// retrieves the authenticated user's login for Git Credential Helper if necessary,
-// and outputs the result in the requested format.
+// retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, error) {
 	token, changed, err := tm.getOrCreateToken(ctx, logger, input)
 	if err != nil {
