@@ -57,6 +57,11 @@ func TestController_Run(t *testing.T) {
 				}
 			},
 			wantErr: false,
+			wantAccessToken: &keyring.AccessToken{
+				AccessToken:    "test-token-123",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "test-user",
+			},
 		},
 		{
 			name: "successful token retrieval from keyring",
@@ -86,6 +91,11 @@ func TestController_Run(t *testing.T) {
 				}
 			},
 			wantErr: false,
+			wantAccessToken: &keyring.AccessToken{
+				AccessToken:    "cached-token",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "cached-user",
+			},
 		},
 		{
 			name: "expired token in keyring triggers new token creation",
@@ -115,6 +125,11 @@ func TestController_Run(t *testing.T) {
 				}
 			},
 			wantErr: false,
+			wantAccessToken: &keyring.AccessToken{
+				AccessToken:    "new-token",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "test-user",
+			},
 		},
 		{
 			name: "config read error",
@@ -258,6 +273,11 @@ func TestController_Run(t *testing.T) {
 				}
 			},
 			wantErr: false,
+			wantAccessToken: &keyring.AccessToken{
+				AccessToken:    "test-token-json",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "test-user",
+			},
 		},
 	}
 
