@@ -1,4 +1,4 @@
-package get_test
+package ghtkn_test
 
 import (
 	"testing"

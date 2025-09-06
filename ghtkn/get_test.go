@@ -1,5 +1,5 @@
 //nolint:forcetypeassert,funlen,maintidx
-package get_test
+package ghtkn_test
 
 import (
 	"bytes"
