@@ -14,7 +14,34 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
+
+type mockBrowser struct {
+	err error
+}
+
+func newMockBrowser(err error) Browser {
+	return &mockBrowser{err: err}
+}
+
+func (b *mockBrowser) Open(_ context.Context, _ string) error {
+	return b.err
+}
+
+func newMockInput() *Input {
+	return &Input{
+		HTTPClient: http.DefaultClient,
+		Now:        time.Now,
+		Stderr:     io.Discard,
+		Browser:    newMockBrowser(nil),
+		NewTicker: func(_ time.Duration) *time.Ticker {
+			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
+		},
+		Logger:       log.NewLogger(),
+		DeviceCodeUI: NewDeviceCodeUI(io.Discard),
+	}
+}
 
 func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 	t.Parallel()
@@ -109,7 +136,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 			originalURL := "https://github.com/login/device/code"
 			_ = originalURL // We'll need to modify the actual implementation to make URL configurable
 
-			input := NewMockInput()
+			input := newMockInput()
 			input.HTTPClient = server.Client()
 			client := &Client{
 				input: input,
@@ -265,7 +292,7 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 				base:   http.DefaultTransport,
 			}
 
-			input := NewMockInput()
+			input := newMockInput()
 			input.HTTPClient = &http.Client{Transport: transport}
 			client := NewClient(input)
 
@@ -413,7 +440,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 				base:   http.DefaultTransport,
 			}
 
-			input := NewMockInput()
+			input := newMockInput()
 			input.HTTPClient = &http.Client{Transport: transport}
 			client := NewClient(input)
 
@@ -526,7 +553,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			}
 
 			fixedTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-			input := NewMockInput()
+			input := newMockInput()
 			input.HTTPClient = &http.Client{Transport: transport}
 			input.Now = func() time.Time { return fixedTime }
 			input.Stderr = &bytes.Buffer{}
@@ -556,7 +583,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			}
 
 			// Check that ExpirationDate is set
-			if got.ExpirationDate == "" {
+			if got.ExpirationDate.IsZero() {
 				t.Error("ExpirationDate should be set")
 			}
 		})
@@ -566,7 +593,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 func TestNewClient(t *testing.T) {
 	t.Parallel()
 	httpClient := &http.Client{}
-	input := NewMockInput()
+	input := newMockInput()
 	input.HTTPClient = httpClient
 	client := NewClient(input)
 

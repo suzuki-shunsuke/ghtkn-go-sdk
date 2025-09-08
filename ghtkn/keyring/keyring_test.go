@@ -11,6 +11,47 @@ import (
 	zkeyring "github.com/zalando/go-keyring"
 )
 
+// Mock is a mock implementation of the API interface for testing.
+// It stores secrets in memory instead of using the system keyring.
+type mockBackend struct {
+	secrets map[string]string
+}
+
+// newMockBackend creates a new mock API instance with the provided initial secrets.
+// If secrets is nil, an empty map will be created when needed.
+func newMockBackend(secrets map[string]string) keyring.API {
+	return &mockBackend{
+		secrets: secrets,
+	}
+}
+
+// mockKey generates a unique key for storing secrets by combining service and user.
+// The format is "service:user".
+func mockKey(service, user string) string {
+	return service + ":" + user
+}
+
+// Get retrieves a secret from the mock keyring.
+// Returns keyring.ErrNotFound if the secret doesn't exist.
+func (m *mockBackend) Get(service, user string) (string, error) {
+	k := mockKey(service, user)
+	s, ok := m.secrets[k]
+	if !ok {
+		return "", zkeyring.ErrNotFound
+	}
+	return s, nil
+}
+
+// Set stores a secret in the mock keyring.
+// Creates the internal map if it doesn't exist.
+func (m *mockBackend) Set(service, user, password string) error {
+	if m.secrets == nil {
+		m.secrets = map[string]string{}
+	}
+	m.secrets[mockKey(service, user)] = password
+	return nil
+}
+
 // TestParseDate tests the ParseDate function with various inputs.
 func TestParseDate(t *testing.T) {
 	t.Parallel()
@@ -144,7 +185,7 @@ func TestKeyring_Get(t *testing.T) {
 	tests := []struct {
 		name    string
 		key     string
-		secrets map[string]*keyring.AccessToken
+		secrets map[string]string
 		want    *keyring.AccessToken
 		wantErr bool
 		errMsg  string
@@ -152,23 +193,22 @@ func TestKeyring_Get(t *testing.T) {
 		{
 			name: "successful get",
 			key:  "test-key",
-			secrets: map[string]*keyring.AccessToken{
-				"github.com/suzuki-shunsuke/ghtkn:test-key": {
-					App:            "test-app",
-					AccessToken:    "token123",
-					ExpirationDate: "2024-12-31T23:59:59Z",
-				},
+			secrets: map[string]string{
+				"github.com/suzuki-shunsuke/ghtkn:test-key": `{
+					"app": "test-app",
+					"access_token": "token123",
+					"expiration_date": "2024-12-31T23:59:59Z"
+				}`,
 			},
 			want: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "token123",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 		},
 		{
 			name:    "key not found",
 			key:     "non-existent",
-			secrets: map[string]*keyring.AccessToken{},
+			secrets: map[string]string{},
 			wantErr: true,
 			errMsg:  "get a GitHub Access token in keyring",
 		},
@@ -179,12 +219,11 @@ func TestKeyring_Get(t *testing.T) {
 			t.Parallel()
 
 			input := &keyring.Input{
-				KeyService: "github.com/suzuki-shunsuke/ghtkn",
-				API:        keyring.NewMockAPI(tt.secrets),
+				API: newMockBackend(tt.secrets),
 			}
 			kr := keyring.New(input)
 
-			got, err := kr.Get(tt.key)
+			got, err := kr.Get(keyring.DefaultServiceKey, tt.key)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("Get() error = nil, wantErr %v", tt.wantErr)
@@ -202,7 +241,7 @@ func TestKeyring_Get(t *testing.T) {
 				t.Errorf("Get() unexpected error = %v", err)
 				return
 			}
-			if got.App != tt.want.App || got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
+			if got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
 				t.Errorf("Get() = %v, want %v", got, tt.want)
 			}
 		})
@@ -223,18 +262,16 @@ func TestKeyring_Set(t *testing.T) {
 			name: "successful set",
 			key:  "test-key",
 			token: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "token123",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 		},
 		{
 			name: "set with empty fields",
 			key:  "empty-key",
 			token: &keyring.AccessToken{
-				App:            "",
 				AccessToken:    "",
-				ExpirationDate: "",
+				ExpirationDate: time.Time{},
 			},
 		},
 	}
@@ -243,14 +280,13 @@ func TestKeyring_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			api := keyring.NewMockAPI(nil)
+			api := newMockBackend(nil)
 			input := &keyring.Input{
-				KeyService: "github.com/suzuki-shunsuke/ghtkn",
-				API:        api,
+				API: api,
 			}
 			kr := keyring.New(input)
 
-			err := kr.Set(tt.key, tt.token)
+			err := kr.Set(keyring.DefaultServiceKey, tt.key, tt.token)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -270,7 +306,7 @@ func TestKeyring_Set(t *testing.T) {
 					return
 				}
 
-				if storedToken.App != tt.token.App || storedToken.AccessToken != tt.token.AccessToken || storedToken.ExpirationDate != tt.token.ExpirationDate {
+				if storedToken.AccessToken != tt.token.AccessToken || storedToken.ExpirationDate != tt.token.ExpirationDate {
 					t.Errorf("Stored token = %v, want %v", storedToken, tt.token)
 				}
 			}
@@ -283,8 +319,7 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 
 	input := &keyring.Input{
-		KeyService: "test-service",
-		API:        keyring.NewMockAPI(nil),
+		API: newMockBackend(nil),
 	}
 
 	kr := keyring.New(input)
@@ -301,10 +336,6 @@ func TestNewInput(t *testing.T) {
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
-	}
-
-	if input.KeyService != "github.com/suzuki-shunsuke/ghtkn" {
-		t.Errorf("NewInput().KeyService = %v, want %v", input.KeyService, "github.com/suzuki-shunsuke/ghtkn")
 	}
 
 	if input.API == nil {

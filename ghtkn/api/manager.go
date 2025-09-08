@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.
@@ -29,12 +30,11 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	MinExpiration  time.Duration    // Minimum token expiration duration required
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
 	Keyring        Keyring          // Keyring for token storage
 	Now            func() time.Time // Current time provider for testing
-	NewGitHub      func(ctx context.Context, token string) GitHub
-	Logger         *Logger
+	Logger         *log.Logger
+	ConfigReader   ConfigReader
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -44,27 +44,7 @@ func NewInput() *Input {
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
-		NewGitHub: func(ctx context.Context, token string) GitHub {
-			return github.New(ctx, token)
-		},
-		Logger: NewLogger(),
-	}
-}
-
-func NewMockInput() *Input {
-	return &Input{
-		MinExpiration:  time.Hour,
-		AppTokenClient: apptoken.NewClient(apptoken.NewMockInput()),
-		Keyring:        keyring.New(&keyring.Input{}),
-		Now: func() time.Time {
-			return time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		},
-		NewGitHub: func(ctx context.Context, token string) GitHub {
-			return github.NewMock(&github.User{
-				Login: "test-user",
-			}, nil)(ctx, token)
-		},
-		Logger: NewLogger(),
+		Logger:         log.NewLogger(),
 	}
 }
 
@@ -77,16 +57,16 @@ func (i *Input) Validate() error {
 // AppTokenClient defines the interface for creating GitHub App access tokens.
 type AppTokenClient interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error)
+	SetLogger(logger *log.Logger)
 }
 
 // Keyring defines the interface for storing and retrieving tokens from the system keyring.
 type Keyring interface {
-	Get(key string) (*keyring.AccessToken, error)
-	Set(key string, token *keyring.AccessToken) error
+	Get(service, key string) (*keyring.AccessToken, error)
+	Set(service, key string, token *keyring.AccessToken) error
 }
 
-// GitHub defines the interface for interacting with the GitHub API.
-// It is used to retrieve authenticated user information needed for Git Credential Helper.
-type GitHub interface {
-	Get(ctx context.Context) (*github.User, error)
+// ConfigReader defines the interface for reading configuration files.
+type ConfigReader interface {
+	Read(cfg *config.Config, configFilePath string) error
 }

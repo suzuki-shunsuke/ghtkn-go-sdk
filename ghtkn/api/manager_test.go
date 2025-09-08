@@ -8,11 +8,15 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type mockAppTokenClient struct {
 	token *apptoken.AccessToken
 	err   error
+}
+
+func (m *mockAppTokenClient) SetLogger(_ *log.Logger) {
 }
 
 func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {

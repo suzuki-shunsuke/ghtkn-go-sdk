@@ -5,61 +5,32 @@ package ghtkn
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"os"
 	"runtime"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // Client manages the process of retrieving GitHub App access tokens.
 // It coordinates between configuration reading, token caching, and token generation.
 type Client struct {
-	input *Input
+	tm  tokenManager
+	env *config.Env
 }
 
 // New creates a new Client instance with the provided input configuration.
-func New(input *Input) *Client {
+func New() *Client {
 	return &Client{
-		input: input,
+		tm:  api.New(api.NewInput()),
+		env: config.NewEnv(os.Getenv, runtime.GOOS),
 	}
 }
 
-type TokenManager interface {
-	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, error)
-}
-
-// Input contains all the dependencies and configuration needed by the Client.
-// It encapsulates file system access, configuration reading, token generation, and output handling.
-// The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
-type Input struct {
-	ConfigFilePath string       // Path to the configuration file
-	FS             afero.Fs     // File system abstraction for testing
-	ConfigReader   ConfigReader // Configuration file reader
-	Env            *config.Env  // Environment variable provider
-	Stdout         io.Writer    // Output writer
-	TokenManager   TokenManager // TokenManager for handling token retrieval and creation
-}
-
-// NewInput creates a new Input instance with default production values.
-// It sets up all necessary dependencies including file system, HTTP client, and keyring access.
-func NewInput(configFilePath string) *Input {
-	fs := afero.NewOsFs()
-	return &Input{
-		TokenManager:   api.New(api.NewInput()),
-		ConfigFilePath: configFilePath,
-		FS:             fs,
-		ConfigReader:   config.NewReader(fs),
-		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
-		Stdout:         os.Stdout,
-	}
-}
-
-// ConfigReader defines the interface for reading configuration files.
-type ConfigReader interface {
-	Read(cfg *config.Config, configFilePath string) error
+type tokenManager interface {
+	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, *config.App, error)
+	SetLogger(logger *log.Logger)
 }
