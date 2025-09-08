@@ -110,9 +110,10 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
-				AccessToken:    "new-token",
+				App:            "test-app",
+				AccessToken:    "cached-token",
 				ExpirationDate: keyring.FormatDate(futureTime),
-				Login:          "test-user",
+				Login:          "cached-user",
 			},
 		},
 		{

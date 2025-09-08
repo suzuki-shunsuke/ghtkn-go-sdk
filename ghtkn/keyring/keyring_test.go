@@ -195,6 +195,7 @@ func TestKeyring_Get(t *testing.T) {
 			key:  "test-key",
 			secrets: map[string]string{
 				"github.com/suzuki-shunsuke/ghtkn:test-key": `{
+					"app": "test-app",
 					"access_token": "token123",
 					"expiration_date": "2024-12-31T23:59:59Z"
 				}`,

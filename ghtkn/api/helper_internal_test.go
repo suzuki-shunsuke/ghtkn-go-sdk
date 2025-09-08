@@ -214,7 +214,7 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			clientID: "test-client-id",
 			keyring: &testKeyring{
 				tokens: map[string]*keyring.AccessToken{
-					"test-client-id": {
+					keyring.DefaultServiceKey + ":test-client-id": {
 						AccessToken:    "cached-token",
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
@@ -233,7 +233,7 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			clientID: "test-client-id",
 			keyring: &testKeyring{
 				tokens: map[string]*keyring.AccessToken{
-					"test-client-id": {
+					keyring.DefaultServiceKey + ":test-client-id": {
 						AccessToken:    "expired-token",
 						ExpirationDate: keyring.FormatDate(expiredTime),
 					},
