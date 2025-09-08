@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
@@ -19,6 +20,7 @@ type InputGet struct {
 	UseConfig      bool
 	AppName        string
 	ConfigFilePath string
+	MinExpiration  time.Duration
 }
 
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
@@ -56,19 +58,6 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
 	}
 
-	if token.Login == "" {
-		// Get the authenticated user info for Git Credential Helper.
-		// Git Credential Helper requires both username and password for authentication.
-		// The username is the GitHub user's login name retrieved via the GitHub API.
-		gh := tm.input.NewGitHub(ctx, token.AccessToken)
-		user, err := gh.Get(ctx)
-		if err != nil {
-			return nil, app, fmt.Errorf("get authenticated user: %w", err)
-		}
-		token.Login = user.Login
-		changed = true
-	}
-
 	if input.UseKeyring && changed {
 		// Store the token in keyring
 		if err := tm.input.Keyring.Set(input.KeyringService, input.ClientID, &keyring.AccessToken{
@@ -92,7 +81,7 @@ var ErrStoreToken = errors.New("could not store the token in keyring")
 func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, bool, error) {
 	// Get an access token from keyring
 	if input.UseKeyring {
-		token, err := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.ClientID)
+		token, err := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.ClientID, input.MinExpiration)
 		if err != nil {
 			slogerr.WithError(logger, err).Info("failed to get a GitHub App User Access Token from keyring")
 		}
@@ -115,7 +104,6 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
-
 	return &keyring.AccessToken{
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
@@ -124,7 +112,7 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 
 // getAccessTokenFromKeyring retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
-func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, clientID string) (*keyring.AccessToken, error) {
+func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, clientID string, minExpiration time.Duration) (*keyring.AccessToken, error) {
 	// Get an access token from keyring
 	tk, err := tm.input.Keyring.Get(keyringService, clientID)
 	if err != nil {
@@ -134,7 +122,7 @@ func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringSe
 		return nil, nil //nolint:nilnil
 	}
 	// Check if the access token expires
-	expired, err := tm.checkExpired(tk.ExpirationDate)
+	expired, err := tm.checkExpired(tk.ExpirationDate, minExpiration)
 	if err != nil {
 		return nil, fmt.Errorf("check if the access token is expired: %w", err)
 	}
@@ -149,14 +137,10 @@ func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringSe
 // checkExpired determines if an access token should be considered expired.
 // It returns true if the token will expire within the MinExpiration duration from now.
 // This ensures tokens are renewed before they actually expire.
-func (tm *TokenManager) checkExpired(exDate string) (bool, error) {
-	t, err := keyring.ParseDate(exDate)
-	if err != nil {
-		return false, err //nolint:wrapcheck
-	}
+func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Duration) (bool, error) {
 	// Expiration Date - Now < Min Expiration
 	// Now + Min Expiration > Expiration Date
-	return tm.input.Now().Add(tm.input.MinExpiration).After(t), nil
+	return tm.input.Now().Add(minExpiration).After(exDate), nil
 }
 
 // readConfig loads and validates the configuration from the configured file path.

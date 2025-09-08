@@ -60,7 +60,7 @@ func TestTokenManager_checkExpired(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		exDate        string
+		exDate        time.Time
 		minExpiration time.Duration
 		now           time.Time
 		want          bool
@@ -68,7 +68,7 @@ func TestTokenManager_checkExpired(t *testing.T) {
 	}{
 		{
 			name:          "not expired - future date",
-			exDate:        keyring.FormatDate(fixedTime.Add(2 * time.Hour)),
+			exDate:        fixedTime.Add(2 * time.Hour),
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          false,
@@ -76,7 +76,7 @@ func TestTokenManager_checkExpired(t *testing.T) {
 		},
 		{
 			name:          "expired - within min expiration",
-			exDate:        keyring.FormatDate(fixedTime.Add(30 * time.Minute)),
+			exDate:        fixedTime.Add(30 * time.Minute),
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          true,
@@ -84,7 +84,7 @@ func TestTokenManager_checkExpired(t *testing.T) {
 		},
 		{
 			name:          "expired - past date",
-			exDate:        keyring.FormatDate(fixedTime.Add(-time.Hour)),
+			exDate:        fixedTime.Add(-time.Hour),
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          true,
@@ -92,19 +92,11 @@ func TestTokenManager_checkExpired(t *testing.T) {
 		},
 		{
 			name:          "exactly at threshold",
-			exDate:        keyring.FormatDate(fixedTime.Add(time.Hour)),
+			exDate:        fixedTime.Add(time.Hour),
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          false,
 			wantErr:       false,
-		},
-		{
-			name:          "invalid date format",
-			exDate:        "invalid-date",
-			minExpiration: time.Hour,
-			now:           fixedTime,
-			want:          false,
-			wantErr:       true,
 		},
 	}
 
@@ -113,12 +105,11 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			t.Parallel()
 
 			input := &Input{
-				MinExpiration: tt.minExpiration,
-				Now:           func() time.Time { return tt.now },
+				Now: func() time.Time { return tt.now },
 			}
 			tm := &TokenManager{input: input}
 
-			got, err := tm.checkExpired(tt.exDate)
+			got, err := tm.checkExpired(tt.exDate, tt.minExpiration)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("checkExpired() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -148,12 +139,12 @@ func TestController_createToken(t *testing.T) {
 			client: &testAppTokenClient{
 				token: &apptoken.AccessToken{
 					AccessToken:    "new-token",
-					ExpirationDate: keyring.FormatDate(futureTime),
+					ExpirationDate: futureTime,
 				},
 			},
 			want: &keyring.AccessToken{
 				AccessToken:    "new-token",
-				ExpirationDate: keyring.FormatDate(futureTime),
+				ExpirationDate: futureTime,
 			},
 			wantErr: false,
 		},
@@ -216,7 +207,7 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 				tokens: map[string]*keyring.AccessToken{
 					keyring.DefaultServiceKey + ":test-client-id": {
 						AccessToken:    "cached-token",
-						ExpirationDate: keyring.FormatDate(futureTime),
+						ExpirationDate: futureTime,
 					},
 				},
 			},
@@ -224,7 +215,7 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			now:           fixedTime,
 			want: &keyring.AccessToken{
 				AccessToken:    "cached-token",
-				ExpirationDate: keyring.FormatDate(futureTime),
+				ExpirationDate: futureTime,
 			},
 			wantErr: false,
 		},
@@ -235,7 +226,7 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 				tokens: map[string]*keyring.AccessToken{
 					keyring.DefaultServiceKey + ":test-client-id": {
 						AccessToken:    "expired-token",
-						ExpirationDate: keyring.FormatDate(expiredTime),
+						ExpirationDate: expiredTime,
 					},
 				},
 			},
@@ -273,16 +264,15 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			t.Parallel()
 
 			input := &Input{
-				Keyring:       tt.keyring,
-				MinExpiration: tt.minExpiration,
-				Now:           func() time.Time { return tt.now },
-				Logger:        log.NewLogger(),
+				Keyring: tt.keyring,
+				Now:     func() time.Time { return tt.now },
+				Logger:  log.NewLogger(),
 			}
 			tm := &TokenManager{input: input}
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := tm.getAccessTokenFromKeyring(logger, keyring.DefaultServiceKey, tt.clientID)
+			got, err := tm.getAccessTokenFromKeyring(logger, keyring.DefaultServiceKey, tt.clientID, tt.minExpiration)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getAccessTokenFromKeyring() error = %v, wantErr %v", err, tt.wantErr)
 				return

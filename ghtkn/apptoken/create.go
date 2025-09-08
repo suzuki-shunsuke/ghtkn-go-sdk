@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -43,7 +42,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 
 	return &AccessToken{
 		AccessToken:    token.AccessToken,
-		ExpirationDate: keyring.FormatDate(now.Add(time.Duration(token.ExpiresIn) * time.Second)),
+		ExpirationDate: now.Add(time.Duration(token.ExpiresIn) * time.Second),
 	}, nil
 }
 

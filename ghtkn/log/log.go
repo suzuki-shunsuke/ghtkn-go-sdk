@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/lmittmann/tint"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -42,13 +43,13 @@ func ParseLevel(lvl string) (slog.Level, error) {
 }
 
 type Logger struct {
-	Expire              func(logger *slog.Logger, exDate string)
+	Expire              func(logger *slog.Logger, exDate time.Time)
 	FailedToOpenBrowser func(logger *slog.Logger, err error)
 }
 
 func NewLogger() *Logger {
 	return &Logger{
-		Expire: func(logger *slog.Logger, exDate string) {
+		Expire: func(logger *slog.Logger, exDate time.Time) {
 			logger.Debug("access token expires", "expiration_date", exDate)
 		},
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {

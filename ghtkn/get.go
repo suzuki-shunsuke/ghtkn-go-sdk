@@ -3,6 +3,7 @@ package ghtkn
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
@@ -10,11 +11,29 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
+type InputGet struct {
+	ClientID       string
+	UseKeyring     bool
+	KeyringService string
+	UseConfig      bool
+	AppName        string
+	ConfigFilePath string
+	MinExpiration  time.Duration
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
-func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, *config.App, error) {
-	return c.tm.Get(ctx, logger, input)
+func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
+	return c.tm.Get(ctx, logger, &api.InputGet{
+		ClientID:       input.ClientID,
+		UseKeyring:     input.UseKeyring,
+		KeyringService: input.KeyringService,
+		UseConfig:      input.UseConfig,
+		AppName:        input.AppName,
+		ConfigFilePath: input.ConfigFilePath,
+		MinExpiration:  input.MinExpiration,
+	})
 }
 
 func (c *Client) SetLogger(logger *log.Logger) {

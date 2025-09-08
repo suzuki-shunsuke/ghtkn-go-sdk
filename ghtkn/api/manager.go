@@ -9,7 +9,6 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -31,11 +30,9 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	MinExpiration  time.Duration    // Minimum token expiration duration required
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
 	Keyring        Keyring          // Keyring for token storage
 	Now            func() time.Time // Current time provider for testing
-	NewGitHub      func(ctx context.Context, token string) GitHub
 	Logger         *log.Logger
 	ConfigReader   ConfigReader
 }
@@ -47,43 +44,16 @@ func NewInput() *Input {
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
-		NewGitHub: func(ctx context.Context, token string) GitHub {
-			return github.New(ctx, token)
-		},
-		Logger: log.NewLogger(),
-	}
-}
-
-type mockGitHub struct {
-	user *github.User
-	err  error
-}
-
-func (m *mockGitHub) Get(_ context.Context) (*github.User, error) {
-	return m.user, m.err
-}
-
-func newMockGitHub(user *github.User, err error) func(ctx context.Context, _ string) *mockGitHub {
-	return func(_ context.Context, _ string) *mockGitHub {
-		return &mockGitHub{
-			user: user,
-			err:  err,
-		}
+		Logger:         log.NewLogger(),
 	}
 }
 
 func NewMockInput() *Input {
 	return &Input{
-		MinExpiration:  time.Hour,
 		AppTokenClient: apptoken.NewClient(apptoken.NewMockInput()),
 		Keyring:        keyring.New(&keyring.Input{}),
 		Now: func() time.Time {
 			return time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		},
-		NewGitHub: func(ctx context.Context, token string) GitHub {
-			return newMockGitHub(&github.User{
-				Login: "test-user",
-			}, nil)(ctx, token)
 		},
 		Logger: log.NewLogger(),
 	}
@@ -105,12 +75,6 @@ type AppTokenClient interface {
 type Keyring interface {
 	Get(service, key string) (*keyring.AccessToken, error)
 	Set(service, key string, token *keyring.AccessToken) error
-}
-
-// GitHub defines the interface for interacting with the GitHub API.
-// It is used to retrieve authenticated user information needed for Git Credential Helper.
-type GitHub interface {
-	Get(ctx context.Context) (*github.User, error)
 }
 
 // ConfigReader defines the interface for reading configuration files.

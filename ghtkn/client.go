@@ -18,7 +18,7 @@ import (
 // Client manages the process of retrieving GitHub App access tokens.
 // It coordinates between configuration reading, token caching, and token generation.
 type Client struct {
-	tm  TokenManager
+	tm  tokenManager
 	env *config.Env
 }
 
@@ -30,7 +30,7 @@ func New() *Client {
 	}
 }
 
-type TokenManager interface {
+type tokenManager interface {
 	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, *config.App, error)
 	SetLogger(logger *log.Logger)
 }

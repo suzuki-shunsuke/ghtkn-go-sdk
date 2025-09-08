@@ -201,9 +201,8 @@ func TestKeyring_Get(t *testing.T) {
 				}`,
 			},
 			want: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "token123",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 		},
 		{
@@ -242,7 +241,7 @@ func TestKeyring_Get(t *testing.T) {
 				t.Errorf("Get() unexpected error = %v", err)
 				return
 			}
-			if got.App != tt.want.App || got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
+			if got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
 				t.Errorf("Get() = %v, want %v", got, tt.want)
 			}
 		})
@@ -263,18 +262,16 @@ func TestKeyring_Set(t *testing.T) {
 			name: "successful set",
 			key:  "test-key",
 			token: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "token123",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 		},
 		{
 			name: "set with empty fields",
 			key:  "empty-key",
 			token: &keyring.AccessToken{
-				App:            "",
 				AccessToken:    "",
-				ExpirationDate: "",
+				ExpirationDate: time.Time{},
 			},
 		},
 	}
@@ -309,7 +306,7 @@ func TestKeyring_Set(t *testing.T) {
 					return
 				}
 
-				if storedToken.App != tt.token.App || storedToken.AccessToken != tt.token.AccessToken || storedToken.ExpirationDate != tt.token.ExpirationDate {
+				if storedToken.AccessToken != tt.token.AccessToken || storedToken.ExpirationDate != tt.token.ExpirationDate {
 					t.Errorf("Stored token = %v, want %v", storedToken, tt.token)
 				}
 			}

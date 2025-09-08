@@ -556,7 +556,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			}
 
 			// Check that ExpirationDate is set
-			if got.ExpirationDate == "" {
+			if got.ExpirationDate.IsZero() {
 				t.Error("ExpirationDate should be set")
 			}
 		})

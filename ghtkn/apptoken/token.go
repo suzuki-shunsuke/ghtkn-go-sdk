@@ -91,7 +91,7 @@ type AccessTokenResponse struct {
 // AccessToken represents a GitHub App access token with its metadata.
 // It includes the token value, associated app, and expiration date.
 type AccessToken struct {
-	App            string `json:"app"`
-	AccessToken    string `json:"access_token"`
-	ExpirationDate string `json:"expiration_date"`
+	App            string    `json:"app"`
+	AccessToken    string    `json:"access_token"`
+	ExpirationDate time.Time `json:"expiration_date"`
 }
