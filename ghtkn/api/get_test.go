@@ -24,10 +24,7 @@ func newMockInput() *api.Input {
 			},
 		},
 		Keyring: keyring.New(&keyring.Input{}),
-		Now: func() time.Time {
-			return time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		},
-		Logger: log.NewLogger(),
+		Logger:  log.NewLogger(),
 	}
 }
 
@@ -47,7 +44,6 @@ func (m *mockKeyring) Set(_ string, _ string, _ *keyring.AccessToken) error {
 func TestTokenManager_Get(t *testing.T) {
 	t.Parallel()
 
-	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -68,6 +64,9 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 				}
 				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time {
+					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+				}
 				return input
 			},
 			input: &api.InputGet{
@@ -78,7 +77,6 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "test-token-123",
 				ExpirationDate: futureTime,
-				Login:          "test-user",
 			},
 		},
 		{
@@ -98,6 +96,9 @@ func TestTokenManager_Get(t *testing.T) {
 						Login:          "cached-user",
 					},
 				}
+				input.Now = func() time.Time {
+					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+				}
 				return input
 			},
 			input: &api.InputGet{
@@ -114,19 +115,21 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "expired token in keyring triggers new token creation",
 			setupInput: func() *api.Input {
-				expiredTime := fixedTime.Add(30 * time.Minute)
 				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
 					token: &apptoken.AccessToken{
 						AccessToken:    "new-token",
-						ExpirationDate: futureTime,
+						ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 					},
 				}
 				input.Keyring = &mockKeyring{
 					token: &keyring.AccessToken{
 						AccessToken:    "expired-token",
-						ExpirationDate: expiredTime,
+						ExpirationDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 					},
+				}
+				input.Now = func() time.Time {
+					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 				}
 				return input
 			},
@@ -137,8 +140,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "new-token",
-				ExpirationDate: futureTime,
-				Login:          "test-user",
+				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 			},
 		},
 		{
@@ -149,6 +151,9 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("token creation failed"),
 				}
 				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time {
+					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+				}
 				return input
 			},
 			input: &api.InputGet{
