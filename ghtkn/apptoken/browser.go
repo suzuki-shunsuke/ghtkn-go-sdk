@@ -25,18 +25,6 @@ func (b *browser) Open(ctx context.Context, url string) error {
 	return openB(ctx, url)
 }
 
-type mockBrowser struct {
-	err error
-}
-
-func NewMockBrowser(err error) Browser {
-	return &mockBrowser{err: err}
-}
-
-func (b *mockBrowser) Open(_ context.Context, _ string) error {
-	return b.err
-}
-
 // runCmd attempts to open a URL using available browser commands.
 // It tries each command in order until one succeeds or all fail.
 // Returns errNoCommandFound if no suitable command is available.

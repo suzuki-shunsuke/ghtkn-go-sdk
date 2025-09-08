@@ -6,18 +6,11 @@ import (
 	"time"
 )
 
-var (
-	_ DeviceCodeUI = &MockDeviceCodeUI{}
-	_ DeviceCodeUI = &SimpleDeviceCodeUI{}
-)
+var _ DeviceCodeUI = &SimpleDeviceCodeUI{}
 
 type DeviceCodeUI interface {
 	Show(deviceCode *DeviceCodeResponse, expirationDate time.Time)
 }
-
-type MockDeviceCodeUI struct{}
-
-func (m *MockDeviceCodeUI) Show(_ *DeviceCodeResponse, _ time.Time) {}
 
 type SimpleDeviceCodeUI struct {
 	stderr io.Writer

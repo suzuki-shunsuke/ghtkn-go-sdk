@@ -48,17 +48,6 @@ func NewInput() *Input {
 	}
 }
 
-func NewMockInput() *Input {
-	return &Input{
-		AppTokenClient: apptoken.NewClient(apptoken.NewMockInput()),
-		Keyring:        keyring.New(&keyring.Input{}),
-		Now: func() time.Time {
-			return time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		},
-		Logger: log.NewLogger(),
-	}
-}
-
 // Validate checks if the Input configuration is valid.
 // It returns an error if the output format is neither empty nor "json".
 func (i *Input) Validate() error {

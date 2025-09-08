@@ -12,7 +12,24 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
+
+func newMockInput() *api.Input {
+	return &api.Input{
+		AppTokenClient: &mockAppTokenClient{
+			token: &apptoken.AccessToken{
+				AccessToken:    "test-token",
+				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+			},
+		},
+		Keyring: keyring.New(&keyring.Input{}),
+		Now: func() time.Time {
+			return time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		},
+		Logger: log.NewLogger(),
+	}
+}
 
 type mockKeyring struct {
 	token *keyring.AccessToken
@@ -43,7 +60,7 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "successful token creation without persistence",
 			setupInput: func() *api.Input {
-				input := api.NewMockInput()
+				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
 					token: &apptoken.AccessToken{
 						AccessToken:    "test-token-123",
@@ -67,7 +84,7 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "successful token retrieval from keyring",
 			setupInput: func() *api.Input {
-				input := api.NewMockInput()
+				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
 					token: &apptoken.AccessToken{
 						AccessToken:    "new-token",
@@ -98,7 +115,7 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "expired token in keyring triggers new token creation",
 			setupInput: func() *api.Input {
 				expiredTime := fixedTime.Add(30 * time.Minute)
-				input := api.NewMockInput()
+				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
 					token: &apptoken.AccessToken{
 						AccessToken:    "new-token",
@@ -127,7 +144,7 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "token creation error",
 			setupInput: func() *api.Input {
-				input := api.NewMockInput()
+				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
 					err: errors.New("token creation failed"),
 				}

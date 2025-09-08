@@ -47,20 +47,6 @@ func NewInput() *Input {
 	}
 }
 
-func NewMockInput() *Input {
-	return &Input{
-		HTTPClient: http.DefaultClient,
-		Now:        time.Now,
-		Stderr:     io.Discard,
-		Browser:    NewMockBrowser(nil),
-		NewTicker: func(_ time.Duration) *time.Ticker {
-			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
-		},
-		Logger:       log.NewLogger(),
-		DeviceCodeUI: &MockDeviceCodeUI{},
-	}
-}
-
 // NewClient creates a new Client with the provided HTTP client.
 // The client uses the provided HTTP client for all API requests.
 func NewClient(input *Input) *Client {
