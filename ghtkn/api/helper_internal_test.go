@@ -11,6 +11,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type testAppTokenClient struct {
@@ -25,27 +26,30 @@ func (m *testAppTokenClient) Create(_ context.Context, logger *slog.Logger, clie
 	return m.token, nil
 }
 
+func (m *testAppTokenClient) SetLogger(_ *log.Logger) {
+}
+
 type testKeyring struct {
 	tokens map[string]*keyring.AccessToken
 	getErr error
 	setErr error
 }
 
-func (m *testKeyring) Get(key string) (*keyring.AccessToken, error) {
+func (m *testKeyring) Get(service, key string) (*keyring.AccessToken, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
-	return m.tokens[key], nil
+	return m.tokens[service+":"+key], nil
 }
 
-func (m *testKeyring) Set(key string, token *keyring.AccessToken) error {
+func (m *testKeyring) Set(service, key string, token *keyring.AccessToken) error {
 	if m.setErr != nil {
 		return m.setErr
 	}
 	if m.tokens == nil {
 		m.tokens = make(map[string]*keyring.AccessToken)
 	}
-	m.tokens[key] = token
+	m.tokens[service+":"+key] = token
 	return nil
 }
 
@@ -272,13 +276,13 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 				Keyring:       tt.keyring,
 				MinExpiration: tt.minExpiration,
 				Now:           func() time.Time { return tt.now },
-				Logger:        NewLogger(),
+				Logger:        log.NewLogger(),
 			}
 			tm := &TokenManager{input: input}
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := tm.getAccessTokenFromKeyring(logger, tt.clientID)
+			got, err := tm.getAccessTokenFromKeyring(logger, keyring.DefaultServiceKey, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getAccessTokenFromKeyring() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -15,8 +15,7 @@ type Keyring struct {
 }
 
 type Input struct {
-	KeyService string
-	API        API
+	API API
 }
 
 const DefaultServiceKey = "github.com/suzuki-shunsuke/ghtkn"
@@ -36,15 +35,7 @@ type API interface {
 
 func NewInput() *Input {
 	return &Input{
-		KeyService: DefaultServiceKey,
-		API:        NewAPI(),
-	}
-}
-
-func NewMockInput(key string, secrets map[string]*AccessToken) *Input {
-	return &Input{
-		KeyService: key,
-		API:        NewMockAPI(secrets),
+		API: NewAPI(),
 	}
 }
 
@@ -80,8 +71,8 @@ type AccessToken struct {
 // Get retrieves an access token from the keyring.
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
-func (kr *Keyring) Get(key string) (*AccessToken, error) {
-	s, err := kr.input.API.Get(kr.input.KeyService, key)
+func (kr *Keyring) Get(service, key string) (*AccessToken, error) {
+	s, err := kr.input.API.Get(service, key)
 	if err != nil {
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
 	}
@@ -95,12 +86,12 @@ func (kr *Keyring) Get(key string) (*AccessToken, error) {
 // Set stores an access token in the keyring.
 // The key parameter identifies where to store the token.
 // Returns an error if the token cannot be marshaled or stored.
-func (kr *Keyring) Set(key string, token *AccessToken) error {
+func (kr *Keyring) Set(service, key string, token *AccessToken) error {
 	s, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("marshal the token as JSON: %w", err)
 	}
-	if err := kr.input.API.Set(kr.input.KeyService, key, string(s)); err != nil {
+	if err := kr.input.API.Set(service, key, string(s)); err != nil {
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/lmittmann/tint"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 // New creates a new structured logger with the specified version and log level.
@@ -37,5 +38,21 @@ func ParseLevel(lvl string) (slog.Level, error) {
 		return slog.LevelError, nil
 	default:
 		return 0, ErrUnknownLogLevel
+	}
+}
+
+type Logger struct {
+	Expire              func(logger *slog.Logger, exDate string)
+	FailedToOpenBrowser func(logger *slog.Logger, err error)
+}
+
+func NewLogger() *Logger {
+	return &Logger{
+		Expire: func(logger *slog.Logger, exDate string) {
+			logger.Debug("access token expires", "expiration_date", exDate)
+		},
+		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to open the browser")
+		},
 	}
 }

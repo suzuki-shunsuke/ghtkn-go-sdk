@@ -3,6 +3,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"testing"
@@ -11,10 +12,40 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
-const serviceKey = "github.com/suzuki-shunsuke/ghtkn"
+type mockGitHub struct {
+	user *github.User
+	err  error
+}
+
+func (m *mockGitHub) Get(_ context.Context) (*github.User, error) {
+	return m.user, m.err
+}
+
+func newMockGitHub(user *github.User, err error) func(ctx context.Context, _ string) api.GitHub {
+	return func(_ context.Context, _ string) api.GitHub {
+		return &mockGitHub{
+			user: user,
+			err:  err,
+		}
+	}
+}
+
+type mockKeyring struct {
+	token *keyring.AccessToken
+	err   error
+}
+
+func (m *mockKeyring) Get(_ string, _ string) (*keyring.AccessToken, error) {
+	return m.token, m.err
+}
+
+func (m *mockKeyring) Set(_ string, _ string, _ *keyring.AccessToken) error {
+	return m.err
+}
 
 func TestTokenManager_Get(t *testing.T) {
 	t.Parallel()
@@ -39,7 +70,7 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, nil))
+				input.Keyring = &mockKeyring{}
 				return input
 			},
 			input: &api.InputGet{
@@ -63,14 +94,14 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, map[string]*keyring.AccessToken{
-					"test-client-id": {
+				input.Keyring = &mockKeyring{
+					token: &keyring.AccessToken{
 						App:            "test-app",
 						AccessToken:    "cached-token",
 						ExpirationDate: keyring.FormatDate(futureTime),
 						Login:          "cached-user",
 					},
-				}))
+				}
 				return input
 			},
 			input: &api.InputGet{
@@ -96,13 +127,13 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, map[string]*keyring.AccessToken{
-					"test-client-id": {
+				input.Keyring = &mockKeyring{
+					token: &keyring.AccessToken{
 						App:            "test-app",
 						AccessToken:    "expired-token",
 						ExpirationDate: keyring.FormatDate(expiredTime),
 					},
-				}))
+				}
 				return input
 			},
 			input: &api.InputGet{
@@ -124,7 +155,7 @@ func TestTokenManager_Get(t *testing.T) {
 				input.AppTokenClient = &mockAppTokenClient{
 					err: errors.New("token creation failed"),
 				}
-				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, nil))
+				input.Keyring = &mockKeyring{}
 				return input
 			},
 			input: &api.InputGet{
@@ -144,8 +175,8 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, nil))
-				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API error"))
+				input.Keyring = &mockKeyring{}
+				input.NewGitHub = newMockGitHub(nil, errors.New("GitHub API error"))
 				return input
 			},
 			input: &api.InputGet{
@@ -165,15 +196,15 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, map[string]*keyring.AccessToken{
-					"test-client-id": {
+				input.Keyring = &mockKeyring{
+					token: &keyring.AccessToken{
 						App:            "test-app",
 						AccessToken:    "cached-token",
 						ExpirationDate: keyring.FormatDate(futureTime),
 						// Login is empty, will trigger GetUser call
 					},
-				}))
-				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded"))
+				}
+				input.NewGitHub = newMockGitHub(nil, errors.New("GitHub API rate limit exceeded"))
 				return input
 			},
 			input: &api.InputGet{
@@ -192,7 +223,7 @@ func TestTokenManager_Get(t *testing.T) {
 			tm := api.New(input)
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			token, err := tm.Get(t.Context(), logger, tt.input)
+			token, _, err := tm.Get(t.Context(), logger, tt.input)
 			if err != nil {
 				if !tt.wantErr {
 					t.Error(err)
