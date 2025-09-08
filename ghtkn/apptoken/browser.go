@@ -15,10 +15,6 @@ var errNoCommandFound = errors.New("no command found to open the browser")
 
 type browser struct{}
 
-func NewBrowser() Browser {
-	return &browser{}
-}
-
 // Open opens the specified URL in the system's default browser.
 // It is platform-specific and delegates to the appropriate implementation.
 func (b *browser) Open(ctx context.Context, url string) error {

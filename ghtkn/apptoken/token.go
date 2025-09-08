@@ -40,7 +40,7 @@ func NewInput() *Input {
 		HTTPClient:   http.DefaultClient,
 		Now:          time.Now,
 		Stderr:       os.Stderr,
-		Browser:      NewBrowser(),
+		Browser:      &browser{},
 		NewTicker:    time.NewTicker,
 		Logger:       log.NewLogger(),
 		DeviceCodeUI: NewDeviceCodeUI(os.Stderr),
