@@ -39,7 +39,7 @@ func run() int {
 	})
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
 		UseConfig:  true,
-		UseKeyring: true,
+		UseKeyring: ghtkn.Ptr(true),
 	})
 	if err != nil {
 		slogerr.WithError(logger, err).Error("failed to get token")

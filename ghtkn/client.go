@@ -52,3 +52,7 @@ type (
 func GetConfigPath() (string, error) {
 	return config.GetPath(os.Getenv, runtime.GOOS)
 }
+
+func Ptr[T any](v T) *T {
+	return &v
+}

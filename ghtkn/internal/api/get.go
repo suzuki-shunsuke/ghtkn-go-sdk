@@ -20,7 +20,7 @@ type InputGet struct {
 	AppName        string
 	ConfigFilePath string
 	MinExpiration  time.Duration
-	UseKeyring     bool
+	UseKeyring     *bool
 	UseConfig      bool
 }
 
@@ -42,6 +42,7 @@ func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
 	var app *config.App
+	var useKeyring bool
 	if input.UseConfig {
 		cfg := &config.Config{}
 		configPath := input.ConfigFilePath
@@ -61,6 +62,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 			appName = tm.input.Getenv("GHTKN_APP")
 		}
 		app = cfg.SelectApp(appName)
+		useKeyring = cfg.Persist
 	} else {
 		if input.ClientID == "" {
 			return nil, nil, errors.New("ClientID is required when not using config")
@@ -70,6 +72,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 			ClientID: input.ClientID,
 		}
 	}
+	if input.UseKeyring != nil {
+		useKeyring = *input.UseKeyring
+	}
 
 	logFields := []any{"app_name", app.Name}
 	logger = logger.With(logFields...)
@@ -78,13 +83,13 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		ClientID:       app.ClientID,
 		KeyringService: input.KeyringService,
 		MinExpiration:  input.MinExpiration,
-		UseKeyring:     input.UseKeyring,
+		UseKeyring:     useKeyring,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
 	}
 
-	if input.UseKeyring && changed {
+	if useKeyring && changed {
 		// Store the token in keyring
 		if err := tm.input.Keyring.Set(input.KeyringService, input.ClientID, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,

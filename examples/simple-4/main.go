@@ -56,7 +56,7 @@ func core(logger *slog.Logger) error {
 
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
 		UseConfig:  true,
-		UseKeyring: true,
+		UseKeyring: ghtkn.Ptr(true),
 	})
 	if err != nil {
 		return err

@@ -33,12 +33,23 @@ This code is valid until %s
 Press Enter to open %s in your browser...
 `
 
-func (d *SimpleDeviceCodeUI) Show(_ context.Context, _ *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error {
+func (d *SimpleDeviceCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error {
 	fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
-	scanner := bufio.NewScanner(d.stdin)
-	scanner.Scan()
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("read the input from stdin: %w", err)
+	inputCh := make(chan error, 1)
+
+	go func() {
+		scanner := bufio.NewScanner(d.stdin)
+		if scanner.Scan() {
+			inputCh <- scanner.Err()
+		}
+		close(inputCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Fprintln(d.stderr, "Cancelled") //nolint:errcheck
+		return ctx.Err()
+	case err := <-inputCh:
+		return err
 	}
-	return nil
 }
