@@ -29,7 +29,7 @@ func run() int {
 		slogerr.WithError(logger, err).Error("failed to get token")
 		return 1
 	}
-	fmt.Println("access token: ", token.AccessToken)
-	fmt.Println("expiration date: ", token.ExpirationDate)
+	fmt.Println("access token:", token.AccessToken)
+	fmt.Println("expiration date:", token.ExpirationDate)
 	return 0
 }
