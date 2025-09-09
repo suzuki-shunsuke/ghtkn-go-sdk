@@ -6,8 +6,6 @@ package ghtkn
 import (
 	"context"
 	"log/slog"
-	"os"
-	"runtime"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
@@ -19,15 +17,13 @@ import (
 // Client manages the process of retrieving GitHub App access tokens.
 // It coordinates between configuration reading, token caching, and token generation.
 type Client struct {
-	tm  tokenManager
-	env *config.Env
+	tm tokenManager
 }
 
 // New creates a new Client instance with the provided input configuration.
 func New() *Client {
 	return &Client{
-		tm:  api.New(api.NewInput()),
-		env: config.NewEnv(os.Getenv, runtime.GOOS),
+		tm: api.New(api.NewInput()),
 	}
 }
 

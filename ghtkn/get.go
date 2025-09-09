@@ -3,6 +3,8 @@ package ghtkn
 import (
 	"context"
 	"log/slog"
+	"os"
+	"runtime"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
@@ -26,21 +28,15 @@ type (
 	AccessToken  = keyring.AccessToken
 	AppConfig    = config.App
 	Config       = config.Config
-	Env          = config.Env
 	Logger       = log.Logger
 	DeviceCodeUI = deviceflow.DeviceCodeUI
 	Browser      = deviceflow.Browser
 )
 
-func NewEnv(getenv func(string) string, goos string) *Env {
-	return config.NewEnv(getenv, goos)
+// GetConfigPath returns the default configuration file path for ghtkn.
+func GetConfigPath() (string, error) {
+	return config.GetPath(os.Getenv, runtime.GOOS)
 }
-
-func GetPath(env *Env) (string, error) {
-	return config.GetPath(env)
-}
-
-const DefaultConfig = config.Default
 
 // Get executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,

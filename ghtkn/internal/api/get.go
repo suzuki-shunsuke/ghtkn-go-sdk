@@ -46,7 +46,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		cfg := &config.Config{}
 		configPath := input.ConfigFilePath
 		if configPath == "" {
-			p, err := config.GetPath(tm.input.Env)
+			p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
 			if err != nil {
 				return nil, nil, fmt.Errorf("get config path: %w", err)
 			}
@@ -58,7 +58,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		appName := input.AppName
 		// Select the app config
 		if appName == "" {
-			appName = tm.input.Env.App
+			appName = tm.input.Getenv("GHTKN_APP")
 		}
 		app = cfg.SelectApp(appName)
 	} else {

@@ -38,7 +38,8 @@ type Input struct {
 	Now          func() time.Time // Current time provider for testing
 	Logger       *log.Logger
 	ConfigReader ConfigReader
-	Env          *config.Env
+	Getenv       func(string) string
+	GOOS         string
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -50,7 +51,8 @@ func NewInput() *Input {
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(afero.NewOsFs()),
-		Env:          config.NewEnv(os.Getenv, runtime.GOOS),
+		Getenv:       os.Getenv,
+		GOOS:         runtime.GOOS,
 	}
 }
 
