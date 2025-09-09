@@ -38,7 +38,7 @@ func newMockInput() *Input {
 			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
 		},
 		Logger:       log.NewLogger(),
-		DeviceCodeUI: NewDeviceCodeUI(io.Discard),
+		DeviceCodeUI: NewDeviceCodeUI(strings.NewReader("\n"), io.Discard),
 	}
 }
 
