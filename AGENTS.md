@@ -69,7 +69,7 @@ ghtkn-go-sdk/
 │   └── gen-jsonschema/  # JSON schema generator
 ├── ghtkn/         # Core Go packages
 │   ├── api/       # GitHub API client and token management
-│   ├── apptoken/  # GitHub App token generation
+│   ├── deviceflow/  # GitHub App token generation
 │   ├── config/    # Configuration management
 │   ├── github/    # GitHub API interaction
 │   ├── keyring/   # Token caching and keyring operations
@@ -83,7 +83,7 @@ ghtkn-go-sdk/
 
 High-level API client for GitHub token management. Provides the main interface for token retrieval, combining app token generation, keyring caching, and GitHub API calls.
 
-### ghtkn/apptoken
+### ghtkn/deviceflow
 
 GitHub App token generation functionality. Handles browser-based OAuth flow for obtaining access tokens from GitHub Apps.
 

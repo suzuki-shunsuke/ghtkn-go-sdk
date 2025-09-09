@@ -1,4 +1,4 @@
-package apptoken
+package deviceflow
 
 import (
 	"fmt"

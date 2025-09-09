@@ -1,4 +1,4 @@
-package apptoken
+package browser
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
-// errNoCommandFound is returned when no suitable command is found to open a browser.
-var errNoCommandFound = errors.New("no command found to open the browser")
+// ErrNoCommandFound is returned when no suitable command is found to open a browser.
+var ErrNoCommandFound = errors.New("no command found to open the browser")
 
-type browser struct{}
+type Browser struct{}
 
 // Open opens the specified URL in the system's default browser.
 // It is platform-specific and delegates to the appropriate implementation.
-func (b *browser) Open(ctx context.Context, url string) error {
+func (b *Browser) Open(ctx context.Context, url string) error {
 	return openB(ctx, url)
 }
 
@@ -34,5 +34,5 @@ func runCmd(ctx context.Context, url string) error {
 		}
 		return nil
 	}
-	return errNoCommandFound
+	return ErrNoCommandFound
 }

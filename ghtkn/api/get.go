@@ -25,7 +25,7 @@ type InputGet struct {
 
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
 	tm.input.Logger = logger
-	tm.input.AppTokenClient.SetLogger(logger)
+	tm.input.DeviceFlow.SetLogger(logger)
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.
@@ -123,7 +123,7 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns a keyring.AccessToken with the token details and expiration date.
 func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
-	tk, err := tm.input.AppTokenClient.Create(ctx, logger, clientID)
+	tk, err := tm.input.DeviceFlow.Create(ctx, logger, clientID)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}

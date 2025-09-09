@@ -1,4 +1,4 @@
-package apptoken
+package deviceflow
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -29,7 +30,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
 	c.input.DeviceCodeUI.Show(deviceCode, deviceCodeExpirationDate)
 	if err := c.input.Browser.Open(ctx, deviceCode.VerificationURI); err != nil {
-		if !errors.Is(err, errNoCommandFound) {
+		if !errors.Is(err, browser.ErrNoCommandFound) {
 			c.input.Logger.FailedToOpenBrowser(logger, err)
 		}
 	}

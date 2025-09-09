@@ -1,4 +1,4 @@
-package apptoken
+package browser
 
 import (
 	"context"

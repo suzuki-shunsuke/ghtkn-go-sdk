@@ -7,19 +7,19 @@ import (
 	"testing"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type mockAppTokenClient struct {
-	token *apptoken.AccessToken
+	token *deviceflow.AccessToken
 	err   error
 }
 
 func (m *mockAppTokenClient) SetLogger(_ *log.Logger) {
 }
 
-func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
+func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -45,7 +45,7 @@ func TestNewInput(t *testing.T) {
 		return
 	}
 
-	if input.AppTokenClient == nil {
+	if input.DeviceFlow == nil {
 		t.Error("NewInput().AppTokenClient is nil")
 	}
 

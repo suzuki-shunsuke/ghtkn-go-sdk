@@ -9,17 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type testAppTokenClient struct {
-	token *apptoken.AccessToken
+	token *deviceflow.AccessToken
 	err   error
 }
 
-func (m *testAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
+func (m *testAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -120,7 +120,7 @@ func TestController_createToken(t *testing.T) {
 	tests := []struct {
 		name     string
 		clientID string
-		client   AppTokenClient
+		client   DeviceFlow
 		want     *keyring.AccessToken
 		wantErr  bool
 	}{
@@ -128,7 +128,7 @@ func TestController_createToken(t *testing.T) {
 			name:     "successful token creation",
 			clientID: "test-client-id",
 			client: &testAppTokenClient{
-				token: &apptoken.AccessToken{
+				token: &deviceflow.AccessToken{
 					AccessToken:    "new-token",
 					ExpirationDate: futureTime,
 				},
@@ -155,7 +155,7 @@ func TestController_createToken(t *testing.T) {
 			t.Parallel()
 
 			input := &Input{
-				AppTokenClient: tt.client,
+				DeviceFlow: tt.client,
 			}
 			tm := &TokenManager{input: input}
 
