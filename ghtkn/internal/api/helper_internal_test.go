@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 type testDeviceFlow struct {

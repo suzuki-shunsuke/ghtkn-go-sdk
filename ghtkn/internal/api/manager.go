@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.
@@ -38,7 +38,8 @@ type Input struct {
 	Now          func() time.Time // Current time provider for testing
 	Logger       *log.Logger
 	ConfigReader ConfigReader
-	Env          *config.Env
+	Getenv       func(string) string
+	GOOS         string
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -50,7 +51,8 @@ func NewInput() *Input {
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(afero.NewOsFs()),
-		Env:          config.NewEnv(os.Getenv, runtime.GOOS),
+		Getenv:       os.Getenv,
+		GOOS:         runtime.GOOS,
 	}
 }
 

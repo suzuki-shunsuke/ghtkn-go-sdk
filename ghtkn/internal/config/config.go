@@ -56,17 +56,6 @@ func (app *App) Validate() error {
 	return nil
 }
 
-// Default provides a default configuration template for ghtkn.
-// This template can be used to create an initial configuration file.
-const Default = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/refs/heads/main/json-schema/ghtkn.json
-# ghtkn - https://github.com/suzuki-shunsuke/ghtkn
-persist: true
-apps:
-  - name: suzuki-shunsuke/write (The name to identify the app)
-    client_id: <Your GitHub App Client ID>
-    default: true
-`
-
 // Reader handles reading configuration files from the filesystem.
 type Reader struct {
 	fs afero.Fs
