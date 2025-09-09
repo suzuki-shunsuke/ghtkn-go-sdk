@@ -19,6 +19,10 @@ func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
 	c.input.DeviceCodeUI = ui
 }
 
+func (c *Client) SetBrowser(b Browser) {
+	c.input.Browser = b
+}
+
 // Create initiates the OAuth device flow and returns an access token.
 // It displays the verification URL and user code, optionally opens a browser,
 // and polls for the access token until the user completes authentication.

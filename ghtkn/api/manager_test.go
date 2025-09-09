@@ -16,11 +16,11 @@ type mockDeviceFlow struct {
 	err   error
 }
 
-func (m *mockDeviceFlow) SetLogger(_ *log.Logger) {
-}
+func (m *mockDeviceFlow) SetLogger(_ *log.Logger) {}
 
-func (m *mockDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {
-}
+func (m *mockDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {}
+
+func (m *mockDeviceFlow) SetBrowser(_ deviceflow.Browser) {}
 
 func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
 	if m.err != nil {

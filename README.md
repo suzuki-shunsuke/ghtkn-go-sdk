@@ -36,7 +36,7 @@ The following libraries are useful:
 - https://github.com/samber/slog-zap
 - https://github.com/samber/slog-zerolog
 
-### Customize logger
+### Customizing logger
 
 You can customize logger.
 
@@ -58,11 +58,18 @@ client.SetLogger(&log.Logger{
 )
 ```
 
-### Customize opening the browser
+### Customizing opening the browser
 
-Coming soon.
+```go
+type Browser struct {}
+func (b *Browser) Open(ctx context.Context, url string) error {
+	// Do something
+	return nil
+}
+client.SetBrowser(&Browser{})
+```
 
-### Customize showing the device code
+### Customizing showing the device code
 
 ```go
 type UI struct {}
@@ -74,7 +81,7 @@ func (ui *UI) Show(deviceCode *DeviceCodeResponse, expirationDate time.Time) {
 client.SetDeviceCodeUI(&UI{})
 ```
 
-### Pass a client id without configuration file and keyring
+### Passing a client id without configuration file and keyring
 
 ```go
 token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{

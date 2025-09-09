@@ -47,3 +47,7 @@ func (c *Client) SetLogger(logger *log.Logger) {
 func (c *Client) SetDeviceCodeUI(ui deviceflow.DeviceCodeUI) {
 	c.tm.SetDeviceCodeUI(ui)
 }
+
+func (c *Client) SetBrowser(ui deviceflow.Browser) {
+	c.tm.SetBrowser(ui)
+}

@@ -65,6 +65,7 @@ type DeviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
 	SetLogger(logger *log.Logger)
 	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
+	SetBrowser(browser deviceflow.Browser)
 }
 
 // Keyring defines the interface for storing and retrieving tokens from the system keyring.
