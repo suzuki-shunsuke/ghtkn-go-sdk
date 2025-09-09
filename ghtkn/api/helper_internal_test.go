@@ -26,11 +26,11 @@ func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID
 	return m.token, nil
 }
 
-func (m *testDeviceFlow) SetLogger(_ *log.Logger) {
-}
+func (m *testDeviceFlow) SetLogger(_ *log.Logger) {}
 
-func (m *testDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {
-}
+func (m *testDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {}
+
+func (m *testDeviceFlow) SetBrowser(_ deviceflow.Browser) {}
 
 type testKeyring struct {
 	tokens map[string]*keyring.AccessToken

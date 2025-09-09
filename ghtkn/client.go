@@ -35,4 +35,5 @@ type tokenManager interface {
 	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, *config.App, error)
 	SetLogger(logger *log.Logger)
 	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
+	SetBrowser(browser deviceflow.Browser)
 }
