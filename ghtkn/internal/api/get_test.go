@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
@@ -70,8 +71,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:   "test-client-id",
-				UseKeyring: false,
+				ClientID: "test-client-id",
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -103,7 +103,7 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 			input: &api.InputGet{
 				ClientID:   "test-client-id",
-				UseKeyring: true,
+				UseKeyring: ghtkn.Ptr(true),
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -135,7 +135,7 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 			input: &api.InputGet{
 				ClientID:   "test-client-id",
-				UseKeyring: true,
+				UseKeyring: ghtkn.Ptr(true),
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -158,7 +158,7 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 			input: &api.InputGet{
 				ClientID:   "test-client-id",
-				UseKeyring: true,
+				UseKeyring: ghtkn.Ptr(true),
 			},
 			wantErr: true,
 		},

@@ -23,7 +23,7 @@ func run() int {
 	client := ghtkn.New()
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
 		UseConfig:  true,
-		UseKeyring: true,
+		UseKeyring: ghtkn.Ptr(true),
 		AppName:    os.Getenv("APP_NAME"), // Optionally set your GitHub App name
 	})
 	if err != nil {
