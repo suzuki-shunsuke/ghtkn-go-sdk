@@ -6,8 +6,11 @@ package ghtkn
 import (
 	"context"
 	"log/slog"
+	"os"
+	"runtime"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
@@ -32,4 +35,20 @@ type tokenManager interface {
 	SetLogger(logger *log.Logger)
 	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
 	SetBrowser(browser deviceflow.Browser)
+}
+
+type (
+	AccessToken        = keyring.AccessToken
+	AppConfig          = config.App
+	Config             = config.Config
+	Logger             = log.Logger
+	DeviceCodeUI       = deviceflow.DeviceCodeUI
+	Browser            = deviceflow.Browser
+	DeviceCodeResponse = deviceflow.DeviceCodeResponse
+	DefaultBrowser     = browser.Browser
+)
+
+// GetConfigPath returns the default configuration file path for ghtkn.
+func GetConfigPath() (string, error) {
+	return config.GetPath(os.Getenv, runtime.GOOS)
 }

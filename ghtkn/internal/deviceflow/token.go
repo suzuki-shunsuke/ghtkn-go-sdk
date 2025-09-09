@@ -5,6 +5,7 @@ package deviceflow
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -19,7 +20,7 @@ type Client struct {
 }
 
 type Browser interface {
-	Open(ctx context.Context, url string) error
+	Open(ctx context.Context, logger *slog.Logger, url string) error
 }
 
 type Input struct {

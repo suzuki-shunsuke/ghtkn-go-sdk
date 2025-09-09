@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os/exec"
 
 	"github.com/suzuki-shunsuke/go-exec/goexec"
@@ -17,7 +18,7 @@ type Browser struct{}
 
 // Open opens the specified URL in the system's default browser.
 // It is platform-specific and delegates to the appropriate implementation.
-func (b *Browser) Open(ctx context.Context, url string) error {
+func (b *Browser) Open(ctx context.Context, _ *slog.Logger, url string) error {
 	return openB(ctx, url)
 }
 
