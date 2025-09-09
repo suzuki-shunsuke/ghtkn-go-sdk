@@ -98,6 +98,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "test-token-123",
 				ExpirationDate: futureTime,
+				Login:          "test-user",
 			},
 		},
 		{
@@ -129,6 +130,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
+				Login:          "octocat",
 			},
 		},
 		{
@@ -160,6 +162,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+				Login:          "test-user",
 			},
 		},
 		{

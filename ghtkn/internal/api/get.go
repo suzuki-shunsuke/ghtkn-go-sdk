@@ -121,6 +121,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 			return nil, app, fmt.Errorf("get authenticated user: %w", err)
 		}
 		login = user.Login
+		token.Login = login
+	} else if token.Login == "" {
+		token.Login = login
 	}
 
 	if useKeyring && changed {
@@ -128,6 +131,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		if err := tm.input.Keyring.Set(keyringService, login+"/"+app.ClientID, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
+			Login:          token.Login,
 		}); err != nil {
 			return token, app, ErrStoreToken
 		}
