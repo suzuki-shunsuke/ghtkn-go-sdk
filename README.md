@@ -1,6 +1,6 @@
 # ghtkn-go-sdk
 
-[![MIT LICENSE](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/main/LICENSE) | [![Go Reference](https://pkg.go.dev/badge/github.com/suzuki-shunsuke/ghtkn-go-sdk.svg)](https://pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk)
+[![MIT LICENSE](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/main/LICENSE) [![Go Reference](https://pkg.go.dev/badge/github.com/suzuki-shunsuke/ghtkn-go-sdk.svg)](https://pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk)
 
 Go SDK to enable your Go application to create GitHub User Access Tokens for GitHub Apps easily.
 
