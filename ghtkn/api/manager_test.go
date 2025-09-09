@@ -45,7 +45,7 @@ func TestNewInput(t *testing.T) {
 		return
 	}
 
-	if input.AppTokenClient == nil {
+	if input.DeviceFlow == nil {
 		t.Error("NewInput().AppTokenClient is nil")
 	}
 

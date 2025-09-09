@@ -120,7 +120,7 @@ func TestController_createToken(t *testing.T) {
 	tests := []struct {
 		name     string
 		clientID string
-		client   AppTokenClient
+		client   DeviceFlow
 		want     *keyring.AccessToken
 		wantErr  bool
 	}{
@@ -155,7 +155,7 @@ func TestController_createToken(t *testing.T) {
 			t.Parallel()
 
 			input := &Input{
-				AppTokenClient: tt.client,
+				DeviceFlow: tt.client,
 			}
 			tm := &TokenManager{input: input}
 

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -33,24 +33,24 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
-	Keyring        Keyring          // Keyring for token storage
-	Now            func() time.Time // Current time provider for testing
-	Logger         *log.Logger
-	ConfigReader   ConfigReader
-	Env            *config.Env
+	DeviceFlow   DeviceFlow       // Client for creating GitHub App tokens
+	Keyring      Keyring          // Keyring for token storage
+	Now          func() time.Time // Current time provider for testing
+	Logger       *log.Logger
+	ConfigReader ConfigReader
+	Env          *config.Env
 }
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
 func NewInput() *Input {
 	return &Input{
-		AppTokenClient: deviceflow.NewClient(deviceflow.NewInput()),
-		Keyring:        keyring.New(keyring.NewInput()),
-		Now:            time.Now,
-		Logger:         log.NewLogger(),
-		ConfigReader:   config.NewReader(afero.NewOsFs()),
-		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
+		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
+		Keyring:      keyring.New(keyring.NewInput()),
+		Now:          time.Now,
+		Logger:       log.NewLogger(),
+		ConfigReader: config.NewReader(afero.NewOsFs()),
+		Env:          config.NewEnv(os.Getenv, runtime.GOOS),
 	}
 }
 
@@ -60,8 +60,8 @@ func (i *Input) Validate() error {
 	return nil
 }
 
-// AppTokenClient defines the interface for creating GitHub App access tokens.
-type AppTokenClient interface {
+// DeviceFlow defines the interface for creating GitHub App access tokens.
+type DeviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
 	SetLogger(logger *log.Logger)
 }
