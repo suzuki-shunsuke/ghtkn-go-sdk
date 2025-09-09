@@ -11,15 +11,18 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
-type mockAppTokenClient struct {
+type mockDeviceFlow struct {
 	token *deviceflow.AccessToken
 	err   error
 }
 
-func (m *mockAppTokenClient) SetLogger(_ *log.Logger) {
+func (m *mockDeviceFlow) SetLogger(_ *log.Logger) {
 }
 
-func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
+func (m *mockDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {
+}
+
+func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

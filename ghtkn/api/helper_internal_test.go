@@ -14,19 +14,22 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
-type testAppTokenClient struct {
+type testDeviceFlow struct {
 	token *deviceflow.AccessToken
 	err   error
 }
 
-func (m *testAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
+func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	return m.token, nil
 }
 
-func (m *testAppTokenClient) SetLogger(_ *log.Logger) {
+func (m *testDeviceFlow) SetLogger(_ *log.Logger) {
+}
+
+func (m *testDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {
 }
 
 type testKeyring struct {
@@ -127,7 +130,7 @@ func TestController_createToken(t *testing.T) {
 		{
 			name:     "successful token creation",
 			clientID: "test-client-id",
-			client: &testAppTokenClient{
+			client: &testDeviceFlow{
 				token: &deviceflow.AccessToken{
 					AccessToken:    "new-token",
 					ExpirationDate: futureTime,
@@ -142,7 +145,7 @@ func TestController_createToken(t *testing.T) {
 		{
 			name:     "token creation error",
 			clientID: "test-client-id",
-			client: &testAppTokenClient{
+			client: &testDeviceFlow{
 				err: errors.New("creation failed"),
 			},
 			want:    nil,

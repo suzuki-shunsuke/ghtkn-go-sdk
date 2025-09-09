@@ -7,6 +7,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -41,4 +42,8 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 
 func (c *Client) SetLogger(logger *log.Logger) {
 	c.tm.SetLogger(logger)
+}
+
+func (c *Client) SetDeviceCodeUI(ui deviceflow.DeviceCodeUI) {
+	c.tm.SetDeviceCodeUI(ui)
 }

@@ -64,6 +64,7 @@ func (i *Input) Validate() error {
 type DeviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
 	SetLogger(logger *log.Logger)
+	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
 }
 
 // Keyring defines the interface for storing and retrieving tokens from the system keyring.
