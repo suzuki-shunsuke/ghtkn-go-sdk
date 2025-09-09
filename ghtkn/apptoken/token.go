@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
@@ -40,7 +41,7 @@ func NewInput() *Input {
 		HTTPClient:   http.DefaultClient,
 		Now:          time.Now,
 		Stderr:       os.Stderr,
-		Browser:      &browser{},
+		Browser:      &browser.Browser{},
 		NewTicker:    time.NewTicker,
 		Logger:       log.NewLogger(),
 		DeviceCodeUI: NewDeviceCodeUI(os.Stderr),

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -627,15 +626,4 @@ func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.URL.Host = strings.TrimPrefix(t.server.URL, "http://")
 	}
 	return t.base.RoundTrip(req) //nolint:wrapcheck
-}
-
-func TestErrNoCommandFound(t *testing.T) {
-	t.Parallel()
-	if errNoCommandFound == nil {
-		t.Fatal("errNoCommandFound should not be nil")
-	}
-
-	if !errors.Is(errNoCommandFound, errNoCommandFound) {
-		t.Error("errNoCommandFound should be comparable with errors.Is")
-	}
 }
