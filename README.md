@@ -55,7 +55,7 @@ client.SetLogger(&log.Logger{
 			logger.Info("access token is not found in keyring")
 		},
 	}
-);
+)
 ```
 
 ### Customize opening the browser
@@ -64,7 +64,15 @@ Coming soon.
 
 ### Customize showing the device code
 
-Coming soon.
+```go
+type UI struct {}
+func (ui *UI) Show(deviceCode *DeviceCodeResponse, expirationDate time.Time) {
+	fmt.Fprintf(d.stderr, "Please visit: %s\n", deviceCode.VerificationURI)
+	fmt.Fprintf(d.stderr, "And enter code: %s\n", deviceCode.UserCode)
+	fmt.Fprintf(d.stderr, "Expiration date: %s\n", expirationDate.Format(time.RFC3339))
+}
+client.SetDeviceCodeUI(&UI{})
+```
 
 ### Pass a client id without configuration file and keyring
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -26,6 +27,10 @@ type InputGet struct {
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
 	tm.input.Logger = logger
 	tm.input.DeviceFlow.SetLogger(logger)
+}
+
+func (tm *TokenManager) SetDeviceCodeUI(ui deviceflow.DeviceCodeUI) {
+	tm.input.DeviceFlow.SetDeviceCodeUI(ui)
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.

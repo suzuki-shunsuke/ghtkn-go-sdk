@@ -17,7 +17,7 @@ import (
 
 func newMockInput() *api.Input {
 	return &api.Input{
-		DeviceFlow: &mockAppTokenClient{
+		DeviceFlow: &mockDeviceFlow{
 			token: &deviceflow.AccessToken{
 				AccessToken:    "test-token",
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
@@ -57,7 +57,7 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "successful token creation without persistence",
 			setupInput: func() *api.Input {
 				input := newMockInput()
-				input.DeviceFlow = &mockAppTokenClient{
+				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
 						AccessToken:    "test-token-123",
 						ExpirationDate: futureTime,
@@ -83,7 +83,7 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "successful token retrieval from keyring",
 			setupInput: func() *api.Input {
 				input := newMockInput()
-				input.DeviceFlow = &mockAppTokenClient{
+				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
 						AccessToken:    "new-token",
 						ExpirationDate: futureTime,
@@ -116,7 +116,7 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "expired token in keyring triggers new token creation",
 			setupInput: func() *api.Input {
 				input := newMockInput()
-				input.DeviceFlow = &mockAppTokenClient{
+				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
 						AccessToken:    "new-token",
 						ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
@@ -147,7 +147,7 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "token creation error",
 			setupInput: func() *api.Input {
 				input := newMockInput()
-				input.DeviceFlow = &mockAppTokenClient{
+				input.DeviceFlow = &mockDeviceFlow{
 					err: errors.New("token creation failed"),
 				}
 				input.Keyring = &mockKeyring{}

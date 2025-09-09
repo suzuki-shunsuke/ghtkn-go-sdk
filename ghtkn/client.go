@@ -11,6 +11,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -33,4 +34,5 @@ func New() *Client {
 type tokenManager interface {
 	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, *config.App, error)
 	SetLogger(logger *log.Logger)
+	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
 }
