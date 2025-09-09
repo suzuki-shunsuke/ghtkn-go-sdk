@@ -5,8 +5,11 @@ package api
 import (
 	"context"
 	"log/slog"
+	"os"
+	"runtime"
 	"time"
 
+	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
@@ -35,6 +38,7 @@ type Input struct {
 	Now            func() time.Time // Current time provider for testing
 	Logger         *log.Logger
 	ConfigReader   ConfigReader
+	Env            *config.Env
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -45,6 +49,8 @@ func NewInput() *Input {
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
 		Logger:         log.NewLogger(),
+		ConfigReader:   config.NewReader(afero.NewOsFs()),
+		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
 	}
 }
 

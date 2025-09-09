@@ -4,8 +4,11 @@ package keyring
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/zalando/go-keyring"
 )
 
 // Keyring manages access tokens in the system keychain.
@@ -73,6 +76,9 @@ type AccessToken struct {
 func (kr *Keyring) Get(service, key string) (*AccessToken, error) {
 	s, err := kr.input.API.Get(service, key)
 	if err != nil {
+		if errors.Is(err, keyring.ErrNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
 	}
 	token := &AccessToken{}

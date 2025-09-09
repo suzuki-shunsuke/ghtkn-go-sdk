@@ -15,12 +15,12 @@ import (
 
 type InputGet struct {
 	ClientID       string
-	UseKeyring     bool
 	KeyringService string
-	UseConfig      bool
 	AppName        string
 	ConfigFilePath string
 	MinExpiration  time.Duration
+	UseKeyring     bool
+	UseConfig      bool
 }
 
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
@@ -35,11 +35,23 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	var app *config.App
 	if input.UseConfig {
 		cfg := &config.Config{}
-		if err := tm.readConfig(cfg, input.ConfigFilePath); err != nil {
+		configPath := input.ConfigFilePath
+		if configPath == "" {
+			p, err := config.GetPath(tm.input.Env)
+			if err != nil {
+				return nil, nil, fmt.Errorf("get config path: %w", err)
+			}
+			configPath = p
+		}
+		if err := tm.readConfig(cfg, configPath); err != nil {
 			return nil, nil, err
 		}
+		appName := input.AppName
 		// Select the app config
-		app = cfg.SelectApp(input.AppName)
+		if appName == "" {
+			appName = tm.input.Env.App
+		}
+		app = cfg.SelectApp(appName)
 	} else {
 		if input.ClientID == "" {
 			return nil, nil, errors.New("ClientID is required when not using config")
@@ -50,10 +62,15 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		}
 	}
 
-	logFields := []any{"app", app.Name}
+	logFields := []any{"app_name", app.Name}
 	logger = logger.With(logFields...)
 
-	token, changed, err := tm.getOrCreateToken(ctx, logger, input)
+	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
+		ClientID:       app.ClientID,
+		KeyringService: input.KeyringService,
+		MinExpiration:  input.MinExpiration,
+		UseKeyring:     input.UseKeyring,
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
 	}
@@ -74,18 +91,24 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 
 var ErrStoreToken = errors.New("could not store the token in keyring")
 
+type inputGetOrCreateToken struct {
+	ClientID       string
+	KeyringService string
+	MinExpiration  time.Duration
+	UseKeyring     bool
+}
+
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
 // It returns the token, a boolean indicating whether the token was newly created or modified,
 // and any error that occurred. The changed flag is used to determine if the token should be
 // saved back to the keyring.
-func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, bool, error) {
+func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*keyring.AccessToken, bool, error) {
 	// Get an access token from keyring
 	if input.UseKeyring {
-		token, err := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.ClientID, input.MinExpiration)
-		if err != nil {
-			slogerr.WithError(logger, err).Info("failed to get a GitHub App User Access Token from keyring")
+		if input.KeyringService == "" {
+			input.KeyringService = keyring.DefaultServiceKey
 		}
-		if token != nil {
+		if token := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.ClientID, input.MinExpiration); token != nil {
 			return token, false, nil
 		}
 	}
@@ -112,35 +135,33 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 
 // getAccessTokenFromKeyring retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
-func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, clientID string, minExpiration time.Duration) (*keyring.AccessToken, error) {
+func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, clientID string, minExpiration time.Duration) *keyring.AccessToken {
 	// Get an access token from keyring
 	tk, err := tm.input.Keyring.Get(keyringService, clientID)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		tm.input.Logger.FailedToGetAccessTokenFromKeyring(logger, err)
+		return nil
 	}
 	if tk == nil {
-		return nil, nil //nolint:nilnil
+		tm.input.Logger.AccessTokenIsNotFoundInKeyring(logger)
+		return nil
 	}
 	// Check if the access token expires
-	expired, err := tm.checkExpired(tk.ExpirationDate, minExpiration)
-	if err != nil {
-		return nil, fmt.Errorf("check if the access token is expired: %w", err)
-	}
-	if expired {
+	if tm.checkExpired(tk.ExpirationDate, minExpiration) {
 		tm.input.Logger.Expire(logger, tk.ExpirationDate)
-		return nil, nil //nolint:nilnil
+		return nil
 	}
 	// Not expires
-	return tk, nil
+	return tk
 }
 
 // checkExpired determines if an access token should be considered expired.
 // It returns true if the token will expire within the MinExpiration duration from now.
 // This ensures tokens are renewed before they actually expire.
-func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Duration) (bool, error) {
+func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Duration) bool {
 	// Expiration Date - Now < Min Expiration
 	// Now + Min Expiration > Expiration Date
-	return tm.input.Now().Add(minExpiration).After(exDate), nil
+	return tm.input.Now().Add(minExpiration).After(exDate)
 }
 
 // readConfig loads and validates the configuration from the configured file path.
