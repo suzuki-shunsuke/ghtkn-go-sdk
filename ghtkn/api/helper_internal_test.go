@@ -64,7 +64,6 @@ func TestTokenManager_checkExpired(t *testing.T) {
 		minExpiration time.Duration
 		now           time.Time
 		want          bool
-		wantErr       bool
 	}{
 		{
 			name:          "not expired - future date",
@@ -72,7 +71,6 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          false,
-			wantErr:       false,
 		},
 		{
 			name:          "expired - within min expiration",
@@ -80,7 +78,6 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          true,
-			wantErr:       false,
 		},
 		{
 			name:          "expired - past date",
@@ -88,7 +85,6 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          true,
-			wantErr:       false,
 		},
 		{
 			name:          "exactly at threshold",
@@ -96,7 +92,6 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          false,
-			wantErr:       false,
 		},
 	}
 
@@ -109,11 +104,7 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			}
 			tm := &TokenManager{input: input}
 
-			got, err := tm.checkExpired(tt.exDate, tt.minExpiration)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("checkExpired() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := tm.checkExpired(tt.exDate, tt.minExpiration)
 			if got != tt.want {
 				t.Errorf("checkExpired() = %v, want %v", got, tt.want)
 			}
@@ -198,7 +189,6 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 		minExpiration time.Duration
 		now           time.Time
 		want          *keyring.AccessToken
-		wantErr       bool
 	}{
 		{
 			name:     "valid token from keyring",
@@ -217,7 +207,6 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
 			},
-			wantErr: false,
 		},
 		{
 			name:     "expired token in keyring",
@@ -233,7 +222,6 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          nil,
-			wantErr:       false,
 		},
 		{
 			name:     "token not found in keyring",
@@ -244,7 +232,6 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          nil,
-			wantErr:       false,
 		},
 		{
 			name:     "keyring error",
@@ -255,7 +242,6 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want:          nil,
-			wantErr:       true,
 		},
 	}
 
@@ -272,17 +258,13 @@ func TestTokenManager_getAccessTokenFromKeyring(t *testing.T) {
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := tm.getAccessTokenFromKeyring(logger, keyring.DefaultServiceKey, tt.clientID, tt.minExpiration)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getAccessTokenFromKeyring() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && got != nil {
+			got := tm.getAccessTokenFromKeyring(logger, keyring.DefaultServiceKey, tt.clientID, tt.minExpiration)
+			if got != nil {
 				if got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
 					t.Errorf("getAccessTokenFromKeyring() = %v, want %v", got, tt.want)
 				}
 			}
-			if !tt.wantErr && got == nil && tt.want != nil {
+			if got == nil && tt.want != nil {
 				t.Error("getAccessTokenFromKeyring() returned nil, expected token")
 			}
 		})

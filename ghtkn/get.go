@@ -25,6 +25,9 @@ type InputGet struct {
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
+	if input == nil {
+		input = &InputGet{}
+	}
 	return c.tm.Get(ctx, logger, &api.InputGet{
 		ClientID:       input.ClientID,
 		UseKeyring:     input.UseKeyring,
