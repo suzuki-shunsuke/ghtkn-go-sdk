@@ -24,7 +24,7 @@ func newMockBrowser(err error) Browser {
 	return &mockBrowser{err: err}
 }
 
-func (b *mockBrowser) Open(_ context.Context, _ string) error {
+func (b *mockBrowser) Open(_ context.Context, _ *slog.Logger, _ string) error {
 	return b.err
 }
 

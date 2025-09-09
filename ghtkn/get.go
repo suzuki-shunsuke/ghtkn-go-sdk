@@ -3,15 +3,9 @@ package ghtkn
 import (
 	"context"
 	"log/slog"
-	"os"
-	"runtime"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 type InputGet struct {
@@ -22,20 +16,6 @@ type InputGet struct {
 	AppName        string
 	ConfigFilePath string
 	MinExpiration  time.Duration
-}
-
-type (
-	AccessToken  = keyring.AccessToken
-	AppConfig    = config.App
-	Config       = config.Config
-	Logger       = log.Logger
-	DeviceCodeUI = deviceflow.DeviceCodeUI
-	Browser      = deviceflow.Browser
-)
-
-// GetConfigPath returns the default configuration file path for ghtkn.
-func GetConfigPath() (string, error) {
-	return config.GetPath(os.Getenv, runtime.GOOS)
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.

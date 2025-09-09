@@ -36,8 +36,10 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	}
 
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
-	c.input.DeviceCodeUI.Show(deviceCode, deviceCodeExpirationDate)
-	if err := c.input.Browser.Open(ctx, deviceCode.VerificationURI); err != nil {
+	if err := c.input.DeviceCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
+		return nil, fmt.Errorf("show device code: %w", err)
+	}
+	if err := c.input.Browser.Open(ctx, logger, deviceCode.VerificationURI); err != nil {
 		if !errors.Is(err, browser.ErrNoCommandFound) {
 			c.input.Logger.FailedToOpenBrowser(logger, err)
 		}
