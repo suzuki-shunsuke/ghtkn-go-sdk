@@ -76,12 +76,26 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		useKeyring = *input.UseKeyring
 	}
 
+	keyringService := input.KeyringService
+	if useKeyring {
+		if keyringService == "" {
+			keyringService = keyring.DefaultServiceKey
+		}
+	}
+
 	logFields := []any{"app_name", app.Name}
+	logger.Debug(
+		"getting or creating a GitHub App User Access Token",
+		"use_keyring", useKeyring,
+		"use_config", input.UseConfig,
+		"min_expiration", input.MinExpiration,
+	)
+
 	logger = logger.With(logFields...)
 
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		ClientID:       app.ClientID,
-		KeyringService: input.KeyringService,
+		KeyringService: keyringService,
 		MinExpiration:  input.MinExpiration,
 		UseKeyring:     useKeyring,
 	})
@@ -91,7 +105,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 
 	if useKeyring && changed {
 		// Store the token in keyring
-		if err := tm.input.Keyring.Set(input.KeyringService, input.ClientID, &keyring.AccessToken{
+		if err := tm.input.Keyring.Set(keyringService, app.ClientID, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
@@ -119,9 +133,6 @@ type inputGetOrCreateToken struct {
 func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*keyring.AccessToken, bool, error) {
 	// Get an access token from keyring
 	if input.UseKeyring {
-		if input.KeyringService == "" {
-			input.KeyringService = keyring.DefaultServiceKey
-		}
 		if token := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.ClientID, input.MinExpiration); token != nil {
 			return token, false, nil
 		}
