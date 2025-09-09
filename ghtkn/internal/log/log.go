@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 

@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
 func TestGetPath(t *testing.T) { //nolint:funlen

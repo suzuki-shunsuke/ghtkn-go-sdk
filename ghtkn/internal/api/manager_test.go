@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 type mockDeviceFlow struct {

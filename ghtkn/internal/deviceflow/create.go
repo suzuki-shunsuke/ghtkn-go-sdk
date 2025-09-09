@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 

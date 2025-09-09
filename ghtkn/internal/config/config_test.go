@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
 func TestConfig_Validate(t *testing.T) { //nolint:funlen

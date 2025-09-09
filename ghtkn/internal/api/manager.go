@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.

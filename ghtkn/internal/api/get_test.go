@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 func newMockInput() *api.Input {
