@@ -11,6 +11,9 @@
         "client_id": {
           "type": "string"
         },
+        "user": {
+          "type": "string"
+        },
         "default": {
           "type": "boolean"
         }
@@ -24,8 +27,11 @@
     },
     "Config": {
       "properties": {
-        "persist": {
+        "use_keyring": {
           "type": "boolean"
+        },
+        "user": {
+          "type": "string"
         },
         "apps": {
           "items": {
@@ -37,6 +43,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
+        "user",
         "apps"
       ]
     }

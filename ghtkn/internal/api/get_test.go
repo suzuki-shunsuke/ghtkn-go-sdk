@@ -3,6 +3,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
@@ -24,8 +26,10 @@ func newMockInput() *api.Input {
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
 		},
-		Keyring: keyring.New(&keyring.Input{}),
-		Logger:  log.NewLogger(),
+		Keyring:   keyring.New(&keyring.Input{}),
+		Logger:    log.NewLogger(),
+		Getenv:    func(key string) string { return "octocat" },
+		NewGitHub: mockNewGitHub,
 	}
 }
 
@@ -40,6 +44,23 @@ func (m *mockKeyring) Get(_ string, _ string) (*keyring.AccessToken, error) {
 
 func (m *mockKeyring) Set(_ string, _ string, _ *keyring.AccessToken) error {
 	return m.err
+}
+
+type mockGitHub struct {
+	user *github.User
+	err  error
+}
+
+func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
+	return m.user, m.err
+}
+
+func mockNewGitHub(_ context.Context, _ string) api.GitHub {
+	return &mockGitHub{
+		user: &github.User{
+			Login: "test-user",
+		},
+	}
 }
 
 func TestTokenManager_Get(t *testing.T) {
@@ -77,6 +98,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "test-token-123",
 				ExpirationDate: futureTime,
+				Login:          "test-user",
 			},
 		},
 		{
@@ -93,7 +115,6 @@ func TestTokenManager_Get(t *testing.T) {
 					token: &keyring.AccessToken{
 						AccessToken:    "cached-token",
 						ExpirationDate: futureTime,
-						Login:          "cached-user",
 					},
 				}
 				input.Now = func() time.Time {
@@ -109,7 +130,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
-				Login:          "cached-user",
+				Login:          "octocat",
 			},
 		},
 		{
@@ -141,6 +162,7 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+				Login:          "test-user",
 			},
 		},
 		{

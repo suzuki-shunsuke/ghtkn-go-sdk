@@ -34,7 +34,8 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 		{
 			name: "valid config",
 			cfg: &config.Config{
-				Persist: true,
+				User:       "octocat",
+				UseKeyring: true,
 				Apps: []*config.App{
 					{
 						Name:     "test-app",
@@ -48,6 +49,7 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 		{
 			name: "invalid app",
 			cfg: &config.Config{
+				User: "octocat",
 				Apps: []*config.App{
 					{
 						Name: "test-app",
@@ -61,6 +63,7 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 		{
 			name: "multiple apps with one invalid",
 			cfg: &config.Config{
+				User: "octocat",
 				Apps: []*config.App{
 					{
 						Name:     "app1",
@@ -175,7 +178,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		},
 		{
 			name: "valid yaml config",
-			configContent: `persist: true
+			configContent: `use_keyring: true
 apps:
   - name: test-app
     client_id: client123
@@ -190,7 +193,7 @@ apps:
 			},
 			wantErr: false,
 			want: &config.Config{
-				Persist: true,
+				UseKeyring: true,
 				Apps: []*config.App{
 					{
 						Name:     "test-app",
@@ -225,7 +228,8 @@ apps:
 		},
 		{
 			name: "minimal valid config",
-			configContent: `apps:
+			configContent: `user: octocat
+apps:
   - name: minimal
     client_id: min123
 `,
@@ -236,7 +240,8 @@ apps:
 			},
 			wantErr: false,
 			want: &config.Config{
-				Persist: false,
+				User:       "octocat",
+				UseKeyring: false,
 				Apps: []*config.App{
 					{
 						Name:     "minimal",
