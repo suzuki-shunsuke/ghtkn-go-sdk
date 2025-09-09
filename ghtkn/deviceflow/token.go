@@ -1,6 +1,6 @@
-// Package apptoken handles GitHub App access token generation using OAuth device flow.
+// Package deviceflow handles GitHub App access token generation using OAuth device flow.
 // It provides functionality to authenticate GitHub Apps and obtain access tokens.
-package apptoken
+package deviceflow
 
 import (
 	"context"

@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -18,7 +18,7 @@ import (
 func newMockInput() *api.Input {
 	return &api.Input{
 		AppTokenClient: &mockAppTokenClient{
-			token: &apptoken.AccessToken{
+			token: &deviceflow.AccessToken{
 				AccessToken:    "test-token",
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
@@ -58,7 +58,7 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
-					token: &apptoken.AccessToken{
+					token: &deviceflow.AccessToken{
 						AccessToken:    "test-token-123",
 						ExpirationDate: futureTime,
 					},
@@ -84,7 +84,7 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
-					token: &apptoken.AccessToken{
+					token: &deviceflow.AccessToken{
 						AccessToken:    "new-token",
 						ExpirationDate: futureTime,
 					},
@@ -117,7 +117,7 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				input := newMockInput()
 				input.AppTokenClient = &mockAppTokenClient{
-					token: &apptoken.AccessToken{
+					token: &deviceflow.AccessToken{
 						AccessToken:    "new-token",
 						ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 					},

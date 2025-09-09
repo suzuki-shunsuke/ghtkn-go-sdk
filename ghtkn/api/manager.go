@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
@@ -45,7 +45,7 @@ type Input struct {
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
 func NewInput() *Input {
 	return &Input{
-		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
+		AppTokenClient: deviceflow.NewClient(deviceflow.NewInput()),
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
 		Logger:         log.NewLogger(),
@@ -62,7 +62,7 @@ func (i *Input) Validate() error {
 
 // AppTokenClient defines the interface for creating GitHub App access tokens.
 type AppTokenClient interface {
-	Create(ctx context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error)
+	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
 	SetLogger(logger *log.Logger)
 }
 
