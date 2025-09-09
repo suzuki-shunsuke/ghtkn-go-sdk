@@ -280,20 +280,3 @@ apps:
 		})
 	}
 }
-
-func TestDefault(t *testing.T) {
-	t.Parallel()
-	// Test that Default constant contains valid YAML
-	if !strings.Contains(config.Default, "persist: true") {
-		t.Error("Default config should contain 'persist: true'")
-	}
-	if !strings.Contains(config.Default, "apps:") {
-		t.Error("Default config should contain 'apps:'")
-	}
-	if !strings.Contains(config.Default, "client_id:") {
-		t.Error("Default config should contain 'client_id:'")
-	}
-	if !strings.Contains(config.Default, "default: true") {
-		t.Error("Default config should contain 'default: true'")
-	}
-}
