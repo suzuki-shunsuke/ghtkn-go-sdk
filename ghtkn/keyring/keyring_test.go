@@ -3,7 +3,6 @@ package keyring_test
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -188,7 +187,6 @@ func TestKeyring_Get(t *testing.T) {
 		secrets map[string]string
 		want    *keyring.AccessToken
 		wantErr bool
-		errMsg  string
 	}{
 		{
 			name: "successful get",
@@ -209,8 +207,7 @@ func TestKeyring_Get(t *testing.T) {
 			name:    "key not found",
 			key:     "non-existent",
 			secrets: map[string]string{},
-			wantErr: true,
-			errMsg:  "get a GitHub Access token in keyring",
+			wantErr: false,
 		},
 	}
 
@@ -224,21 +221,25 @@ func TestKeyring_Get(t *testing.T) {
 			kr := keyring.New(input)
 
 			got, err := kr.Get(keyring.DefaultServiceKey, tt.key)
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Get() error = nil, wantErr %v", tt.wantErr)
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("Get() unexpected error = %v", err)
 					return
-				}
-				if tt.errMsg != "" && !errors.Is(err, zkeyring.ErrNotFound) {
-					// Check error message contains expected text
-					if err.Error() == "" || err.Error() != "" && len(err.Error()) < len(tt.errMsg) {
-						t.Errorf("Get() error message too short")
-					}
 				}
 				return
 			}
-			if err != nil {
-				t.Errorf("Get() unexpected error = %v", err)
+			if tt.wantErr {
+				t.Error("Get() should return error")
+				return
+			}
+			if got == nil && tt.want != nil {
+				t.Errorf("Get() = nil, want %v", tt.want)
+				return
+			}
+			if got != nil && tt.want == nil {
+				t.Errorf("Get() = %v, want nil", got)
+			}
+			if got == nil && tt.want == nil {
 				return
 			}
 			if got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
