@@ -66,7 +66,6 @@ func FormatDate(t time.Time) string {
 type AccessToken struct {
 	AccessToken    string    `json:"access_token"`    // The OAuth access token for GitHub API authentication
 	ExpirationDate time.Time `json:"expiration_date"` // RFC3339 formatted expiration timestamp
-	Login          string    `json:"login"`           // GitHub username for Git Credential Helper authentication
 	// ClientID string `json:"client_id"`
 }
 

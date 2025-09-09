@@ -13,6 +13,7 @@ type InputGet struct {
 	KeyringService string
 	AppName        string
 	ConfigFilePath string
+	User           string
 	MinExpiration  time.Duration
 	UseKeyring     *bool
 	UseConfig      bool
@@ -32,6 +33,7 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 		AppName:        input.AppName,
 		ConfigFilePath: input.ConfigFilePath,
 		MinExpiration:  input.MinExpiration,
+		User:           input.User,
 	}
 	return c.tm.Get(ctx, logger, i)
 }

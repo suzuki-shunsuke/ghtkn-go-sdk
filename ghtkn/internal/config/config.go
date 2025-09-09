@@ -14,8 +14,9 @@ import (
 // Config represents the main configuration structure for ghtkn.
 // It contains settings for persistence and a list of GitHub Apps.
 type Config struct {
-	Persist bool   `json:"persist,omitempty"`
-	Apps    []*App `json:"apps"`
+	UseKeyring bool   `json:"use_keyring,omitempty" yaml:"use_keyring"`
+	User       string `json:"user"`
+	Apps       []*App `json:"apps"`
 }
 
 // Validate checks if the Config is valid.
@@ -27,6 +28,9 @@ func (cfg *Config) Validate() error {
 	}
 	if len(cfg.Apps) == 0 {
 		return errors.New("apps is required")
+	}
+	if cfg.User == "" {
+		return errors.New("user is required")
 	}
 	for _, app := range cfg.Apps {
 		if err := app.Validate(); err != nil {
@@ -41,6 +45,7 @@ func (cfg *Config) Validate() error {
 type App struct {
 	Name     string `json:"name"`
 	ClientID string `json:"client_id" yaml:"client_id"`
+	User     string `json:"user,omitempty" yaml:"user"`
 	Default  bool   `json:"default,omitempty"`
 }
 
