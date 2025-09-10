@@ -21,6 +21,7 @@ type InputGet struct {
 	ConfigFilePath string
 	User           string
 	MinExpiration  time.Duration
+	ResetClientID  bool
 }
 
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
@@ -155,6 +156,7 @@ type inputGetOrCreateToken struct {
 	App            *config.App
 	MinExpiration  time.Duration
 	Key            *keyring.AccessTokenKey
+	ResetClientID  bool
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
@@ -167,24 +169,9 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Get the client id from keyring
-	app := tm.getAppFromKeyring(logger, input.KeyringService, input.App.AppID)
-	if app == nil || app.ClientID == "" {
-		// Read client id from stdin
-		cID, err := tm.input.ClientIDReader.Read(ctx, logger, input.App)
-		if err != nil {
-			return nil, false, fmt.Errorf("read client id: %w", err)
-		}
-		if cID == "" {
-			// TODO Cancel
-			return nil, false, errors.New("cancelled")
-		}
-		app = &keyring.App{
-			ClientID: strings.TrimSpace(string(cID)),
-		}
-		// Store the client id in keyring
-		if err := tm.input.AppStore.Set(input.KeyringService, input.App.AppID, app); err != nil {
-			return nil, false, fmt.Errorf("store client id in keyring: %w", err)
-		}
+	app, err := tm.getApp(ctx, logger, input)
+	if err != nil {
+		return nil, false, err
 	}
 	// Create access token
 	token, err := tm.createToken(ctx, logger, app.ClientID)
@@ -192,6 +179,45 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
 	return token, true, nil
+}
+
+func (tm *TokenManager) readAndSetClientID(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (string, error) {
+	// Read client id from stdin
+	cID, err := tm.input.ClientIDReader.Read(ctx, logger, input.App)
+	if err != nil {
+		return "", fmt.Errorf("read client id: %w", err)
+	}
+	if cID == "" {
+		// TODO Cancel
+		return "", errors.New("cancelled")
+	}
+	cIDStr := strings.TrimSpace(string(cID))
+	app := &keyring.App{
+		ClientID: strings.TrimSpace(string(cID)),
+	}
+	// Store the client id in keyring
+	if err := tm.input.AppStore.Set(input.KeyringService, input.App.AppID, app); err != nil {
+		tm.input.Logger.FailedToStoreAppInKeyring(logger, input.App.AppID, err)
+	}
+	return cIDStr, nil
+}
+
+func (tm *TokenManager) getApp(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*keyring.App, error) {
+	// Get the client id from keyring
+	var app *keyring.App
+	if !input.ResetClientID {
+		app = tm.getAppFromKeyring(logger, input.KeyringService, input.App.AppID)
+	}
+	if app == nil || app.ClientID == "" {
+		cid, err := tm.readAndSetClientID(ctx, logger, input)
+		if err != nil {
+			return nil, err
+		}
+		return &keyring.App{
+			ClientID: cid,
+		}, nil
+	}
+	return nil, nil
 }
 
 // createToken generates a new GitHub App access token using the OAuth device flow.

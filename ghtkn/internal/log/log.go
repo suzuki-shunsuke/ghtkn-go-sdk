@@ -25,6 +25,8 @@ type Logger struct {
 	FailedToGetAppFromKeyring func(logger *slog.Logger, err error)
 	// AppIsNotFoundInKeyring logs when no app is found in the keyring.
 	AppIsNotFoundInKeyring func(logger *slog.Logger)
+	// FailedToStoreAppInKeyring logs when setting the app in the keyring fails.
+	FailedToStoreAppInKeyring func(logger *slog.Logger, appID int, err error)
 }
 
 // NewLogger creates a new Logger instance with default logging functions.
@@ -49,6 +51,9 @@ func NewLogger() *Logger {
 		AppIsNotFoundInKeyring: func(logger *slog.Logger) {
 			logger.Debug("app is not found in keyring")
 		},
+		FailedToStoreAppInKeyring: func(logger *slog.Logger, appID int, err error) {
+			slogerr.WithError(logger, err).Warn("failed to store client id in keyring", "app_id", appID)
+		},
 	}
 }
 
@@ -71,5 +76,8 @@ func InitLogger(l *Logger) {
 	}
 	if l.AppIsNotFoundInKeyring == nil {
 		l.AppIsNotFoundInKeyring = defaultLogger.AppIsNotFoundInKeyring
+	}
+	if l.FailedToStoreAppInKeyring == nil {
+		l.FailedToStoreAppInKeyring = defaultLogger.FailedToStoreAppInKeyring
 	}
 }
