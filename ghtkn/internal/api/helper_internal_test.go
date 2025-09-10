@@ -32,30 +32,6 @@ func (m *testDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {}
 
 func (m *testDeviceFlow) SetBrowser(_ deviceflow.Browser) {}
 
-type testKeyring struct {
-	tokens map[string]*keyring.AccessToken
-	getErr error
-	setErr error
-}
-
-func (m *testKeyring) Get(service string, key *keyring.AccessTokenKey) (*keyring.AccessToken, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
-	}
-	return m.tokens[service+":"+key.String()], nil
-}
-
-func (m *testKeyring) Set(service string, key *keyring.AccessTokenKey, token *keyring.AccessToken) error {
-	if m.setErr != nil {
-		return m.setErr
-	}
-	if m.tokens == nil {
-		m.tokens = make(map[string]*keyring.AccessToken)
-	}
-	m.tokens[service+":"+key.String()] = token
-	return nil
-}
-
 func TestTokenManager_checkExpired(t *testing.T) {
 	t.Parallel()
 

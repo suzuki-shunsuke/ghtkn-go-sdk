@@ -262,16 +262,3 @@ func (tm *TokenManager) readConfig(cfg *config.Config, configFilePath string) er
 	}
 	return nil
 }
-
-func (tm *TokenManager) getUser(inputUser, appUser, configUser string) string {
-	if inputUser != "" {
-		return inputUser
-	}
-	if user := tm.input.Getenv("GHTKN_USER"); user != "" {
-		return user
-	}
-	if appUser != "" {
-		return appUser
-	}
-	return configUser
-}

@@ -21,9 +21,9 @@ func NewPasswordReader(stdout io.Writer, message string) *passwordReader {
 }
 
 func (p *passwordReader) Read() ([]byte, error) {
-	fmt.Fprint(p.stdout, p.message)
+	fmt.Fprint(p.stdout, p.message) //nolint:errcheck
 	b, err := term.ReadPassword(uintptr(syscall.Stdin))
-	fmt.Fprintln(p.stdout, "")
+	fmt.Fprintln(p.stdout, "") //nolint:errcheck
 	if err != nil {
 		return nil, fmt.Errorf("read a secret from terminal: %w", err)
 	}
