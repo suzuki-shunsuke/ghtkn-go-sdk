@@ -143,9 +143,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:  "test-client-id",
-				UseConfig: true,
-				User:      "testuser",
+				User: "testuser",
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -176,9 +174,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:  "test-client-id",
-				UseConfig: true,
-				User:      "testuser",
+				User: "testuser",
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -209,9 +205,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:  "test-client-id",
-				UseConfig: true,
-				User:      "testuser",
+				User: "testuser",
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -236,9 +230,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:  "test-client-id",
-				UseConfig: true,
-				User:      "testuser",
+				User: "testuser",
 			},
 			wantErr: true,
 		},

@@ -15,13 +15,11 @@ import (
 )
 
 type InputGet struct {
-	ClientID       string
 	KeyringService string
 	AppName        string
 	ConfigFilePath string
 	User           string
 	MinExpiration  time.Duration
-	UseConfig      bool
 }
 
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
@@ -41,53 +39,45 @@ func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
-	var app *config.App
-	var configUser *config.User
-	if input.UseConfig {
-		cfg := &config.Config{}
+	cfg := &config.Config{}
 
-		// Get a config file path
-		configPath := input.ConfigFilePath
-		if configPath == "" {
-			p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
-			if err != nil {
-				return nil, nil, fmt.Errorf("get config path: %w", err)
-			}
-			configPath = p
+	// Get a config file path
+	configPath := input.ConfigFilePath
+	if configPath == "" {
+		p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get config path: %w", err)
 		}
+		configPath = p
+	}
 
-		// Read the config file
-		if err := tm.readConfig(cfg, configPath); err != nil {
-			return nil, nil, err
-		}
+	// Read the config file
+	if err := tm.readConfig(cfg, configPath); err != nil {
+		return nil, nil, err
+	}
 
-		// Get the user login
-		login := input.User
-		if login == "" {
-			login = tm.input.Getenv("GHTKN_USER")
-		}
+	// Get the user login
+	login := input.User
+	if login == "" {
+		login = tm.input.Getenv("GHTKN_USER")
+	}
 
-		// Get the user config
-		configUser = cfg.SelectUser(login)
-		if configUser == nil {
-			return nil, nil, errors.New("user is not found in the config")
-		}
+	// Get the user config
+	configUser := cfg.SelectUser(login)
+	if configUser == nil {
+		return nil, nil, errors.New("user is not found in the config")
+	}
 
-		// Get the app name
-		appName := input.AppName
-		if appName == "" {
-			appName = tm.input.Getenv("GHTKN_APP")
-		}
+	// Get the app name
+	appName := input.AppName
+	if appName == "" {
+		appName = tm.input.Getenv("GHTKN_APP")
+	}
 
-		// Get the app config
-		app = configUser.SelectApp(appName)
-		if app == nil {
-			return nil, nil, errors.New("app is not found in the config")
-		}
-	} else {
-		if input.ClientID == "" {
-			return nil, nil, errors.New("ClientID is required when not using config")
-		}
+	// Get the app config
+	app := configUser.SelectApp(appName)
+	if app == nil {
+		return nil, nil, errors.New("app is not found in the config")
 	}
 
 	// Get the keyring service name
@@ -100,18 +90,22 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	logFields := []any{"app_name", app.Name, "user", configUser.Login}
 	logger.Debug(
 		"getting or creating a GitHub App User Access Token",
-		"use_config", input.UseConfig,
 		"min_expiration", input.MinExpiration,
 	)
 
 	logger = logger.With(logFields...)
 
+	atKey := &keyring.AccessTokenKey{
+		Login: configUser.Login,
+		AppID: app.AppID,
+	}
+
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
-		ClientID:       input.ClientID,
 		KeyringService: keyringService,
 		MinExpiration:  input.MinExpiration,
 		User:           configUser.Login,
 		AppID:          app.AppID,
+		Key:            atKey,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
@@ -131,10 +125,8 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		token.Login = configUser.Login
 	}
 
-	atKey := &keyring.AccessTokenKey{
-		Login: token.Login,
-		AppID: app.AppID,
-	}
+	// Update the key with the final login value
+	atKey.Login = token.Login
 
 	if changed {
 		// Store the token in keyring
@@ -153,7 +145,6 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 var ErrStoreToken = errors.New("could not store the token in keyring")
 
 type inputGetOrCreateToken struct {
-	ClientID       string
 	KeyringService string
 	User           string
 	AppID          int

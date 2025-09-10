@@ -38,7 +38,6 @@ func run() int {
 		},
 	})
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
-		UseConfig:  true,
 		UseKeyring: ghtkn.Ptr(true),
 	})
 	if err != nil {

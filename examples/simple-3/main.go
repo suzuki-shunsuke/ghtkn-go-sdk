@@ -22,7 +22,6 @@ func run() int {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	client := ghtkn.New()
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
-		UseConfig:  true,
 		UseKeyring: ghtkn.Ptr(true),
 		AppName:    os.Getenv("APP_NAME"), // Optionally set your GitHub App name
 	})

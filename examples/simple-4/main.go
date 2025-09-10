@@ -55,7 +55,6 @@ func core(logger *slog.Logger) error {
 	client.SetBrowser(&Browser{})
 
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
-		UseConfig:  true,
 		UseKeyring: ghtkn.Ptr(true),
 	})
 	if err != nil {
