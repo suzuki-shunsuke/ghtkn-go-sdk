@@ -28,10 +28,10 @@ func TestAppStore_Get(t *testing.T) {
 	appID := 123
 
 	tests := []struct {
-		name     string
-		secrets  map[string]string
-		wantApp  *keyring.App
-		wantErr  bool
+		name    string
+		secrets map[string]string
+		wantApp *keyring.App
+		wantErr bool
 	}{
 		{
 			name: "app found",

@@ -106,4 +106,3 @@ func TestLogger_AccessTokenIsNotFoundInKeyring(t *testing.T) {
 		t.Errorf("Expected log to contain 'access token is not found in keyring', got: %s", output)
 	}
 }
-

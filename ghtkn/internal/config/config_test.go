@@ -184,7 +184,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 
 			fs := afero.NewMemMapFs()
 			if tt.fileExists {
-				if err := afero.WriteFile(fs, tt.configFilePath, []byte(tt.fileContent), 0644); err != nil {
+				if err := afero.WriteFile(fs, tt.configFilePath, []byte(tt.fileContent), 0o644); err != nil {
 					t.Fatalf("Failed to write test file: %v", err)
 				}
 			}
