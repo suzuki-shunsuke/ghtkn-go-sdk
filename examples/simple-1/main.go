@@ -23,7 +23,6 @@ func run() int {
 	client := ghtkn.New()
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
 		UseKeyring: ghtkn.Ptr(true),
-		AppName:    os.Getenv("APP_NAME"), // Optionally set your GitHub App name
 	})
 	if err != nil {
 		slogerr.WithError(logger, err).Error("failed to get token")
