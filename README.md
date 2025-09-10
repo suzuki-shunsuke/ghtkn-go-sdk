@@ -10,6 +10,7 @@ Go SDK to enable your Go application to create GitHub User Access Tokens for Git
 - [Customizing Logging](examples/simple-4/main.go)
 - [Customizing opening the browser](examples/simple-3/main.go)
 - [Customizing showing the device code](examples/simple-3/main.go)
+- [Customizing asking users to input client ids](examples/simple-5/main.go)
 
 ## Using logging libraries such as logrus, zap, and zerolog
 
