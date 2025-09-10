@@ -68,7 +68,7 @@ func NewInput() *Input {
 		NewGitHub: func(ctx context.Context, token string) GitHub {
 			return github.New(ctx, token)
 		},
-		ClientIDReader: NewPasswordReader(os.Stdout, "Enter a GitHub App Client ID: "),
+		ClientIDReader: NewPasswordReader(os.Stderr),
 	}
 }
 
@@ -103,5 +103,5 @@ type ConfigReader interface {
 }
 
 type PasswordReader interface {
-	Read() ([]byte, error)
+	Read(ctx context.Context, logger *slog.Logger, app *config.App) (string, error)
 }

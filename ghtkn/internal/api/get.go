@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
@@ -108,7 +109,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		KeyringService: keyringService,
 		MinExpiration:  input.MinExpiration,
 		User:           configUser.Login,
-		AppID:          app.AppID,
+		App:            app,
 		Key:            atKey,
 	})
 	if err != nil {
@@ -151,7 +152,7 @@ var ErrStoreToken = errors.New("could not store the token in keyring")
 type inputGetOrCreateToken struct {
 	KeyringService string
 	User           string
-	AppID          int
+	App            *config.App
 	MinExpiration  time.Duration
 	Key            *keyring.AccessTokenKey
 }
@@ -166,18 +167,22 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Get the client id from keyring
-	app := tm.getAppFromKeyring(logger, input.KeyringService, input.AppID)
-	if app == nil {
+	app := tm.getAppFromKeyring(logger, input.KeyringService, input.App.AppID)
+	if app == nil || app.ClientID == "" {
 		// Read client id from stdin
-		cID, err := tm.input.ClientIDReader.Read()
+		cID, err := tm.input.ClientIDReader.Read(ctx, logger, input.App)
 		if err != nil {
 			return nil, false, fmt.Errorf("read client id: %w", err)
 		}
+		if cID == "" {
+			// TODO Cancel
+			return nil, false, errors.New("cancelled")
+		}
 		app = &keyring.App{
-			ClientID: string(cID),
+			ClientID: strings.TrimSpace(string(cID)),
 		}
 		// Store the client id in keyring
-		if err := tm.input.AppStore.Set(input.KeyringService, input.AppID, app); err != nil {
+		if err := tm.input.AppStore.Set(input.KeyringService, input.App.AppID, app); err != nil {
 			return nil, false, fmt.Errorf("store client id in keyring: %w", err)
 		}
 	}

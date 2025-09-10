@@ -26,13 +26,15 @@ func newMockInput() *api.Input {
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
 		},
-		Keyring:        &mockKeyring{},
-		AppStore:       &mockAppStore{},
-		ClientIDReader: &mockPasswordReader{},
-		Logger:         log.NewLogger(),
-		ConfigReader:   &mockConfigReader{},
-		Getenv:         func(key string) string { return "octocat" },
-		NewGitHub:      mockNewGitHub,
+		Keyring:  &mockKeyring{},
+		AppStore: &mockAppStore{},
+		ClientIDReader: &mockPasswordReader{
+			password: "test-client-id",
+		},
+		Logger:       log.NewLogger(),
+		ConfigReader: &mockConfigReader{},
+		Getenv:       func(key string) string { return "octocat" },
+		NewGitHub:    mockNewGitHub,
 	}
 }
 
@@ -63,14 +65,11 @@ func (m *mockAppStore) Set(_ string, _ int, _ *keyring.App) error {
 }
 
 type mockPasswordReader struct {
-	password []byte
+	password string
 	err      error
 }
 
-func (m *mockPasswordReader) Read() ([]byte, error) {
-	if m.password == nil {
-		return []byte("test-client-id"), m.err
-	}
+func (m *mockPasswordReader) Read(_ context.Context, _ *slog.Logger, _ *config.App) (string, error) {
 	return m.password, m.err
 }
 

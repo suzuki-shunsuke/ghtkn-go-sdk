@@ -41,7 +41,7 @@ func NewLogger() *Logger {
 			slogerr.WithError(logger, err).Warn("failed to get access token from keyring")
 		},
 		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
-			logger.Info("access token is not found in keyring")
+			logger.Debug("access token is not found in keyring")
 		},
 		FailedToGetAppFromKeyring: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to get app from keyring")

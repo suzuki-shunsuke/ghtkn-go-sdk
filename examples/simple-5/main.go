@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -19,15 +20,15 @@ func main() {
 
 type clientIDReader struct{}
 
-func (r *clientIDReader) Read() ([]byte, error) {
+func (r *clientIDReader) Read(_ context.Context, _ *slog.Logger, app *ghtkn.AppConfig) (string, error) {
 	fmt.Fprintln(os.Stderr, "Enter your GitHub App Client ID:")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	text := scanner.Text()
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("read client ID: %w", err)
+		return "", fmt.Errorf("read client ID: %w", err)
 	}
-	return []byte(text), nil
+	return strings.TrimSpace(text), nil
 }
 
 func run() int {

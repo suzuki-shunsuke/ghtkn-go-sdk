@@ -1,31 +1,51 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log/slog"
+	"strings"
 	"syscall"
 
 	"github.com/charmbracelet/x/term"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
 type passwordReader struct {
-	stdout  io.Writer
-	message string
+	stderr io.Writer
 }
 
-func NewPasswordReader(stdout io.Writer, message string) *passwordReader {
+func NewPasswordReader(stderr io.Writer) *passwordReader {
 	return &passwordReader{
-		stdout:  stdout,
-		message: message,
+		stderr: stderr,
 	}
 }
 
-func (p *passwordReader) Read() ([]byte, error) {
-	fmt.Fprint(p.stdout, p.message) //nolint:errcheck
-	b, err := term.ReadPassword(uintptr(syscall.Stdin))
-	fmt.Fprintln(p.stdout, "") //nolint:errcheck
-	if err != nil {
-		return nil, fmt.Errorf("read a secret from terminal: %w", err)
+type readResult struct {
+	input string
+	err   error
+}
+
+func (p *passwordReader) Read(ctx context.Context, _ *slog.Logger, app *config.App) (string, error) {
+	fmt.Fprintf(p.stderr, "Enter GitHub App Client ID (id: %d, name: %s): ", app.AppID, app.Name) //nolint:errcheck
+	inputCh := make(chan *readResult, 1)
+	go func() {
+		b, err := term.ReadPassword(uintptr(syscall.Stdin))
+		fmt.Fprintln(p.stderr, "") //nolint:errcheck
+		if err != nil {
+			inputCh <- &readResult{err: fmt.Errorf("read password: %w", err)}
+		} else {
+			inputCh <- &readResult{input: strings.TrimSpace(string(b))}
+		}
+		close(inputCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		fmt.Fprintln(p.stderr, "Cancelled") //nolint:errcheck
+		return "", ctx.Err()
+	case result := <-inputCh:
+		return result.input, result.err
 	}
-	return b, nil
 }
