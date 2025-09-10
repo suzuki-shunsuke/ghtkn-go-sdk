@@ -32,9 +32,9 @@ func keyApp(appID int) string {
 	return fmt.Sprintf("apps/%d", appID)
 }
 
-// Get retrieves an access token from the keyring.
-// The key parameter identifies the token to retrieve.
-// Returns the token or an error if the token cannot be found or unmarshaled.
+// Get retrieves an App config from the keyring.
+// The key parameter identifies the app to retrieve.
+// Returns the app or an error if the app cannot be found or unmarshaled.
 func (as *AppStore) Get(service string, appID int) (*App, error) {
 	s, err := as.input.API.Get(service, keyApp(appID))
 	if err != nil {
@@ -50,9 +50,9 @@ func (as *AppStore) Get(service string, appID int) (*App, error) {
 	return app, nil
 }
 
-// Set stores an access token in the keyring.
-// The key parameter identifies where to store the token.
-// Returns an error if the token cannot be marshaled or stored.
+// Set stores an App config in the keyring.
+// The key parameter identifies where to store the app config.
+// Returns an error if the app config cannot be marshaled or stored.
 func (as *AppStore) Set(service string, appID int, app *App) error {
 	s, err := json.Marshal(app)
 	if err != nil {
