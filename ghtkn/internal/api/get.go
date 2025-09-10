@@ -35,6 +35,10 @@ func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
 	tm.input.DeviceFlow.SetBrowser(ui)
 }
 
+func (tm *TokenManager) SetClientIDReader(reader PasswordReader) {
+	tm.input.ClientIDReader = reader
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
