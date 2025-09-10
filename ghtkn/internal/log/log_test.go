@@ -2,6 +2,7 @@ package log_test
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -57,7 +58,7 @@ func TestLogger_FailedToOpenBrowser(t *testing.T) {
 	}))
 
 	logger := log.NewLogger()
-	testErr := &testError{msg: "browser not found"}
+	testErr := errors.New("browser not found")
 
 	logger.FailedToOpenBrowser(slogger, testErr)
 
@@ -77,7 +78,7 @@ func TestLogger_FailedToGetAccessTokenFromKeyring(t *testing.T) {
 	}))
 
 	logger := log.NewLogger()
-	testErr := &testError{msg: "keyring access denied"}
+	testErr := errors.New("keyring access denied")
 
 	logger.FailedToGetAccessTokenFromKeyring(slogger, testErr)
 
@@ -106,10 +107,3 @@ func TestLogger_AccessTokenIsNotFoundInKeyring(t *testing.T) {
 	}
 }
 
-type testError struct {
-	msg string
-}
-
-func (e *testError) Error() string {
-	return e.msg
-}
