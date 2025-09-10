@@ -223,11 +223,11 @@ func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringSe
 func (tm *TokenManager) getAppFromKeyring(logger *slog.Logger, keyringService string, appID int) *keyring.App {
 	app, err := tm.input.AppStore.Get(keyringService, appID)
 	if err != nil {
-		tm.input.Logger.FailedToGetAccessTokenFromKeyring(logger, err)
+		tm.input.Logger.FailedToGetAppFromKeyring(logger, err)
 		return nil
 	}
 	if app == nil {
-		tm.input.Logger.AccessTokenIsNotFoundInKeyring(logger)
+		tm.input.Logger.AppIsNotFoundInKeyring(logger)
 		return nil
 	}
 	return app
