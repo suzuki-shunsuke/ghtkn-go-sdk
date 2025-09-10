@@ -10,13 +10,21 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// Logger provides structured logging functions for ghtkn operations.
+// Each field is a function that logs specific events with appropriate log levels.
 type Logger struct {
-	Expire                            func(logger *slog.Logger, exDate time.Time)
-	FailedToOpenBrowser               func(logger *slog.Logger, err error)
+	// Expire logs when an access token expiration date is processed.
+	Expire func(logger *slog.Logger, exDate time.Time)
+	// FailedToOpenBrowser logs when the browser cannot be opened for authentication.
+	FailedToOpenBrowser func(logger *slog.Logger, err error)
+	// FailedToGetAccessTokenFromKeyring logs when access token retrieval from keyring fails.
 	FailedToGetAccessTokenFromKeyring func(logger *slog.Logger, err error)
-	AccessTokenIsNotFoundInKeyring    func(logger *slog.Logger)
+	// AccessTokenIsNotFoundInKeyring logs when no access token is found in the keyring.
+	AccessTokenIsNotFoundInKeyring func(logger *slog.Logger)
 }
 
+// NewLogger creates a new Logger instance with default logging functions.
+// Each logging function is pre-configured with appropriate log levels and messages.
 func NewLogger() *Logger {
 	return &Logger{
 		Expire: func(logger *slog.Logger, exDate time.Time) {
