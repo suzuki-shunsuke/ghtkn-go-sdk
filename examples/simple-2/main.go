@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// Usage:
-	//   go run main.go
+	//   env APP_NAME=xxx go run main.go
 	if code := run(); code != 0 {
 		os.Exit(code)
 	}

@@ -6,7 +6,7 @@ Go SDK to enable your Go application to create GitHub User Access Tokens for Git
 
 ## Examples
 
-- [Using configuration file and keyring](examples/simple-1/main.go)
+- [Simple](examples/simple-1/main.go)
 - [Customizing Logging](examples/simple-4/main.go)
 - [Customizing opening the browser](examples/simple-3/main.go)
 - [Customizing showing the device code](examples/simple-3/main.go)
