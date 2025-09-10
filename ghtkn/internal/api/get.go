@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
@@ -15,14 +16,11 @@ import (
 )
 
 type InputGet struct {
-	ClientID       string
 	KeyringService string
 	AppName        string
 	ConfigFilePath string
 	User           string
 	MinExpiration  time.Duration
-	UseKeyring     *bool
-	UseConfig      bool
 }
 
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
@@ -38,74 +36,81 @@ func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
 	tm.input.DeviceFlow.SetBrowser(ui)
 }
 
+func (tm *TokenManager) SetClientIDReader(reader PasswordReader) {
+	tm.input.ClientIDReader = reader
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
-	var app *config.App
-	var useKeyring bool
-	var configUser string
-	if input.UseConfig {
-		cfg := &config.Config{}
-		configPath := input.ConfigFilePath
-		if configPath == "" {
-			p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
-			if err != nil {
-				return nil, nil, fmt.Errorf("get config path: %w", err)
-			}
-			configPath = p
+	cfg := &config.Config{}
+
+	// Get a config file path
+	configPath := input.ConfigFilePath
+	if configPath == "" {
+		p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get config path: %w", err)
 		}
-		if err := tm.readConfig(cfg, configPath); err != nil {
-			return nil, nil, err
-		}
-		appName := input.AppName
-		// Select the app config
-		if appName == "" {
-			appName = tm.input.Getenv("GHTKN_APP")
-		}
-		app = cfg.SelectApp(appName)
-		useKeyring = cfg.UseKeyring
-		configUser = cfg.User
-	} else {
-		if input.ClientID == "" {
-			return nil, nil, errors.New("ClientID is required when not using config")
-		}
-		app = &config.App{
-			Name:     input.AppName,
-			ClientID: input.ClientID,
-		}
+		configPath = p
 	}
-	if input.UseKeyring != nil {
-		useKeyring = *input.UseKeyring
+
+	// Read the config file
+	if err := tm.readConfig(cfg, configPath); err != nil {
+		return nil, nil, err
 	}
-	login := tm.getUser(input.User, app.User, configUser)
+
+	// Get the user login
+	login := input.User
 	if login == "" {
-		return nil, nil, errors.New("user is required")
+		login = tm.input.Getenv("GHTKN_USER")
 	}
 
+	// Get the user config
+	configUser := cfg.SelectUser(login)
+	if configUser == nil {
+		return nil, nil, errors.New("user is not found in the config")
+	}
+
+	// Get the app name
+	appName := input.AppName
+	if appName == "" {
+		appName = tm.input.Getenv("GHTKN_APP")
+	}
+
+	// Get the app config
+	app := configUser.SelectApp(appName)
+	if app == nil {
+		return nil, nil, errors.New("app is not found in the config")
+	}
+
+	// Get the keyring service name
 	keyringService := input.KeyringService
-	if useKeyring {
-		if keyringService == "" {
-			keyringService = keyring.DefaultServiceKey
-		}
+	if keyringService == "" {
+		keyringService = keyring.DefaultServiceKey
 	}
 
-	logFields := []any{"app_name", app.Name}
+	// Debug Log
+	logFields := []any{"app_name", app.Name, "user", configUser.Login}
 	logger.Debug(
 		"getting or creating a GitHub App User Access Token",
-		"use_keyring", useKeyring,
-		"use_config", input.UseConfig,
 		"min_expiration", input.MinExpiration,
 	)
 
 	logger = logger.With(logFields...)
 
+	atKey := &keyring.AccessTokenKey{
+		Login: configUser.Login,
+		AppID: app.AppID,
+	}
+
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
-		ClientID:       app.ClientID,
 		KeyringService: keyringService,
 		MinExpiration:  input.MinExpiration,
-		UseKeyring:     useKeyring,
-		User:           login,
+		User:           configUser.Login,
+		App:            app,
+		Key:            atKey,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
@@ -120,15 +125,17 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		if err != nil {
 			return nil, app, fmt.Errorf("get authenticated user: %w", err)
 		}
-		login = user.Login
-		token.Login = login
+		token.Login = user.Login
 	} else if token.Login == "" {
-		token.Login = login
+		token.Login = configUser.Login
 	}
 
-	if useKeyring && changed {
+	// Update the key with the final login value
+	atKey.Login = token.Login
+
+	if changed {
 		// Store the token in keyring
-		if err := tm.input.Keyring.Set(keyringService, login+"/"+app.ClientID, &keyring.AccessToken{
+		if err := tm.input.Keyring.Set(keyringService, atKey, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
@@ -143,11 +150,11 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 var ErrStoreToken = errors.New("could not store the token in keyring")
 
 type inputGetOrCreateToken struct {
-	ClientID       string
 	KeyringService string
 	User           string
+	App            *config.App
 	MinExpiration  time.Duration
-	UseKeyring     bool
+	Key            *keyring.AccessTokenKey
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
@@ -156,13 +163,31 @@ type inputGetOrCreateToken struct {
 // saved back to the keyring.
 func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*keyring.AccessToken, bool, error) {
 	// Get an access token from keyring
-	if input.UseKeyring {
-		if token := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.User+"/"+input.ClientID, input.MinExpiration); token != nil {
-			return token, false, nil
+	if token := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.Key, input.MinExpiration); token != nil {
+		return token, false, nil
+	}
+	// Get the client id from keyring
+	app := tm.getAppFromKeyring(logger, input.KeyringService, input.App.AppID)
+	if app == nil || app.ClientID == "" {
+		// Read client id from stdin
+		cID, err := tm.input.ClientIDReader.Read(ctx, logger, input.App)
+		if err != nil {
+			return nil, false, fmt.Errorf("read client id: %w", err)
+		}
+		if cID == "" {
+			// TODO Cancel
+			return nil, false, errors.New("cancelled")
+		}
+		app = &keyring.App{
+			ClientID: strings.TrimSpace(string(cID)),
+		}
+		// Store the client id in keyring
+		if err := tm.input.AppStore.Set(input.KeyringService, input.App.AppID, app); err != nil {
+			return nil, false, fmt.Errorf("store client id in keyring: %w", err)
 		}
 	}
 	// Create access token
-	token, err := tm.createToken(ctx, logger, input.ClientID)
+	token, err := tm.createToken(ctx, logger, app.ClientID)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
@@ -184,7 +209,7 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 
 // getAccessTokenFromKeyring retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
-func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, key string, minExpiration time.Duration) *keyring.AccessToken {
+func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, key *keyring.AccessTokenKey, minExpiration time.Duration) *keyring.AccessToken {
 	// Get an access token from keyring
 	tk, err := tm.input.Keyring.Get(keyringService, key)
 	if err != nil {
@@ -202,6 +227,19 @@ func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringSe
 	}
 	// Not expires
 	return tk
+}
+
+func (tm *TokenManager) getAppFromKeyring(logger *slog.Logger, keyringService string, appID int) *keyring.App {
+	app, err := tm.input.AppStore.Get(keyringService, appID)
+	if err != nil {
+		tm.input.Logger.FailedToGetAppFromKeyring(logger, err)
+		return nil
+	}
+	if app == nil {
+		tm.input.Logger.AppIsNotFoundInKeyring(logger)
+		return nil
+	}
+	return app
 }
 
 // checkExpired determines if an access token should be considered expired.
@@ -223,17 +261,4 @@ func (tm *TokenManager) readConfig(cfg *config.Config, configFilePath string) er
 		return fmt.Errorf("validate config: %w", err)
 	}
 	return nil
-}
-
-func (tm *TokenManager) getUser(inputUser, appUser, configUser string) string {
-	if inputUser != "" {
-		return inputUser
-	}
-	if user := tm.input.Getenv("GHTKN_USER"); user != "" {
-		return user
-	}
-	if appUser != "" {
-		return appUser
-	}
-	return configUser
 }

@@ -8,11 +8,8 @@
         "name": {
           "type": "string"
         },
-        "client_id": {
-          "type": "string"
-        },
-        "user": {
-          "type": "string"
+        "app_id": {
+          "type": "integer"
         },
         "default": {
           "type": "boolean"
@@ -22,20 +19,14 @@
       "type": "object",
       "required": [
         "name",
-        "client_id"
+        "app_id"
       ]
     },
     "Config": {
       "properties": {
-        "use_keyring": {
-          "type": "boolean"
-        },
-        "user": {
-          "type": "string"
-        },
-        "apps": {
+        "users": {
           "items": {
-            "$ref": "#/$defs/App"
+            "$ref": "#/$defs/User"
           },
           "type": "array"
         }
@@ -43,7 +34,28 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "user",
+        "users"
+      ]
+    },
+    "User": {
+      "properties": {
+        "login": {
+          "type": "string"
+        },
+        "apps": {
+          "items": {
+            "$ref": "#/$defs/App"
+          },
+          "type": "array"
+        },
+        "default": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "login",
         "apps"
       ]
     }

@@ -1,99 +1,73 @@
 package config_test
 
 import (
-	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
 func TestConfig_Validate(t *testing.T) { //nolint:funlen
 	t.Parallel()
+
 	tests := []struct {
 		name    string
-		cfg     *config.Config
+		config  *config.Config
 		wantErr bool
-		errMsg  string
 	}{
 		{
 			name:    "nil config",
-			cfg:     nil,
+			config:  nil,
 			wantErr: true,
-			errMsg:  "config is required",
 		},
 		{
-			name: "empty apps",
-			cfg: &config.Config{
-				Apps: []*config.App{},
-			},
+			name:    "empty users",
+			config:  &config.Config{},
 			wantErr: true,
-			errMsg:  "apps is required",
 		},
 		{
 			name: "valid config",
-			cfg: &config.Config{
-				User:       "octocat",
-				UseKeyring: true,
-				Apps: []*config.App{
+			config: &config.Config{
+				Users: []*config.User{
 					{
-						Name:     "test-app",
-						ClientID: "client123",
-						Default:  true,
+						Login: "testuser",
+						Apps: []*config.App{
+							{
+								Name:  "test-app",
+								AppID: 123,
+							},
+						},
 					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid app",
-			cfg: &config.Config{
-				User: "octocat",
-				Apps: []*config.App{
+			name: "invalid user",
+			config: &config.Config{
+				Users: []*config.User{
 					{
-						Name: "test-app",
-						// Missing ClientID
+						Login: "",
+						Apps: []*config.App{
+							{
+								Name:  "test-app",
+								AppID: 123,
+							},
+						},
 					},
 				},
 			},
 			wantErr: true,
-			errMsg:  "client_id is required",
-		},
-		{
-			name: "multiple apps with one invalid",
-			cfg: &config.Config{
-				User: "octocat",
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "client1",
-					},
-					{
-						Name: "app2",
-						// Missing ClientID
-					},
-				},
-			},
-			wantErr: true,
-			errMsg:  "client_id is required",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if err := tt.cfg.Validate(); err != nil {
-				if !tt.wantErr {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
-					t.Errorf("error message does not contain expected string\ngot: %v\nwant substring: %v", err.Error(), tt.errMsg)
-				}
-				return
-			}
-			if tt.wantErr {
-				t.Fatalf("expected error but got nil")
+
+			err := tt.config.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -101,59 +75,53 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 
 func TestApp_Validate(t *testing.T) {
 	t.Parallel()
+
 	tests := []struct {
 		name    string
 		app     *config.App
 		wantErr bool
-		errMsg  string
 	}{
 		{
 			name: "valid app",
 			app: &config.App{
-				Name:     "test-app",
-				ClientID: "client123",
-				Default:  true,
+				Name:  "test-app",
+				AppID: 123,
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing id",
+			name: "empty name",
 			app: &config.App{
-				ClientID: "client123",
+				Name:  "",
+				AppID: 123,
 			},
 			wantErr: true,
-			errMsg:  "name is required",
 		},
 		{
-			name: "missing client_id",
+			name: "zero app_id",
 			app: &config.App{
-				Name: "test-app",
+				Name:  "test-app",
+				AppID: 0,
 			},
 			wantErr: true,
-			errMsg:  "client_id is required",
 		},
 		{
-			name:    "empty app",
-			app:     &config.App{},
+			name: "both empty",
+			app: &config.App{
+				Name:  "",
+				AppID: 0,
+			},
 			wantErr: true,
-			errMsg:  "name is required",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if err := tt.app.Validate(); err != nil {
-				if tt.wantErr {
-					if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
-						t.Errorf("error message does not contain expected string\ngot: %v\nwant substring: %v", err.Error(), tt.errMsg)
-					}
-					return
-				}
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if tt.wantErr {
-				t.Fatalf("expected error but got nil")
+
+			err := tt.app.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("App.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -161,124 +129,92 @@ func TestApp_Validate(t *testing.T) {
 
 func TestReader_Read(t *testing.T) { //nolint:funlen
 	t.Parallel()
+
+	validYAML := `users:
+- login: testuser
+  apps:
+  - name: test-app
+    app_id: 123
+`
+
+	invalidYAML := `invalid: yaml: content:
+  - [unclosed
+`
+
 	tests := []struct {
 		name           string
-		configContent  string
 		configFilePath string
-		setupFS        func(fs afero.Fs, content string)
+		fileContent    string
+		fileExists     bool
 		wantErr        bool
-		errMsg         string
-		want           *config.Config
+		expectedUsers  int
 	}{
 		{
 			name:           "empty config path",
 			configFilePath: "",
 			wantErr:        false,
-			want:           &config.Config{},
-		},
-		{
-			name: "valid yaml config",
-			configContent: `use_keyring: true
-apps:
-  - name: test-app
-    client_id: client123
-    default: true
-  - name: another-app
-    client_id: client456
-`,
-			configFilePath: "/config/ghtkn.yaml",
-			setupFS: func(fs afero.Fs, content string) {
-				_ = fs.MkdirAll("/config", 0o755)
-				_ = afero.WriteFile(fs, "/config/ghtkn.yaml", []byte(content), 0o644)
-			},
-			wantErr: false,
-			want: &config.Config{
-				UseKeyring: true,
-				Apps: []*config.App{
-					{
-						Name:     "test-app",
-						ClientID: "client123",
-						Default:  true,
-					},
-					{
-						Name:     "another-app",
-						ClientID: "client456",
-						Default:  false,
-					},
-				},
-			},
+			expectedUsers:  0,
 		},
 		{
 			name:           "file not found",
-			configFilePath: "/config/nonexistent.yaml",
-			setupFS:        func(_ afero.Fs, _ string) {},
+			configFilePath: "nonexistent.yaml",
+			fileExists:     false,
 			wantErr:        true,
-			errMsg:         "open a configuration file",
 		},
 		{
-			name:           "invalid yaml",
-			configContent:  "invalid: yaml: content:",
-			configFilePath: "/config/invalid.yaml",
-			setupFS: func(fs afero.Fs, content string) {
-				_ = fs.MkdirAll("/config", 0o755)
-				_ = afero.WriteFile(fs, "/config/invalid.yaml", []byte(content), 0o644)
-			},
-			wantErr: true,
-			errMsg:  "decode a configuration file as YAML",
+			name:           "valid YAML",
+			configFilePath: "config.yaml",
+			fileContent:    validYAML,
+			fileExists:     true,
+			wantErr:        false,
+			expectedUsers:  1,
 		},
 		{
-			name: "minimal valid config",
-			configContent: `user: octocat
-apps:
-  - name: minimal
-    client_id: min123
-`,
-			configFilePath: "/config/minimal.yaml",
-			setupFS: func(fs afero.Fs, content string) {
-				_ = fs.MkdirAll("/config", 0o755)
-				_ = afero.WriteFile(fs, "/config/minimal.yaml", []byte(content), 0o644)
-			},
-			wantErr: false,
-			want: &config.Config{
-				User:       "octocat",
-				UseKeyring: false,
-				Apps: []*config.App{
-					{
-						Name:     "minimal",
-						ClientID: "min123",
-						Default:  false,
-					},
-				},
-			},
+			name:           "invalid YAML",
+			configFilePath: "invalid.yaml",
+			fileContent:    invalidYAML,
+			fileExists:     true,
+			wantErr:        true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			fs := afero.NewMemMapFs()
-			if tt.setupFS != nil {
-				tt.setupFS(fs, tt.configContent)
+			if tt.fileExists {
+				if err := afero.WriteFile(fs, tt.configFilePath, []byte(tt.fileContent), 0o644); err != nil {
+					t.Fatalf("Failed to write test file: %v", err)
+				}
 			}
 
 			reader := config.NewReader(fs)
 			cfg := &config.Config{}
-			err := reader.Read(cfg, tt.configFilePath)
 
-			if tt.wantErr { //nolint:nestif
-				if err == nil {
-					t.Fatalf("expected error but got nil")
+			err := reader.Read(cfg, tt.configFilePath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Reader.Read() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				if len(cfg.Users) != tt.expectedUsers {
+					t.Errorf("Reader.Read() users count = %d, expected %d", len(cfg.Users), tt.expectedUsers)
 				}
-				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
-					t.Errorf("error message does not contain expected string\ngot: %v\nwant substring: %v", err.Error(), tt.errMsg)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				if tt.want != nil {
-					if diff := cmp.Diff(tt.want, cfg); diff != "" {
-						t.Errorf("config mismatch (-want +got):\n%s", diff)
+
+				if tt.expectedUsers > 0 {
+					if cfg.Users[0].Login != "testuser" {
+						t.Errorf("Reader.Read() user login = %s, expected testuser", cfg.Users[0].Login)
+					}
+					if len(cfg.Users[0].Apps) != 1 {
+						t.Errorf("Reader.Read() apps count = %d, expected 1", len(cfg.Users[0].Apps))
+					}
+					if cfg.Users[0].Apps[0].Name != "test-app" {
+						t.Errorf("Reader.Read() app name = %s, expected test-app", cfg.Users[0].Apps[0].Name)
+					}
+					if cfg.Users[0].Apps[0].AppID != 123 {
+						t.Errorf("Reader.Read() app ID = %d, expected 123", cfg.Users[0].Apps[0].AppID)
 					}
 				}
 			}

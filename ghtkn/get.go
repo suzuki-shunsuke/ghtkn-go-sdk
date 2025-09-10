@@ -9,14 +9,11 @@ import (
 )
 
 type InputGet struct {
-	ClientID       string
 	KeyringService string
 	AppName        string
 	ConfigFilePath string
 	User           string
 	MinExpiration  time.Duration
-	UseKeyring     *bool
-	UseConfig      bool
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.
@@ -27,9 +24,7 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 		input = &InputGet{}
 	}
 	i := &api.InputGet{
-		ClientID:       input.ClientID,
 		KeyringService: input.KeyringService,
-		UseConfig:      input.UseConfig,
 		AppName:        input.AppName,
 		ConfigFilePath: input.ConfigFilePath,
 		MinExpiration:  input.MinExpiration,
@@ -48,4 +43,8 @@ func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
 
 func (c *Client) SetBrowser(ui Browser) {
 	c.tm.SetBrowser(ui)
+}
+
+func (c *Client) SetClientIDReader(reader ClientIDReader) {
+	c.tm.SetClientIDReader(reader)
 }

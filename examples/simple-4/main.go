@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
@@ -13,8 +12,9 @@ import (
 )
 
 func main() {
+	// Create a GitHub App User Access Token by Client ID without configuration file and Keyring.
 	// Usage:
-	//   go run main.go
+	//   env CLIENT_ID=$YOUR_CLIENT_ID go run main.go
 	if code := run(); code != 0 {
 		os.Exit(code)
 	}
@@ -22,46 +22,27 @@ func main() {
 
 func run() int {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	if err := core(logger); err != nil {
+	client := ghtkn.New()
+	client.SetLogger(&ghtkn.Logger{
+		Expire: func(logger *slog.Logger, exDate time.Time) {
+			logger.Debug("access token expires", "expiration_date", exDate.Format(time.RFC3339))
+		},
+		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to open the browser")
+		},
+		FailedToGetAccessTokenFromKeyring: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to get access token from keyring")
+		},
+		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
+			logger.Info("access token is not found in keyring")
+		},
+	})
+	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{})
+	if err != nil {
 		slogerr.WithError(logger, err).Error("failed to get token")
 		return 1
 	}
-	return 0
-}
-
-type UI struct{}
-
-func (ui *UI) Show(_ context.Context, _ *slog.Logger, deviceCode *ghtkn.DeviceCodeResponse, expirationDate time.Time) error {
-	fmt.Fprintf(os.Stderr, "Please access %s and enter code %s by %s\n", deviceCode.VerificationURI, deviceCode.UserCode, expirationDate.Format(time.RFC3339))
-	return nil
-}
-
-type Browser struct{}
-
-func (b *Browser) Open(ctx context.Context, logger *slog.Logger, url string) error {
-	db := &ghtkn.DefaultBrowser{}
-	fmt.Println("Please input enter key to continue...")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return db.Open(ctx, logger, url)
-}
-
-func core(logger *slog.Logger) error {
-	client := ghtkn.New()
-	client.SetDeviceCodeUI(&UI{})
-	client.SetBrowser(&Browser{})
-
-	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
-		UseConfig:  true,
-		UseKeyring: ghtkn.Ptr(true),
-	})
-	if err != nil {
-		return err
-	}
 	fmt.Println("access token: ", token.AccessToken)
 	fmt.Println("expiration date: ", token.ExpirationDate)
-	return nil
+	return 0
 }

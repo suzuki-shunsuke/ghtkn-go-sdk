@@ -35,6 +35,7 @@ type tokenManager interface {
 	SetLogger(logger *log.Logger)
 	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
 	SetBrowser(browser deviceflow.Browser)
+	SetClientIDReader(reader ClientIDReader)
 }
 
 type (
@@ -46,13 +47,10 @@ type (
 	Browser            = deviceflow.Browser
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
 	DefaultBrowser     = browser.Browser
+	ClientIDReader     = api.PasswordReader
 )
 
 // GetConfigPath returns the default configuration file path for ghtkn.
 func GetConfigPath() (string, error) {
 	return config.GetPath(os.Getenv, runtime.GOOS)
-}
-
-func Ptr[T any](v T) *T {
-	return &v
 }
