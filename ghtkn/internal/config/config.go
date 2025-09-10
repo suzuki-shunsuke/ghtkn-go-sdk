@@ -14,9 +14,28 @@ import (
 // Config represents the main configuration structure for ghtkn.
 // It contains settings for persistence and a list of GitHub Apps.
 type Config struct {
-	UseKeyring bool   `json:"use_keyring,omitempty" yaml:"use_keyring"`
-	User       string `json:"user"`
-	Apps       []*App `json:"apps"`
+	Users []*User `json:"users"`
+}
+
+type User struct {
+	Login   string `json:"login"`
+	Apps    []*App `json:"apps"`
+	Default bool   `json:"default,omitempty"`
+}
+
+func (u *User) Validate() error {
+	if u.Login == "" {
+		return errors.New("login is required")
+	}
+	if len(u.Apps) == 0 {
+		return errors.New("apps is required")
+	}
+	for _, app := range u.Apps {
+		if err := app.Validate(); err != nil {
+			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
+		}
+	}
+	return nil
 }
 
 // Validate checks if the Config is valid.
@@ -26,15 +45,12 @@ func (cfg *Config) Validate() error {
 	if cfg == nil {
 		return errors.New("config is required")
 	}
-	if len(cfg.Apps) == 0 {
-		return errors.New("apps is required")
+	if len(cfg.Users) == 0 {
+		return errors.New("users is required")
 	}
-	if cfg.User == "" {
-		return errors.New("user is required")
-	}
-	for _, app := range cfg.Apps {
-		if err := app.Validate(); err != nil {
-			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
+	for _, user := range cfg.Users {
+		if err := user.Validate(); err != nil {
+			return fmt.Errorf("user is invalid: %w", slogerr.With(err, "user", user.Login))
 		}
 	}
 	return nil
@@ -43,20 +59,19 @@ func (cfg *Config) Validate() error {
 // App represents a GitHub App configuration.
 // Each app must have a unique name and a client ID for authentication.
 type App struct {
-	Name     string `json:"name"`
-	ClientID string `json:"client_id" yaml:"client_id"`
-	User     string `json:"user,omitempty" yaml:"user"`
-	Default  bool   `json:"default,omitempty"`
+	Name    string `json:"name"`
+	AppID   int    `json:"app_id" yaml:"app_id"`
+	Default bool   `json:"default,omitempty"`
 }
 
 // Validate checks if the App configuration is valid.
-// It ensures both Name and ClientID fields are present.
+// It ensures both Name and AppID fields are present.
 func (app *App) Validate() error {
 	if app.Name == "" {
 		return errors.New("name is required")
 	}
-	if app.ClientID == "" {
-		return errors.New("client_id is required")
+	if app.AppID == 0 {
+		return errors.New("app_id is required")
 	}
 	return nil
 }

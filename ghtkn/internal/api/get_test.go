@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
@@ -38,11 +37,11 @@ type mockKeyring struct {
 	err   error
 }
 
-func (m *mockKeyring) Get(_ string, _ string) (*keyring.AccessToken, error) {
+func (m *mockKeyring) Get(_ string, _ *keyring.AccessTokenKey) (*keyring.AccessToken, error) {
 	return m.token, m.err
 }
 
-func (m *mockKeyring) Set(_ string, _ string, _ *keyring.AccessToken) error {
+func (m *mockKeyring) Set(_ string, _ *keyring.AccessTokenKey, _ *keyring.AccessToken) error {
 	return m.err
 }
 
@@ -123,8 +122,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:   "test-client-id",
-				UseKeyring: ghtkn.Ptr(true),
+				ClientID: "test-client-id",
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -155,8 +153,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:   "test-client-id",
-				UseKeyring: ghtkn.Ptr(true),
+				ClientID: "test-client-id",
 			},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
@@ -179,8 +176,7 @@ func TestTokenManager_Get(t *testing.T) {
 				return input
 			},
 			input: &api.InputGet{
-				ClientID:   "test-client-id",
-				UseKeyring: ghtkn.Ptr(true),
+				ClientID: "test-client-id",
 			},
 			wantErr: true,
 		},

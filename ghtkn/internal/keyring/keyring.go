@@ -70,11 +70,20 @@ type AccessToken struct {
 	// ClientID string `json:"client_id"`
 }
 
+type AccessTokenKey struct {
+	Login string
+	AppID int
+}
+
+func (k *AccessTokenKey) String() string {
+	return fmt.Sprintf("access_tokens/%s/%d", k.Login, k.AppID)
+}
+
 // Get retrieves an access token from the keyring.
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
-func (kr *Keyring) Get(service, key string) (*AccessToken, error) {
-	s, err := kr.input.API.Get(service, key)
+func (kr *Keyring) Get(service string, key *AccessTokenKey) (*AccessToken, error) {
+	s, err := kr.input.API.Get(service, key.String())
 	if err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
 			return nil, nil
@@ -91,12 +100,12 @@ func (kr *Keyring) Get(service, key string) (*AccessToken, error) {
 // Set stores an access token in the keyring.
 // The key parameter identifies where to store the token.
 // Returns an error if the token cannot be marshaled or stored.
-func (kr *Keyring) Set(service, key string, token *AccessToken) error {
+func (kr *Keyring) Set(service string, key *AccessTokenKey, token *AccessToken) error {
 	s, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("marshal the token as JSON: %w", err)
 	}
-	if err := kr.input.API.Set(service, key, string(s)); err != nil {
+	if err := kr.input.API.Set(service, key.String(), string(s)); err != nil {
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
 	}
 	return nil
