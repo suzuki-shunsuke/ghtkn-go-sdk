@@ -179,6 +179,81 @@ func TestFormatDate(t *testing.T) {
 // TestKeyring_Get tests the Get method of Keyring.
 func TestKeyring_Get(t *testing.T) {
 	t.Parallel()
+
+	service := "test-service"
+	key := &keyring.AccessTokenKey{
+		Login: "testuser",
+		AppID: 123,
+	}
+
+	tests := []struct {
+		name      string
+		secrets   map[string]string
+		wantToken *keyring.AccessToken
+		wantErr   bool
+	}{
+		{
+			name: "token found",
+			secrets: map[string]string{
+				"test-service:access_tokens/testuser/123": `{"access_token":"test-token","expiration_date":"2024-12-31T23:59:59Z","login":"testuser"}`,
+			},
+			wantToken: &keyring.AccessToken{
+				AccessToken:    "test-token",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
+				Login:          "testuser",
+			},
+		},
+		{
+			name:      "token not found",
+			secrets:   map[string]string{},
+			wantToken: nil,
+		},
+		{
+			name: "invalid JSON",
+			secrets: map[string]string{
+				"test-service:access_tokens/testuser/123": "invalid json",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			kr := keyring.New(&keyring.Input{
+				API: newMockBackend(tt.secrets),
+			})
+
+			got, err := kr.Get(service, key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantToken == nil && got != nil {
+				t.Errorf("Get() = %v, want nil", got)
+				return
+			}
+
+			if tt.wantToken != nil {
+				if got == nil {
+					t.Errorf("Get() = nil, want %v", tt.wantToken)
+					return
+				}
+
+				if got.AccessToken != tt.wantToken.AccessToken {
+					t.Errorf("Get() AccessToken = %v, want %v", got.AccessToken, tt.wantToken.AccessToken)
+				}
+				if !got.ExpirationDate.Equal(tt.wantToken.ExpirationDate) {
+					t.Errorf("Get() ExpirationDate = %v, want %v", got.ExpirationDate, tt.wantToken.ExpirationDate)
+				}
+				if got.Login != tt.wantToken.Login {
+					t.Errorf("Get() Login = %v, want %v", got.Login, tt.wantToken.Login)
+				}
+			}
+		})
+	}
 }
 
 // TestKeyring_Set tests the Set method of Keyring.
