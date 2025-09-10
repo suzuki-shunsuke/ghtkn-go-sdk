@@ -14,7 +14,6 @@ type InputGet struct {
 	ConfigFilePath string
 	User           string
 	MinExpiration  time.Duration
-	UseKeyring     *bool
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.

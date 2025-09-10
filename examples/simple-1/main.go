@@ -21,9 +21,7 @@ func main() {
 func run() int {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	client := ghtkn.New()
-	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
-		UseKeyring: ghtkn.Ptr(true),
-	})
+	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{})
 	if err != nil {
 		slogerr.WithError(logger, err).Error("failed to get token")
 		return 1

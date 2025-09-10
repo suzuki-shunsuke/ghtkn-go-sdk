@@ -54,9 +54,7 @@ func core(logger *slog.Logger) error {
 	client.SetDeviceCodeUI(&UI{})
 	client.SetBrowser(&Browser{})
 
-	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
-		UseKeyring: ghtkn.Ptr(true),
-	})
+	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{})
 	if err != nil {
 		return err
 	}
