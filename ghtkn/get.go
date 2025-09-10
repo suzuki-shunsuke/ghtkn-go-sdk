@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 type InputGet struct {
@@ -34,6 +35,7 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 }
 
 func (c *Client) SetLogger(logger *Logger) {
+	log.InitLogger(logger)
 	c.tm.SetLogger(logger)
 }
 

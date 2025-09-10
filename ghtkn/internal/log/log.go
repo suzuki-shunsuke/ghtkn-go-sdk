@@ -51,3 +51,25 @@ func NewLogger() *Logger {
 		},
 	}
 }
+
+func InitLogger(l *Logger) {
+	defaultLogger := NewLogger()
+	if l.Expire == nil {
+		l.Expire = defaultLogger.Expire
+	}
+	if l.FailedToOpenBrowser == nil {
+		l.FailedToOpenBrowser = defaultLogger.FailedToOpenBrowser
+	}
+	if l.FailedToGetAccessTokenFromKeyring == nil {
+		l.FailedToGetAccessTokenFromKeyring = defaultLogger.FailedToGetAccessTokenFromKeyring
+	}
+	if l.AccessTokenIsNotFoundInKeyring == nil {
+		l.AccessTokenIsNotFoundInKeyring = defaultLogger.AccessTokenIsNotFoundInKeyring
+	}
+	if l.FailedToGetAppFromKeyring == nil {
+		l.FailedToGetAppFromKeyring = defaultLogger.FailedToGetAppFromKeyring
+	}
+	if l.AppIsNotFoundInKeyring == nil {
+		l.AppIsNotFoundInKeyring = defaultLogger.AppIsNotFoundInKeyring
+	}
+}
