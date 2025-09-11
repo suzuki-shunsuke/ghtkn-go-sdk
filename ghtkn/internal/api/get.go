@@ -44,45 +44,22 @@ func (tm *TokenManager) SetClientIDReader(reader PasswordReader) {
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
-	cfg := &config.Config{}
-
-	// Get a config file path
-	configPath := input.ConfigFilePath
-	if configPath == "" {
-		p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get config path: %w", err)
-		}
-		configPath = p
-	}
-
 	// Read the config file
-	if err := tm.readConfig(cfg, configPath); err != nil {
+	cfg := &config.Config{}
+	if err := tm.readConfig(cfg, input.ConfigFilePath); err != nil {
 		return nil, nil, err
 	}
 
 	// Get the user login
-	login := input.User
-	if login == "" {
-		login = tm.input.Getenv("GHTKN_USER")
-	}
-
-	// Get the user config
-	configUser := cfg.SelectUser(login)
-	if configUser == nil {
-		return nil, nil, errors.New("user is not found in the config")
+	user, err := tm.getUserConfig(input.User, cfg)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Get the app name
-	appName := input.AppName
-	if appName == "" {
-		appName = tm.input.Getenv("GHTKN_APP")
-	}
-
-	// Get the app config
-	app := configUser.SelectApp(appName)
-	if app == nil {
-		return nil, nil, errors.New("app is not found in the config")
+	app, err := tm.getAppConfig(input.User, user)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Get the keyring service name
@@ -92,23 +69,22 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	}
 
 	// Debug Log
-	logFields := []any{"app_name", app.Name, "user", configUser.Login}
+	logFields := []any{"app_name", app.Name, "user", user.Login}
+	logger = logger.With(logFields...)
 	logger.Debug(
 		"getting or creating a GitHub App User Access Token",
 		"min_expiration", input.MinExpiration,
 	)
 
-	logger = logger.With(logFields...)
-
 	atKey := &keyring.AccessTokenKey{
-		Login: configUser.Login,
+		Login: user.Login,
 		AppID: app.AppID,
 	}
 
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		KeyringService: keyringService,
 		MinExpiration:  input.MinExpiration,
-		User:           configUser.Login,
+		User:           user.Login,
 		App:            app,
 		Key:            atKey,
 	})
@@ -127,7 +103,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		}
 		token.Login = user.Login
 	} else if token.Login == "" {
-		token.Login = configUser.Login
+		token.Login = user.Login
 	}
 
 	// Update the key with the final login value
@@ -254,6 +230,15 @@ func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Durati
 // readConfig loads and validates the configuration from the configured file path.
 // It returns an error if the configuration cannot be read or is invalid.
 func (tm *TokenManager) readConfig(cfg *config.Config, configFilePath string) error {
+	// Get a config file path
+	if configFilePath == "" {
+		p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
+		if err != nil {
+			return fmt.Errorf("get config path: %w", err)
+		}
+		configFilePath = p
+	}
+
 	if err := tm.input.ConfigReader.Read(cfg, configFilePath); err != nil {
 		return fmt.Errorf("read config: %w", slogerr.With(err, "config", configFilePath))
 	}
@@ -261,4 +246,33 @@ func (tm *TokenManager) readConfig(cfg *config.Config, configFilePath string) er
 		return fmt.Errorf("validate config: %w", err)
 	}
 	return nil
+}
+
+func (tm *TokenManager) getUserConfig(login string, cfg *config.Config) (*config.User, error) {
+	// Get the user login
+	if login == "" {
+		login = tm.input.Getenv("GHTKN_USER")
+	}
+
+	// Get the user config
+	user := cfg.SelectUser(login)
+	if user == nil {
+		return nil, errors.New("user is not found in the config")
+	}
+	return user, nil
+}
+
+func (tm *TokenManager) getAppConfig(appName string, user *config.User) (*config.App, error) {
+	// Get the app config
+	if appName == "" {
+		appName = tm.input.Getenv("GHTKN_APP")
+	}
+
+	// Get the app config
+	app := user.SelectApp(appName)
+	if app == nil {
+		return nil, errors.New("app is not found in the config")
+	}
+
+	return app, nil
 }
