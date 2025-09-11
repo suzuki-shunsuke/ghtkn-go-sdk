@@ -6,7 +6,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v74 v74.0.0
-	github.com/spf13/afero v1.14.0
+	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/go-exec v0.0.1
 	github.com/suzuki-shunsuke/slog-error v0.2.0
@@ -26,5 +26,5 @@ require (
 	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 )
