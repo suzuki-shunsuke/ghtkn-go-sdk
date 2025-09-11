@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
-	zkeyring "github.com/zalando/go-keyring"
 )
 
 // Mock is a mock implementation of the API interface for testing.
@@ -31,13 +30,13 @@ func mockKey(service, user string) string {
 
 // Get retrieves a secret from the mock keyring.
 // Returns keyring.ErrNotFound if the secret doesn't exist.
-func (m *mockBackend) Get(service, user string) (string, error) {
+func (m *mockBackend) Get(service, user string) (string, bool, error) {
 	k := mockKey(service, user)
 	s, ok := m.secrets[k]
 	if !ok {
-		return "", zkeyring.ErrNotFound
+		return "", false, nil
 	}
-	return s, nil
+	return s, true, nil
 }
 
 // Set stores a secret in the mock keyring.
@@ -48,6 +47,14 @@ func (m *mockBackend) Set(service, user, password string) error {
 	}
 	m.secrets[mockKey(service, user)] = password
 	return nil
+}
+
+func (m *mockBackend) Delete(service, user string) (bool, error) {
+	k := mockKey(service, user)
+	if _, ok := m.secrets[k]; !ok {
+		return false, nil
+	}
+	return true, nil
 }
 
 // TestParseDate tests the ParseDate function with various inputs.

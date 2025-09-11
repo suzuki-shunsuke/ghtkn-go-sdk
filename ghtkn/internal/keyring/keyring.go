@@ -4,43 +4,11 @@ package keyring
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
-
-	"github.com/zalando/go-keyring"
 )
 
-// Keyring manages access tokens in the system keychain.
-// It provides methods to get, set, and remove tokens securely.
-type Keyring struct {
-	input *Input
-}
-
-type Input struct {
-	API API
-}
-
 const DefaultServiceKey = "github.com/suzuki-shunsuke/ghtkn"
-
-// New creates a new Keyring instance with the specified service name.
-// The keyService parameter is used as the service identifier in the system keychain.
-func New(input *Input) *Keyring {
-	return &Keyring{
-		input: input,
-	}
-}
-
-type API interface {
-	Get(service, user string) (string, error)
-	Set(service, user, password string) error
-}
-
-func NewInput() *Input {
-	return &Input{
-		API: NewAPI(),
-	}
-}
 
 // dateFormat defines the standard format for date strings in the keyring.
 const dateFormat = time.RFC3339
@@ -79,16 +47,46 @@ func (k *AccessTokenKey) String() string {
 	return fmt.Sprintf("access_tokens/%s/%d", k.Login, k.AppID)
 }
 
+// Keyring manages access tokens in the system keychain.
+// It provides methods to get, set, and remove tokens securely.
+type Keyring struct {
+	input *Input
+}
+
+type Input struct {
+	API API
+}
+
+// New creates a new Keyring instance with the specified service name.
+// The keyService parameter is used as the service identifier in the system keychain.
+func New(input *Input) *Keyring {
+	return &Keyring{
+		input: input,
+	}
+}
+
+type API interface {
+	Get(service, user string) (string, bool, error)
+	Set(service, user, password string) error
+	Delete(service, user string) (bool, error)
+}
+
+func NewInput() *Input {
+	return &Input{
+		API: NewAPI(),
+	}
+}
+
 // Get retrieves an access token from the keyring.
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
 func (kr *Keyring) Get(service string, key *AccessTokenKey) (*AccessToken, error) {
-	s, err := kr.input.API.Get(service, key.String())
+	s, exist, err := kr.input.API.Get(service, key.String())
 	if err != nil {
-		if errors.Is(err, keyring.ErrNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
+	}
+	if !exist {
+		return nil, nil
 	}
 	token := &AccessToken{}
 	if err := json.Unmarshal([]byte(s), token); err != nil {
@@ -109,4 +107,8 @@ func (kr *Keyring) Set(service string, key *AccessTokenKey, token *AccessToken) 
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
 	}
 	return nil
+}
+
+func (kr *Keyring) Delete(service string, key *AccessTokenKey) (bool, error) {
+	return kr.input.API.Delete(service, key.String())
 }

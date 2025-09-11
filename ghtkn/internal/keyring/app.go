@@ -2,10 +2,7 @@ package keyring
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-
-	"github.com/zalando/go-keyring"
 )
 
 // AppStore manages access tokens in the system keychain.
@@ -36,12 +33,12 @@ func keyApp(appID int) string {
 // The key parameter identifies the app to retrieve.
 // Returns the app or an error if the app cannot be found or unmarshaled.
 func (as *AppStore) Get(service string, appID int) (*App, error) {
-	s, err := as.input.API.Get(service, keyApp(appID))
+	s, exist, err := as.input.API.Get(service, keyApp(appID))
 	if err != nil {
-		if errors.Is(err, keyring.ErrNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("get an App in keyring: %w", err)
+	}
+	if !exist {
+		return nil, nil
 	}
 	app := &App{}
 	if err := json.Unmarshal([]byte(s), app); err != nil {

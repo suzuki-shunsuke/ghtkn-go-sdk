@@ -1,6 +1,8 @@
 package keyring
 
 import (
+	"errors"
+
 	"github.com/zalando/go-keyring"
 )
 
@@ -15,19 +17,34 @@ func NewAPI() *Backend {
 }
 
 // Get retrieves a password from the system keyring.
-// It delegates to the zalando/go-keyring library's Get function.
-func (b *Backend) Get(service, user string) (string, error) {
-	return keyring.Get(service, user) //nolint:wrapcheck
+// If the key does not exist, it returns ("", false, nil).
+// Otherwise, it returns (value, true, nil) on success or ("", false, error) on failure.
+func (b *Backend) Get(service, key string) (string, bool, error) {
+	v, err := keyring.Get(service, key)
+	if err != nil {
+		if errors.Is(err, keyring.ErrNotFound) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return v, true, nil
 }
 
 // Set stores a password in the system keyring.
 // It delegates to the zalando/go-keyring library's Set function.
-func (b *Backend) Set(service, user, password string) error {
-	return keyring.Set(service, user, password) //nolint:wrapcheck
+func (b *Backend) Set(service, key, value string) error {
+	return keyring.Set(service, key, value) //nolint:wrapcheck
 }
 
 // Delete removes a password from the system keyring.
-// It delegates to the zalando/go-keyring library's Delete function.
-func (b *Backend) Delete(service, user string) error {
-	return keyring.Delete(service, user) //nolint:wrapcheck
+// If the key does not exist, it returns (false, nil).
+// Otherwise, it returns (true, nil) on success or (false, error) on failure.
+func (b *Backend) Delete(service, key string) (bool, error) {
+	if err := keyring.Delete(service, key); err != nil {
+		if errors.Is(err, keyring.ErrNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

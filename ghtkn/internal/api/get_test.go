@@ -40,6 +40,7 @@ func newMockInput() *api.Input {
 
 type mockKeyring struct {
 	token *keyring.AccessToken
+	exist bool
 	err   error
 }
 
@@ -49,6 +50,10 @@ func (m *mockKeyring) Get(_ string, _ *keyring.AccessTokenKey) (*keyring.AccessT
 
 func (m *mockKeyring) Set(_ string, _ *keyring.AccessTokenKey, _ *keyring.AccessToken) error {
 	return m.err
+}
+
+func (m *mockKeyring) Delete(_ string, _ *keyring.AccessTokenKey) (bool, error) {
+	return m.exist, m.err
 }
 
 type mockAppStore struct {

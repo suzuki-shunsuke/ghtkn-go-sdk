@@ -10,5 +10,5 @@ import (
 type InputSetApp = api.InputSetApp
 
 func (c *Client) SetApp(ctx context.Context, logger *slog.Logger, input *InputSetApp) error {
-	return nil
+	return c.tm.SetApp(ctx, logger, input)
 }

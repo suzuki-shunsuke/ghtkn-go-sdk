@@ -90,6 +90,7 @@ type DeviceFlow interface {
 type Keyring interface {
 	Get(service string, key *keyring.AccessTokenKey) (*keyring.AccessToken, error)
 	Set(service string, key *keyring.AccessTokenKey, token *keyring.AccessToken) error
+	Delete(service string, key *keyring.AccessTokenKey) (bool, error)
 }
 
 type AppStore interface {

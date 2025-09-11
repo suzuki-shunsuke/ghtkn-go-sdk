@@ -36,6 +36,7 @@ type tokenManager interface {
 	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
 	SetBrowser(browser deviceflow.Browser)
 	SetClientIDReader(reader ClientIDReader)
+	SetApp(ctx context.Context, logger *slog.Logger, input *InputSetApp) error
 }
 
 type (
