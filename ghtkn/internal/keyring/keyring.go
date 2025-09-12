@@ -38,7 +38,7 @@ func New(input *Input) *Keyring {
 // (system keychain, testing mocks, etc.).
 type API interface {
 	Get(service, user string) (string, bool, error) // Retrieves a secret from the keyring
-	Set(service, user, password string) error        // Stores a secret in the keyring
+	Set(service, user, password string) error       // Stores a secret in the keyring
 }
 
 // NewInput creates a new Input instance with the default API implementation.

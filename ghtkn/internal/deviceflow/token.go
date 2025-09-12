@@ -31,13 +31,13 @@ type Browser interface {
 // It allows for dependency injection and makes testing easier by providing
 // customizable implementations of external dependencies.
 type Input struct {
-	HTTPClient   *http.Client                     // HTTP client for API requests
-	Now          func() time.Time                 // Function to get current time (for testing)
-	Stderr       io.Writer                       // Writer for error output
-	Browser      Browser                         // Interface for opening URLs in browser
+	HTTPClient   *http.Client                       // HTTP client for API requests
+	Now          func() time.Time                   // Function to get current time (for testing)
+	Stderr       io.Writer                          // Writer for error output
+	Browser      Browser                            // Interface for opening URLs in browser
 	NewTicker    func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
-	Logger       *log.Logger                     // Logger for debugging and info messages
-	DeviceCodeUI DeviceCodeUI                    // UI for displaying device flow information
+	Logger       *log.Logger                        // Logger for debugging and info messages
+	DeviceCodeUI DeviceCodeUI                       // UI for displaying device flow information
 }
 
 // SetLogger updates the logger instance used by the client.

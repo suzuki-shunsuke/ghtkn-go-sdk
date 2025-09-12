@@ -135,9 +135,9 @@ var ErrStoreToken = errors.New("could not store the token in keyring")
 // It encapsulates the keyring service, app configuration, and expiration requirements
 // used internally by the getOrCreateToken function.
 type inputGetOrCreateToken struct {
-	KeyringService string          // Service name for keyring operations
-	App            *config.App     // App configuration containing client ID and other settings
-	MinExpiration  time.Duration   // Minimum time before expiration to consider token valid
+	KeyringService string        // Service name for keyring operations
+	App            *config.App   // App configuration containing client ID and other settings
+	MinExpiration  time.Duration // Minimum time before expiration to consider token valid
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
