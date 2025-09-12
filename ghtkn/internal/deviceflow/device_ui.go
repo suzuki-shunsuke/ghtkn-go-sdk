@@ -38,6 +38,9 @@ func (d *SimpleDeviceCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCod
 	inputCh := make(chan error, 1)
 
 	go func() {
+		// Wait until Enter is pressed
+		// Note that this exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
+		// In case of Git Credential Helper stdin is not a terminal, so this exits immediately.
 		scanner := bufio.NewScanner(d.stdin)
 		if scanner.Scan() {
 			inputCh <- scanner.Err()
