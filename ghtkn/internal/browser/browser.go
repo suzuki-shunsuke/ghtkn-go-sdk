@@ -1,3 +1,5 @@
+// Package browser provides functionality to open URLs in the system's default web browser.
+// It supports multiple platforms and handles various browser commands.
 package browser
 
 import (
@@ -14,6 +16,8 @@ import (
 // ErrNoCommandFound is returned when no suitable command is found to open a browser.
 var ErrNoCommandFound = errors.New("no command found to open the browser")
 
+// Browser provides methods to open URLs in the system's default web browser.
+// It implements platform-specific logic to handle different operating systems.
 type Browser struct{}
 
 // Open opens the specified URL in the system's default browser.

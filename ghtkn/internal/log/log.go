@@ -52,6 +52,9 @@ func NewLogger() *Logger {
 	}
 }
 
+// InitLogger initializes any nil logging functions in the provided Logger with default implementations.
+// This function allows partial customization of logging behavior by only overriding specific
+// log functions while falling back to defaults for unset functions.
 func InitLogger(l *Logger) {
 	defaultLogger := NewLogger()
 	if l.Expire == nil {

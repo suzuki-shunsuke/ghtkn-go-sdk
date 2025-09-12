@@ -14,10 +14,15 @@ type Keyring struct {
 	input *Input
 }
 
+// Input contains the dependencies required by the Keyring.
+// It allows for dependency injection and easier testing by providing
+// a customizable API implementation.
 type Input struct {
-	API API
+	API API // The keyring API implementation for storing and retrieving secrets
 }
 
+// DefaultServiceKey is the default service identifier used in the system keychain.
+// This key is used to namespace tokens in the keyring to avoid conflicts with other applications.
 const DefaultServiceKey = "github.com/suzuki-shunsuke/ghtkn"
 
 // New creates a new Keyring instance with the specified service name.
@@ -28,11 +33,16 @@ func New(input *Input) *Keyring {
 	}
 }
 
+// API defines the interface for keyring operations.
+// It abstracts the underlying keyring implementation to allow for different backends
+// (system keychain, testing mocks, etc.).
 type API interface {
-	Get(service, user string) (string, bool, error)
-	Set(service, user, password string) error
+	Get(service, user string) (string, bool, error) // Retrieves a secret from the keyring
+	Set(service, user, password string) error        // Stores a secret in the keyring
 }
 
+// NewInput creates a new Input instance with the default API implementation.
+// This provides the standard system keyring integration for production use.
 func NewInput() *Input {
 	return &Input{
 		API: NewAPI(),

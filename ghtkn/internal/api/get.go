@@ -14,23 +14,32 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// InputGet contains the input parameters for token retrieval operations.
+// It provides configuration options for specifying which app to use,
+// where to find configuration, and token expiration requirements.
 type InputGet struct {
-	KeyringService string
-	AppName        string
-	ConfigFilePath string
-	ClientID       string
-	MinExpiration  time.Duration
+	KeyringService string        // Service name for keyring storage (defaults to DefaultServiceKey)
+	AppName        string        // Name of the app to use (defaults to GHTKN_APP environment variable)
+	ConfigFilePath string        // Path to configuration file (auto-detected if empty)
+	ClientID       string        // GitHub App client ID (overrides config if specified)
+	MinExpiration  time.Duration // Minimum time before token expiration to trigger renewal
 }
 
+// SetLogger updates the logger instance used by the token manager.
+// It propagates the logger to both the token manager and device flow components.
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
 	tm.input.Logger = logger
 	tm.input.DeviceFlow.SetLogger(logger)
 }
 
+// SetDeviceCodeUI updates the device code UI implementation used during OAuth device flow.
+// This allows customization of how device flow information is presented to users.
 func (tm *TokenManager) SetDeviceCodeUI(ui deviceflow.DeviceCodeUI) {
 	tm.input.DeviceFlow.SetDeviceCodeUI(ui)
 }
 
+// SetBrowser updates the browser implementation used to open verification URLs.
+// This allows customization of how the GitHub verification page is opened during device flow.
 func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
 	tm.input.DeviceFlow.SetBrowser(ui)
 }
@@ -118,12 +127,17 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	return token, app, nil
 }
 
+// ErrStoreToken is returned when the token cannot be stored in the keyring.
+// This is a non-fatal error as the token is still valid for immediate use.
 var ErrStoreToken = errors.New("could not store the token in keyring")
 
+// inputGetOrCreateToken contains the parameters needed for token retrieval or creation.
+// It encapsulates the keyring service, app configuration, and expiration requirements
+// used internally by the getOrCreateToken function.
 type inputGetOrCreateToken struct {
-	KeyringService string
-	App            *config.App
-	MinExpiration  time.Duration
+	KeyringService string          // Service name for keyring operations
+	App            *config.App     // App configuration containing client ID and other settings
+	MinExpiration  time.Duration   // Minimum time before expiration to consider token valid
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.

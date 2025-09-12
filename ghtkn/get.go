@@ -17,15 +17,22 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 	return c.tm.Get(ctx, logger, input)
 }
 
+// SetLogger updates the logger instance used by the client.
+// It initializes any nil logging functions with defaults and propagates the logger
+// to the underlying token manager.
 func (c *Client) SetLogger(logger *Logger) {
 	log.InitLogger(logger)
 	c.tm.SetLogger(logger)
 }
 
+// SetDeviceCodeUI updates the device code UI implementation used during OAuth device flow.
+// This allows customization of how device flow information is presented to users.
 func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
 	c.tm.SetDeviceCodeUI(ui)
 }
 
+// SetBrowser updates the browser implementation used to open verification URLs.
+// This allows customization of how the GitHub verification page is opened during device flow.
 func (c *Client) SetBrowser(ui Browser) {
 	c.tm.SetBrowser(ui)
 }

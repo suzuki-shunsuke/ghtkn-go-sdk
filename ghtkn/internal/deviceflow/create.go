@@ -15,10 +15,14 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// SetDeviceCodeUI updates the device code UI implementation used by the client.
+// This allows customization of how device flow information is presented to users.
 func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
 	c.input.DeviceCodeUI = ui
 }
 
+// SetBrowser updates the browser implementation used by the client.
+// This allows customization of how verification URLs are opened in the browser.
 func (c *Client) SetBrowser(b Browser) {
 	c.input.Browser = b
 }
