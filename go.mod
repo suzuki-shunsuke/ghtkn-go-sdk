@@ -3,7 +3,6 @@ module github.com/suzuki-shunsuke/ghtkn-go-sdk
 go 1.25.1
 
 require (
-	github.com/charmbracelet/x/term v0.2.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v74 v74.0.0
 	github.com/spf13/afero v1.15.0

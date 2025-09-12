@@ -4,11 +4,8 @@ package keyring
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
-
-	"github.com/zalando/go-keyring"
 )
 
 // Keyring manages access tokens in the system keychain.
@@ -17,10 +14,15 @@ type Keyring struct {
 	input *Input
 }
 
+// Input contains the dependencies required by the Keyring.
+// It allows for dependency injection and easier testing by providing
+// a customizable API implementation.
 type Input struct {
-	API API
+	API API // The keyring API implementation for storing and retrieving secrets
 }
 
+// DefaultServiceKey is the default service identifier used in the system keychain.
+// This key is used to namespace tokens in the keyring to avoid conflicts with other applications.
 const DefaultServiceKey = "github.com/suzuki-shunsuke/ghtkn"
 
 // New creates a new Keyring instance with the specified service name.
@@ -31,11 +33,16 @@ func New(input *Input) *Keyring {
 	}
 }
 
+// API defines the interface for keyring operations.
+// It abstracts the underlying keyring implementation to allow for different backends
+// (system keychain, testing mocks, etc.).
 type API interface {
-	Get(service, user string) (string, error)
-	Set(service, user, password string) error
+	Get(service, user string) (string, bool, error) // Retrieves a secret from the keyring
+	Set(service, user, password string) error       // Stores a secret in the keyring
 }
 
+// NewInput creates a new Input instance with the default API implementation.
+// This provides the standard system keyring integration for production use.
 func NewInput() *Input {
 	return &Input{
 		API: NewAPI(),
@@ -70,25 +77,16 @@ type AccessToken struct {
 	// ClientID string `json:"client_id"`
 }
 
-type AccessTokenKey struct {
-	Login string
-	AppID int
-}
-
-func (k *AccessTokenKey) String() string {
-	return fmt.Sprintf("access_tokens/%s/%d", k.Login, k.AppID)
-}
-
 // Get retrieves an access token from the keyring.
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
-func (kr *Keyring) Get(service string, key *AccessTokenKey) (*AccessToken, error) {
-	s, err := kr.input.API.Get(service, key.String())
+func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
+	s, exist, err := kr.input.API.Get(service, key)
 	if err != nil {
-		if errors.Is(err, keyring.ErrNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
+	}
+	if !exist {
+		return nil, nil
 	}
 	token := &AccessToken{}
 	if err := json.Unmarshal([]byte(s), token); err != nil {
@@ -100,12 +98,12 @@ func (kr *Keyring) Get(service string, key *AccessTokenKey) (*AccessToken, error
 // Set stores an access token in the keyring.
 // The key parameter identifies where to store the token.
 // Returns an error if the token cannot be marshaled or stored.
-func (kr *Keyring) Set(service string, key *AccessTokenKey, token *AccessToken) error {
+func (kr *Keyring) Set(service, key string, token *AccessToken) error {
 	s, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("marshal the token as JSON: %w", err)
 	}
-	if err := kr.input.API.Set(service, key.String(), string(s)); err != nil {
+	if err := kr.input.API.Set(service, key, string(s)); err != nil {
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
 	}
 	return nil
