@@ -38,7 +38,6 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 					{
 						Name:     "app2",
 						ClientID: "yyy",
-						Default:  true,
 					},
 				},
 			},
@@ -198,16 +197,14 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 			configPath: "/test/config.yaml",
 			configContent: `apps:
   - name: test-app
-    client_id: xxx
-    default: true`,
+    client_id: xxx`,
 			fileExists: true,
 			expectedConfig: &config.Config{
 				Apps: []*config.App{
 					{
 						Name:     "test-app",
 						ClientID: "xxx",
-						Default:  true,
-					},
+							},
 				},
 			},
 			wantErr: false,
@@ -219,8 +216,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
   - name: app1
     client_id: xxx
   - name: app2
-    client_id: yyy
-    default: true`,
+    client_id: yyy`,
 			fileExists: true,
 			expectedConfig: &config.Config{
 				Apps: []*config.App{
@@ -231,7 +227,6 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 					{
 						Name:     "app2",
 						ClientID: "yyy",
-						Default:  true,
 					},
 				},
 			},
@@ -300,9 +295,6 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 					if app.ClientID != expectedApp.ClientID {
 						t.Errorf("Reader.Read() app[%d].ClientID = %v, want %v", i, app.ClientID, expectedApp.ClientID)
 					}
-					if app.Default != expectedApp.Default {
-						t.Errorf("Reader.Read() app[%d].Default = %v, want %v", i, app.Default, expectedApp.Default)
-					}
 				}
 			}
 		})
@@ -343,7 +335,6 @@ func TestConfig_SelectApp(t *testing.T) {
 					{
 						Name:     "app2",
 						ClientID: "yyy",
-						Default:  true,
 					},
 					{
 						Name:     "app3",
@@ -358,55 +349,7 @@ func TestConfig_SelectApp(t *testing.T) {
 			},
 		},
 		{
-			name: "select default when key doesn't match",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						Default:  true,
-					},
-					{
-						Name:     "app3",
-						ClientID: "zzz",
-					},
-				},
-			},
-			key: "nonexistent",
-			expected: &config.App{
-				Name:     "app2",
-				ClientID: "yyy",
-				Default:  true,
-			},
-		},
-		{
-			name: "select default when key is empty",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						Default:  true,
-					},
-				},
-			},
-			key: "",
-			expected: &config.App{
-				Name:     "app2",
-				ClientID: "yyy",
-				Default:  true,
-			},
-		},
-		{
-			name: "select first when no default and key doesn't match",
+			name: "select first when key doesn't match",
 			config: &config.Config{
 				Apps: []*config.App{
 					{
@@ -426,7 +369,7 @@ func TestConfig_SelectApp(t *testing.T) {
 			},
 		},
 		{
-			name: "select first when no default and key is empty",
+			name: "select first when key is empty",
 			config: &config.Config{
 				Apps: []*config.App{
 					{
@@ -440,27 +383,6 @@ func TestConfig_SelectApp(t *testing.T) {
 				},
 			},
 			key: "",
-			expected: &config.App{
-				Name:     "app1",
-				ClientID: "xxx",
-			},
-		},
-		{
-			name: "key match takes priority over default",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						Default:  true,
-					},
-				},
-			},
-			key: "app1",
 			expected: &config.App{
 				Name:     "app1",
 				ClientID: "xxx",
@@ -491,9 +413,6 @@ func TestConfig_SelectApp(t *testing.T) {
 			}
 			if got.ClientID != tt.expected.ClientID {
 				t.Errorf("Config.SelectApp().ClientID = %v, want %v", got.ClientID, tt.expected.ClientID)
-			}
-			if got.Default != tt.expected.Default {
-				t.Errorf("Config.SelectApp().Default = %v, want %v", got.Default, tt.expected.Default)
 			}
 		})
 	}

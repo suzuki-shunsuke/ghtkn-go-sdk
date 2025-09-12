@@ -40,7 +40,6 @@ func (c *Config) Validate() error {
 type App struct {
 	Name     string `json:"name"`
 	ClientID string `json:"client_id" yaml:"client_id"`
-	Default  bool   `json:"default,omitempty"`
 }
 
 // Validate checks if the App configuration is valid.
