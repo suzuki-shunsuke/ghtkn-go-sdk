@@ -308,12 +308,14 @@ func TestConfig_SelectApp(t *testing.T) {
 		name     string
 		config   *config.Config
 		key      string
+		owner    string
 		expected *config.App
 	}{
 		{
 			name:     "nil config",
 			config:   nil,
 			key:      "any-key",
+			owner:    "",
 			expected: nil,
 		},
 		{
@@ -322,7 +324,37 @@ func TestConfig_SelectApp(t *testing.T) {
 				Apps: []*config.App{},
 			},
 			key:      "any-key",
+			owner:    "",
 			expected: nil,
+		},
+		{
+			name: "select by owner match",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "app1",
+						ClientID: "xxx",
+						GitOwner: "owner1",
+					},
+					{
+						Name:     "app2",
+						ClientID: "yyy",
+						GitOwner: "owner2",
+					},
+					{
+						Name:     "app3",
+						ClientID: "zzz",
+						GitOwner: "owner3",
+					},
+				},
+			},
+			key:   "",
+			owner: "owner2",
+			expected: &config.App{
+				Name:     "app2",
+				ClientID: "yyy",
+				GitOwner: "owner2",
+			},
 		},
 		{
 			name: "select by key match",
@@ -342,14 +374,39 @@ func TestConfig_SelectApp(t *testing.T) {
 					},
 				},
 			},
-			key: "app3",
+			key:   "app3",
+			owner: "",
 			expected: &config.App{
 				Name:     "app3",
 				ClientID: "zzz",
 			},
 		},
 		{
-			name: "select first when key doesn't match",
+			name: "owner takes priority over key",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "app1",
+						ClientID: "xxx",
+						GitOwner: "owner1",
+					},
+					{
+						Name:     "app2",
+						ClientID: "yyy",
+						GitOwner: "owner2",
+					},
+				},
+			},
+			key:   "app2",
+			owner: "owner1",
+			expected: &config.App{
+				Name:     "app1",
+				ClientID: "xxx",
+				GitOwner: "owner1",
+			},
+		},
+		{
+			name: "select first when no match",
 			config: &config.Config{
 				Apps: []*config.App{
 					{
@@ -362,14 +419,15 @@ func TestConfig_SelectApp(t *testing.T) {
 					},
 				},
 			},
-			key: "nonexistent",
+			key:   "nonexistent",
+			owner: "",
 			expected: &config.App{
 				Name:     "app1",
 				ClientID: "xxx",
 			},
 		},
 		{
-			name: "select first when key is empty",
+			name: "select first when both key and owner are empty",
 			config: &config.Config{
 				Apps: []*config.App{
 					{
@@ -382,7 +440,8 @@ func TestConfig_SelectApp(t *testing.T) {
 					},
 				},
 			},
-			key: "",
+			key:   "",
+			owner: "",
 			expected: &config.App{
 				Name:     "app1",
 				ClientID: "xxx",
@@ -394,7 +453,7 @@ func TestConfig_SelectApp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := tt.config.SelectApp(tt.key)
+			got := tt.config.SelectApp(tt.key, tt.owner)
 
 			if tt.expected == nil {
 				if got != nil {
@@ -413,6 +472,9 @@ func TestConfig_SelectApp(t *testing.T) {
 			}
 			if got.ClientID != tt.expected.ClientID {
 				t.Errorf("Config.SelectApp().ClientID = %v, want %v", got.ClientID, tt.expected.ClientID)
+			}
+			if got.GitOwner != tt.expected.GitOwner {
+				t.Errorf("Config.SelectApp().GitOwner = %v, want %v", got.GitOwner, tt.expected.GitOwner)
 			}
 		})
 	}

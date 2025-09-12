@@ -21,7 +21,7 @@ type InputGet struct {
 	KeyringService string        // Service name for keyring storage (defaults to DefaultServiceKey)
 	AppName        string        // Name of the app to use (defaults to GHTKN_APP environment variable)
 	ConfigFilePath string        // Path to configuration file (auto-detected if empty)
-	ClientID       string        // GitHub App client ID (overrides config if specified)
+	AppOwner       string        // GitHub App Owner
 	MinExpiration  time.Duration // Minimum time before token expiration to trigger renewal
 }
 
@@ -72,7 +72,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	}
 
 	// Get the app config
-	app := cfg.SelectApp(appName)
+	app := cfg.SelectApp(appName, input.AppOwner)
 	if app == nil {
 		return nil, nil, errors.New("app is not found in the config")
 	}
