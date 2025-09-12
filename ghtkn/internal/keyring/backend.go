@@ -35,15 +35,3 @@ func (b *Backend) Get(service, user string) (string, bool, error) {
 func (b *Backend) Set(service, user, password string) error {
 	return keyring.Set(service, user, password) //nolint:wrapcheck
 }
-
-// Delete removes a secret from the system keyring.
-// It delegates to the zalando/go-keyring library's Delete function.
-// func (b *Backend) Delete(service, user string) (bool, error) {
-// 	if err := keyring.Delete(service, user); err != nil {
-// 		if errors.Is(err, keyring.ErrNotFound) {
-// 			return false, nil
-// 		}
-// 		return false, fmt.Errorf("delete a secret from the keyring: %w", err)
-// 	}
-// 	return true, nil
-// }
