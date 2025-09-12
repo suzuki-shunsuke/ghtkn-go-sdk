@@ -18,7 +18,6 @@ type InputGet struct {
 	KeyringService string
 	AppName        string
 	ConfigFilePath string
-	User           string
 	ClientID       string
 	MinExpiration  time.Duration
 }

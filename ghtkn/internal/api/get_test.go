@@ -94,32 +94,6 @@ func TestTokenManager_Get(t *testing.T) {
 		input      *api.InputGet
 	}{
 		{
-			name: "successful token creation without persistence",
-			setupInput: func() *api.Input {
-				input := newMockInput()
-				input.DeviceFlow = &mockDeviceFlow{
-					token: &deviceflow.AccessToken{
-						AccessToken:    "test-token-123",
-						ExpirationDate: futureTime,
-					},
-				}
-				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time {
-					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
-				}
-				return input
-			},
-			input: &api.InputGet{
-				User: "testuser",
-			},
-			wantErr: false,
-			wantToken: &keyring.AccessToken{
-				AccessToken:    "test-token-123",
-				ExpirationDate: futureTime,
-				Login:          "test-user",
-			},
-		},
-		{
 			name: "successful token retrieval from keyring",
 			setupInput: func() *api.Input {
 				input := newMockInput()
@@ -140,14 +114,12 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input: &api.InputGet{
-				User: "testuser",
-			},
+			input:   &api.InputGet{},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
-				Login:          "testuser",
+				Login:          "test-user",
 			},
 		},
 		{
@@ -171,9 +143,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input: &api.InputGet{
-				User: "testuser",
-			},
+			input:   &api.InputGet{},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "new-token",
@@ -194,9 +164,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input: &api.InputGet{
-				User: "testuser",
-			},
+			input:   &api.InputGet{},
 			wantErr: true,
 		},
 	}

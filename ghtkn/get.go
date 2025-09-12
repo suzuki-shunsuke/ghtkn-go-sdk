@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
@@ -15,14 +14,7 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 	if input == nil {
 		input = &InputGet{}
 	}
-	i := &api.InputGet{
-		KeyringService: input.KeyringService,
-		AppName:        input.AppName,
-		ConfigFilePath: input.ConfigFilePath,
-		MinExpiration:  input.MinExpiration,
-		User:           input.User,
-	}
-	return c.tm.Get(ctx, logger, i)
+	return c.tm.Get(ctx, logger, input)
 }
 
 func (c *Client) SetLogger(logger *Logger) {
