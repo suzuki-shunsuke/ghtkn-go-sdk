@@ -46,7 +46,3 @@ func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
 func (c *Client) SetBrowser(ui Browser) {
 	c.tm.SetBrowser(ui)
 }
-
-func (c *Client) SetClientIDReader(reader ClientIDReader) {
-	c.tm.SetClientIDReader(reader)
-}

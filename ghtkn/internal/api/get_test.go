@@ -26,11 +26,7 @@ func newMockInput() *api.Input {
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
 		},
-		Keyring:  &mockKeyring{},
-		AppStore: &mockAppStore{},
-		ClientIDReader: &mockPasswordReader{
-			password: "test-client-id",
-		},
+		Keyring:      &mockKeyring{},
 		Logger:       log.NewLogger(),
 		ConfigReader: &mockConfigReader{},
 		Getenv:       func(key string) string { return "octocat" },
@@ -51,28 +47,6 @@ func (m *mockKeyring) Set(_ string, _ *keyring.AccessTokenKey, _ *keyring.Access
 	return m.err
 }
 
-type mockAppStore struct {
-	app *keyring.App
-	err error
-}
-
-func (m *mockAppStore) Get(_ string, _ int) (*keyring.App, error) {
-	return m.app, m.err
-}
-
-func (m *mockAppStore) Set(_ string, _ int, _ *keyring.App) error {
-	return m.err
-}
-
-type mockPasswordReader struct {
-	password string
-	err      error
-}
-
-func (m *mockPasswordReader) Read(_ context.Context, _ *slog.Logger, _ *config.App) (string, error) {
-	return m.password, m.err
-}
-
 type mockConfigReader struct {
 	err error
 }
@@ -81,16 +55,10 @@ func (m *mockConfigReader) Read(cfg *config.Config, configFilePath string) error
 	if m.err != nil {
 		return m.err
 	}
-	// Create a mock config with a test user and app
-	cfg.Users = []*config.User{
+	cfg.Apps = []*config.App{
 		{
-			Login: "testuser",
-			Apps: []*config.App{
-				{
-					Name:  "test-app",
-					AppID: 123,
-				},
-			},
+			Name:     "test-app",
+			ClientID: "xxx",
 		},
 	}
 	return nil
@@ -221,8 +189,6 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("token creation failed"),
 				}
 				input.Keyring = &mockKeyring{}
-				input.AppStore = &mockAppStore{}
-				input.ClientIDReader = &mockPasswordReader{}
 				input.Now = func() time.Time {
 					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 				}
