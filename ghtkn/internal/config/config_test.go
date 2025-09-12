@@ -204,7 +204,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 					{
 						Name:     "test-app",
 						ClientID: "xxx",
-							},
+					},
 				},
 			},
 			wantErr: false,

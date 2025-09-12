@@ -10,9 +10,6 @@
         },
         "client_id": {
           "type": "string"
-        },
-        "default": {
-          "type": "boolean"
         }
       },
       "additionalProperties": false,
