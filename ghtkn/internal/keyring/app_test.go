@@ -1,27 +1,14 @@
 package keyring_test
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 )
 
-// TestNewAppStore tests the NewAppStore function.
-func TestNewAppStore(t *testing.T) {
-	t.Parallel()
-
-	input := &keyring.Input{
-		API: newMockBackend(nil),
-	}
-
-	store := keyring.NewAppStore(input)
-	if store == nil {
-		t.Error("NewAppStore() returned nil")
-	}
-}
-
-// TestAppStore_Get tests the Get method of AppStore.
-func TestAppStore_Get(t *testing.T) {
+func TestKeyring_GetApp(t *testing.T) {
 	t.Parallel()
 
 	service := "test-service"
@@ -56,15 +43,17 @@ func TestAppStore_Get(t *testing.T) {
 		},
 	}
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			store := keyring.NewAppStore(&keyring.Input{
+			store := keyring.New(&keyring.Input{
 				API: newMockBackend(tt.secrets),
 			})
 
-			got, err := store.Get(service, appID)
+			got, err := store.GetApp(logger, service, appID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -90,7 +79,7 @@ func TestAppStore_Get(t *testing.T) {
 }
 
 // TestAppStore_Set tests the Set method of AppStore.
-func TestAppStore_Set(t *testing.T) {
+func TestKeyring_SetApp(t *testing.T) {
 	t.Parallel()
 
 	service := "test-service"
@@ -99,18 +88,20 @@ func TestAppStore_Set(t *testing.T) {
 		ClientID: "test-client-id-456",
 	}
 
-	store := keyring.NewAppStore(&keyring.Input{
+	store := keyring.New(&keyring.Input{
 		API: newMockBackend(nil),
 	})
 
-	err := store.Set(service, appID, app)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	err := store.SetApp(logger, service, appID, app)
 	if err != nil {
 		t.Errorf("Set() error = %v", err)
 		return
 	}
 
 	// Verify the app was stored correctly
-	got, err := store.Get(service, appID)
+	got, err := store.GetApp(logger, service, appID)
 	if err != nil {
 		t.Errorf("Get() after Set() error = %v", err)
 		return

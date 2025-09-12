@@ -61,7 +61,7 @@ func (tm *TokenManager) SetApp(ctx context.Context, logger *slog.Logger, input *
 		ClientID: strings.TrimSpace(string(cID)),
 	}
 	// Store the client id in keyring
-	if err := tm.input.AppStore.Set(keyringService, appConfig.AppID, app); err != nil {
+	if err := tm.input.Keyring.SetApp(logger, keyringService, appConfig.AppID, app); err != nil {
 		return fmt.Errorf("store client id in keyring: %w", err)
 	}
 	return nil

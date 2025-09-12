@@ -111,10 +111,11 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 
 	if changed {
 		// Store the token in keyring
-		if err := tm.input.Keyring.Set(keyringService, atKey, &keyring.AccessToken{
+		if err := tm.input.Keyring.SetAccessToken(logger, keyringService, atKey, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
+			ClientID:       token.ClientID,
 		}); err != nil {
 			return token, app, ErrStoreToken
 		}
@@ -158,7 +159,7 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 			ClientID: strings.TrimSpace(string(cID)),
 		}
 		// Store the client id in keyring
-		if err := tm.input.AppStore.Set(input.KeyringService, input.App.AppID, app); err != nil {
+		if err := tm.input.Keyring.SetApp(logger, input.KeyringService, input.App.AppID, app); err != nil {
 			return nil, false, fmt.Errorf("store client id in keyring: %w", err)
 		}
 	}
@@ -180,6 +181,7 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 	return &keyring.AccessToken{
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
+		ClientID:       clientID,
 	}, nil
 }
 
@@ -187,7 +189,7 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
 func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService string, key *keyring.AccessTokenKey, minExpiration time.Duration) *keyring.AccessToken {
 	// Get an access token from keyring
-	tk, err := tm.input.Keyring.Get(keyringService, key)
+	tk, err := tm.input.Keyring.GetAccessToken(logger, keyringService, key)
 	if err != nil {
 		tm.input.Logger.FailedToGetAccessTokenFromKeyring(logger, err)
 		return nil
@@ -206,7 +208,7 @@ func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringSe
 }
 
 func (tm *TokenManager) getAppFromKeyring(logger *slog.Logger, keyringService string, appID int) *keyring.App {
-	app, err := tm.input.AppStore.Get(keyringService, appID)
+	app, err := tm.input.Keyring.GetApp(logger, keyringService, appID)
 	if err != nil {
 		tm.input.Logger.FailedToGetAppFromKeyring(logger, err)
 		return nil

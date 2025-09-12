@@ -26,8 +26,7 @@ func newMockInput() *api.Input {
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
 		},
-		Keyring:  &mockKeyring{},
-		AppStore: &mockAppStore{},
+		Keyring: &mockKeyring{},
 		ClientIDReader: &mockPasswordReader{
 			password: "test-client-id",
 		},
@@ -40,32 +39,28 @@ func newMockInput() *api.Input {
 
 type mockKeyring struct {
 	token *keyring.AccessToken
+	app   *keyring.App
 	exist bool
 	err   error
 }
 
-func (m *mockKeyring) Get(_ string, _ *keyring.AccessTokenKey) (*keyring.AccessToken, error) {
+func (m *mockKeyring) GetAccessToken(_ *slog.Logger, _ string, _ *keyring.AccessTokenKey) (*keyring.AccessToken, error) {
 	return m.token, m.err
 }
 
-func (m *mockKeyring) Set(_ string, _ *keyring.AccessTokenKey, _ *keyring.AccessToken) error {
+func (m *mockKeyring) SetAccessToken(_ *slog.Logger, _ string, _ *keyring.AccessTokenKey, _ *keyring.AccessToken) error {
 	return m.err
 }
 
-func (m *mockKeyring) Delete(_ string, _ *keyring.AccessTokenKey) (bool, error) {
+func (m *mockKeyring) DeleteAccessToken(_ string, _ *keyring.AccessTokenKey) (bool, error) {
 	return m.exist, m.err
 }
 
-type mockAppStore struct {
-	app *keyring.App
-	err error
-}
-
-func (m *mockAppStore) Get(_ string, _ int) (*keyring.App, error) {
+func (m *mockKeyring) GetApp(_ *slog.Logger, _ string, _ int) (*keyring.App, error) {
 	return m.app, m.err
 }
 
-func (m *mockAppStore) Set(_ string, _ int, _ *keyring.App) error {
+func (m *mockKeyring) SetApp(_ *slog.Logger, _ string, _ int, _ *keyring.App) error {
 	return m.err
 }
 
@@ -226,7 +221,6 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("token creation failed"),
 				}
 				input.Keyring = &mockKeyring{}
-				input.AppStore = &mockAppStore{}
 				input.ClientIDReader = &mockPasswordReader{}
 				input.Now = func() time.Time {
 					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)

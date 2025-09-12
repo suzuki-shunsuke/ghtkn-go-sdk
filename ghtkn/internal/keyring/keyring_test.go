@@ -2,6 +2,8 @@
 package keyring_test
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -184,7 +186,7 @@ func TestFormatDate(t *testing.T) {
 }
 
 // TestKeyring_Get tests the Get method of Keyring.
-func TestKeyring_Get(t *testing.T) {
+func TestKeyring_GetAccessToken(t *testing.T) {
 	t.Parallel()
 
 	service := "test-service"
@@ -224,6 +226,8 @@ func TestKeyring_Get(t *testing.T) {
 		},
 	}
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -232,7 +236,7 @@ func TestKeyring_Get(t *testing.T) {
 				API: newMockBackend(tt.secrets),
 			})
 
-			got, err := kr.Get(service, key)
+			got, err := kr.GetAccessToken(logger, service, key)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
 				return

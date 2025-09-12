@@ -34,9 +34,8 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	DeviceFlow     DeviceFlow // Client for creating GitHub App tokens
-	Keyring        Keyring    // Keyring for token storage
-	AppStore       AppStore
+	DeviceFlow     DeviceFlow       // Client for creating GitHub App tokens
+	Keyring        Keyring          // Keyring for token storage
 	Now            func() time.Time // Current time provider for testing
 	Logger         *log.Logger
 	ConfigReader   ConfigReader
@@ -59,7 +58,6 @@ func NewInput() *Input {
 	return &Input{
 		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
 		Keyring:      keyring.New(ki),
-		AppStore:     keyring.NewAppStore(ki),
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(afero.NewOsFs()),
@@ -88,14 +86,11 @@ type DeviceFlow interface {
 
 // Keyring defines the interface for storing and retrieving tokens from the system keyring.
 type Keyring interface {
-	Get(service string, key *keyring.AccessTokenKey) (*keyring.AccessToken, error)
-	Set(service string, key *keyring.AccessTokenKey, token *keyring.AccessToken) error
-	Delete(service string, key *keyring.AccessTokenKey) (bool, error)
-}
-
-type AppStore interface {
-	Get(service string, appID int) (*keyring.App, error)
-	Set(service string, appID int, app *keyring.App) error
+	GetAccessToken(logger *slog.Logger, service string, key *keyring.AccessTokenKey) (*keyring.AccessToken, error)
+	SetAccessToken(logger *slog.Logger, service string, key *keyring.AccessTokenKey, token *keyring.AccessToken) error
+	DeleteAccessToken(service string, key *keyring.AccessTokenKey) (bool, error)
+	GetApp(logger *slog.Logger, service string, appID int) (*keyring.App, error)
+	SetApp(logger *slog.Logger, service string, appID int, app *keyring.App) error
 }
 
 // ConfigReader defines the interface for reading configuration files.
