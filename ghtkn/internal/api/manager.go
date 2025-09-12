@@ -84,8 +84,8 @@ type DeviceFlow interface {
 
 // Keyring defines the interface for storing and retrieving tokens from the system keyring.
 type Keyring interface {
-	Get(service string, key *keyring.AccessTokenKey) (*keyring.AccessToken, error)
-	Set(service string, key *keyring.AccessTokenKey, token *keyring.AccessToken) error
+	Get(service, key string) (*keyring.AccessToken, error)
+	Set(service, key string, token *keyring.AccessToken) error
 }
 
 // ConfigReader defines the interface for reading configuration files.

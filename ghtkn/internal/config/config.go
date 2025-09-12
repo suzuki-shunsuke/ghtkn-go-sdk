@@ -12,10 +12,9 @@ import (
 )
 
 // Config represents the main configuration structure for ghtkn.
-// It contains settings for persistence and a list of GitHub Apps.
+// It contains settings a list of GitHub Apps.
 type Config struct {
-	UseKeyring bool   `json:"use_keyring" yaml:"use_keyring"`
-	Apps       []*App `json:"apps"`
+	Apps []*App `json:"apps"`
 }
 
 // Validate checks if the Config is valid.

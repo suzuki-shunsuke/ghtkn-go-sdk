@@ -47,6 +47,7 @@ type (
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
 	DefaultBrowser     = browser.Browser
 	ClientIDReader     = api.PasswordReader
+	InputGet           = api.InputGet
 )
 
 // GetConfigPath returns the default configuration file path for ghtkn.

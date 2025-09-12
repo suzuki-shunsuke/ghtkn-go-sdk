@@ -24,9 +24,6 @@
     },
     "Config": {
       "properties": {
-        "use_keyring": {
-          "type": "boolean"
-        },
         "apps": {
           "items": {
             "$ref": "#/$defs/App"
@@ -37,7 +34,6 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "use_keyring",
         "apps"
       ]
     }

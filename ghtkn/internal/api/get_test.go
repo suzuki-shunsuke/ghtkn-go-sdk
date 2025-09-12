@@ -39,11 +39,11 @@ type mockKeyring struct {
 	err   error
 }
 
-func (m *mockKeyring) Get(_ string, _ *keyring.AccessTokenKey) (*keyring.AccessToken, error) {
+func (m *mockKeyring) Get(_, _ string) (*keyring.AccessToken, error) {
 	return m.token, m.err
 }
 
-func (m *mockKeyring) Set(_ string, _ *keyring.AccessTokenKey, _ *keyring.AccessToken) error {
+func (m *mockKeyring) Set(_, _ string, _ *keyring.AccessToken) error {
 	return m.err
 }
 
