@@ -10,6 +10,9 @@
         },
         "client_id": {
           "type": "string"
+        },
+        "git_owner": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
