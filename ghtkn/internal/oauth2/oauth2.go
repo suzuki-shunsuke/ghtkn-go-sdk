@@ -43,13 +43,13 @@ func (ks *TokenSource) Token() (*oauth2.Token, error) {
 	if token != nil {
 		return token, nil
 	}
-	
+
 	// Get new token from client
 	s, err := ks.client.Get()
 	if err != nil {
 		return nil, fmt.Errorf("get a GitHub Access token from keyring: %w", err)
 	}
-	
+
 	// Create OAuth2 token and cache it (write lock)
 	token = &oauth2.Token{
 		AccessToken: s,
