@@ -213,7 +213,7 @@ func (tm *TokenManager) readConfig(cfg *config.Config, configFilePath string) er
 	if err := tm.input.ConfigReader.Read(cfg, configFilePath); err != nil {
 		return fmt.Errorf("read config: %w", slogerr.With(err, "config", configFilePath))
 	}
-	if err := cfg.Validate(); err != nil {
+	if err := config.Validate(cfg); err != nil {
 		return fmt.Errorf("validate config: %w", err)
 	}
 	return nil

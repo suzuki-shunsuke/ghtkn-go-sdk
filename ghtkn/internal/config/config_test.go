@@ -7,7 +7,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
-func TestConfig_Validate(t *testing.T) { //nolint:funlen
+func TestValidate(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tests := []struct {
@@ -157,7 +157,7 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := tt.config.Validate()
+			err := config.Validate(tt.config)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -176,7 +176,7 @@ func TestNewReader(t *testing.T) {
 	}
 }
 
-func TestApp_Validate(t *testing.T) {
+func TestValidateApp(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -222,7 +222,7 @@ func TestApp_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := tt.app.Validate()
+			err := config.ValidateApp(tt.app)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("App.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}

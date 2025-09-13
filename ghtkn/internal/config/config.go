@@ -20,17 +20,17 @@ type Config struct {
 // Validate checks if the Config is valid.
 // It ensures the config is not nil and contains at least one app.
 // It also validates each app in the configuration.
-func (c *Config) Validate() error {
-	if c == nil {
+func Validate(cfg *Config) error {
+	if cfg == nil {
 		return errors.New("config is required")
 	}
-	if len(c.Apps) == 0 {
+	if len(cfg.Apps) == 0 {
 		return errors.New("apps is required")
 	}
 	names := map[string]struct{}{}
 	owners := map[string]struct{}{}
-	for _, app := range c.Apps {
-		if err := app.Validate(); err != nil {
+	for _, app := range cfg.Apps {
+		if err := ValidateApp(app); err != nil {
 			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
 		}
 		if _, ok := names[app.Name]; ok {
@@ -57,7 +57,7 @@ type App struct {
 
 // Validate checks if the App configuration is valid.
 // It ensures both Name and ClientID fields are present.
-func (app *App) Validate() error {
+func ValidateApp(app *App) error {
 	if app.Name == "" {
 		return errors.New("name is required")
 	}
