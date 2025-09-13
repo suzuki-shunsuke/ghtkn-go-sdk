@@ -27,5 +27,5 @@ func (tm *TokenManager) TokenSource(logger *slog.Logger, input *InputGet) *oauth
 		logger: logger,
 		input:  input,
 	}
-	return oauth2.NewTokenSource(logger, input.KeyringService, client)
+	return oauth2.NewTokenSource(input.KeyringService, client)
 }
