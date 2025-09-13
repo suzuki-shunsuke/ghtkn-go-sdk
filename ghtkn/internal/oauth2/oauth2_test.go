@@ -154,7 +154,7 @@ func TestTokenSource_Token_ConcurrentAccess(t *testing.T) {
 	errors := make(chan error, numGoroutines)
 
 	// Launch multiple goroutines to test concurrent access
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			token, err := ts.Token()
 			if err != nil {
@@ -167,7 +167,7 @@ func TestTokenSource_Token_ConcurrentAccess(t *testing.T) {
 
 	// Collect results
 	var tokens []*oauth2lib.Token
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		select {
 		case token := <-results:
 			tokens = append(tokens, token)
