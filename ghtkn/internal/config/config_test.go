@@ -510,7 +510,7 @@ func TestConfig_SelectApp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := tt.config.SelectApp(tt.key, tt.owner)
+			got := config.SelectApp(tt.config, tt.key, tt.owner)
 
 			if tt.expected == nil {
 				if got != nil {

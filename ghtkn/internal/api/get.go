@@ -78,7 +78,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	logger.Debug("selecting app", "app_name", appName, "git_owner", input.AppOwner)
 
 	// Get the app config
-	app := cfg.SelectApp(appName, input.AppOwner)
+	app := config.SelectApp(cfg, appName, input.AppOwner)
 	if app == nil {
 		return nil, nil, errors.New("app is not found in the config")
 	}

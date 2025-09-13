@@ -6,11 +6,11 @@ package config
 //  2. If key is provided and matches an app name, returns that app
 //  3. If no key match or key is empty, returns the first app in the list
 //  4. Returns nil if config is nil or has no apps
-func (c *Config) SelectApp(key, owner string) *App {
-	if c == nil || len(c.Apps) == 0 {
+func SelectApp(cfg *Config, key, owner string) *App {
+	if cfg == nil || len(cfg.Apps) == 0 {
 		return nil
 	}
-	for _, a := range c.Apps {
+	for _, a := range cfg.Apps {
 		if owner != "" && a.GitOwner == owner {
 			return a
 		}
@@ -18,5 +18,5 @@ func (c *Config) SelectApp(key, owner string) *App {
 			return a
 		}
 	}
-	return c.Apps[0]
+	return cfg.Apps[0]
 }
