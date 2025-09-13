@@ -94,6 +94,63 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 			},
 			wantErr: true,
 		},
+		{
+			name: "duplicate app names",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "duplicate-app",
+						ClientID: "xxx",
+					},
+					{
+						Name:     "duplicate-app",
+						ClientID: "yyy",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "duplicate git owners",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "app1",
+						ClientID: "xxx",
+						GitOwner: "same-owner",
+					},
+					{
+						Name:     "app2",
+						ClientID: "yyy",
+						GitOwner: "same-owner",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid config with unique git owners",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "app1",
+						ClientID: "xxx",
+						GitOwner: "owner1",
+					},
+					{
+						Name:     "app2",
+						ClientID: "yyy",
+						GitOwner: "owner2",
+					},
+					{
+						Name:     "app3",
+						ClientID: "zzz",
+						// GitOwner is optional, so it can be empty
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

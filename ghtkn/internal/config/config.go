@@ -27,9 +27,21 @@ func (c *Config) Validate() error {
 	if len(c.Apps) == 0 {
 		return errors.New("apps is required")
 	}
+	names := map[string]struct{}{}
+	owners := map[string]struct{}{}
 	for _, app := range c.Apps {
 		if err := app.Validate(); err != nil {
 			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
+		}
+		if _, ok := names[app.Name]; ok {
+			return fmt.Errorf("app name must be unique: %s", app.Name)
+		}
+		names[app.Name] = struct{}{}
+		if app.GitOwner != "" {
+			if _, ok := owners[app.GitOwner]; ok {
+				return fmt.Errorf("app git_owner must be unique: %s", app.GitOwner)
+			}
+			owners[app.GitOwner] = struct{}{}
 		}
 	}
 	return nil
