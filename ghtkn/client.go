@@ -21,7 +21,6 @@ func New() *Client {
 
 type (
 	AccessToken        = keyring.AccessToken
-	AppConfig          = config.App
 	Config             = config.Config
 	Logger             = log.Logger
 	DeviceCodeUI       = deviceflow.DeviceCodeUI
