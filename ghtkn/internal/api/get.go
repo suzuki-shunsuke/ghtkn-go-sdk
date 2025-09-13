@@ -71,6 +71,8 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 		appName = tm.input.Getenv("GHTKN_APP")
 	}
 
+	logger.Debug("selecting app", "app_name", appName, "git_owner", input.AppOwner)
+
 	// Get the app config
 	app := cfg.SelectApp(appName, input.AppOwner)
 	if app == nil {
