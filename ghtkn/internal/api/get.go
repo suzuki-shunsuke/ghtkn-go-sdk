@@ -28,6 +28,7 @@ type InputGet struct {
 // SetLogger updates the logger instance used by the token manager.
 // It propagates the logger to both the token manager and device flow components.
 func (tm *TokenManager) SetLogger(logger *log.Logger) {
+	log.InitLogger(logger)
 	tm.input.Logger = logger
 	tm.input.DeviceFlow.SetLogger(logger)
 }
@@ -48,6 +49,9 @@ func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
+	if input == nil {
+		input = &InputGet{}
+	}
 	cfg := &config.Config{}
 
 	// Get a config file path

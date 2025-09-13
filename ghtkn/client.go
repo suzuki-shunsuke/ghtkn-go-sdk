@@ -4,8 +4,6 @@
 package ghtkn
 
 import (
-	"context"
-	"log/slog"
 	"os"
 	"runtime"
 
@@ -17,24 +15,9 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
-// Client manages the process of retrieving GitHub App access tokens.
-// It coordinates between configuration reading, token caching, and token generation.
-type Client struct {
-	tm tokenManager
-}
-
 // New creates a new Client instance with the provided input configuration.
 func New() *Client {
-	return &Client{
-		tm: api.New(api.NewInput()),
-	}
-}
-
-type tokenManager interface {
-	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, *config.App, error)
-	SetLogger(logger *log.Logger)
-	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
-	SetBrowser(browser deviceflow.Browser)
+	return api.New(api.NewInput())
 }
 
 type (
@@ -48,6 +31,7 @@ type (
 	DefaultBrowser     = browser.Browser
 	ClientIDReader     = api.PasswordReader
 	InputGet           = api.InputGet
+	Client             = api.TokenManager
 )
 
 // GetConfigPath returns the default configuration file path for ghtkn.
