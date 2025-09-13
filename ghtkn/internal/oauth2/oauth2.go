@@ -13,7 +13,7 @@ import (
 // It provides thread-safe caching of tokens and retrieves them from a client when needed.
 type TokenSource struct {
 	token  *oauth2.Token // Cached OAuth2 token
-	mutex  *sync.RWMutex // Mutex for thread-safe access to the token
+	mutex  *sync.Mutex   // Mutex for thread-safe access to the token
 	client Client        // Client interface for retrieving access tokens
 }
 
@@ -27,7 +27,7 @@ type Client interface {
 // The token source will use the client to retrieve access tokens when needed.
 func NewTokenSource(client Client) *TokenSource {
 	return &TokenSource{
-		mutex:  &sync.RWMutex{},
+		mutex:  &sync.Mutex{},
 		client: client,
 	}
 }
@@ -37,9 +37,9 @@ func NewTokenSource(client Client) *TokenSource {
 // The token retrieval is thread-safe and caches the result for subsequent calls.
 func (ks *TokenSource) Token() (*oauth2.Token, error) {
 	// Check if we have a cached token (read lock)
-	ks.mutex.RLock()
+	ks.mutex.Lock()
+	defer ks.mutex.Unlock()
 	token := ks.token
-	ks.mutex.RUnlock()
 	if token != nil {
 		return token, nil
 	}
@@ -54,8 +54,6 @@ func (ks *TokenSource) Token() (*oauth2.Token, error) {
 	token = &oauth2.Token{
 		AccessToken: s,
 	}
-	ks.mutex.Lock()
 	ks.token = token
-	ks.mutex.Unlock()
 	return token, nil
 }
