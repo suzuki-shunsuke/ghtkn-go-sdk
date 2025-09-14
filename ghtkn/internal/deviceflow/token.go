@@ -57,7 +57,7 @@ func NewInput() *Input {
 		Browser:      &browser.Browser{},
 		NewTicker:    time.NewTicker,
 		Logger:       log.NewLogger(),
-		DeviceCodeUI: NewDeviceCodeUI(os.Stdin, os.Stderr),
+		DeviceCodeUI: NewDeviceCodeUI(os.Stdin, os.Stderr, &SimpleWaiter{}),
 	}
 }
 

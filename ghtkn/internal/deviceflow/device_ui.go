@@ -7,6 +7,8 @@ import (
 	"io"
 	"log/slog"
 	"time"
+
+	"golang.org/x/term"
 )
 
 var _ DeviceCodeUI = &SimpleDeviceCodeUI{}
@@ -24,22 +26,18 @@ type DeviceCodeUI interface {
 type SimpleDeviceCodeUI struct {
 	stdin  io.Reader // Input source for reading user interaction (typically os.Stdin)
 	stderr io.Writer // Output destination for displaying messages (typically os.Stderr)
+	waiter Waiter    // Waiter for handling wait operations, can be customized for testing
 }
 
 // NewDeviceCodeUI creates a new SimpleDeviceCodeUI instance.
 // It takes stdin for user input and stderr for output messages.
-func NewDeviceCodeUI(stdin io.Reader, stderr io.Writer) *SimpleDeviceCodeUI {
+func NewDeviceCodeUI(stdin io.Reader, stderr io.Writer, waiter Waiter) *SimpleDeviceCodeUI {
 	return &SimpleDeviceCodeUI{
 		stdin:  stdin,
 		stderr: stderr,
+		waiter: waiter,
 	}
 }
-
-const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
-Copy your one-time code: %s
-This code is valid until %s
-Press Enter to open %s in your browser...
-`
 
 // Show displays the device flow information to the user and waits for Enter key press.
 // It shows the user code, expiration time, and verification URL.
@@ -47,25 +45,41 @@ Press Enter to open %s in your browser...
 // Note that it exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
 // In case of Git Credential Helper stdin is not a terminal, so it exits immediately.
 func (d *SimpleDeviceCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error {
-	fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
-	inputCh := make(chan error, 1)
-
-	go func() {
-		// Wait until Enter is pressed
-		// Note that this exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
-		// In case of Git Credential Helper stdin is not a terminal, so this exits immediately.
-		scanner := bufio.NewScanner(d.stdin)
-		if scanner.Scan() {
-			inputCh <- scanner.Err()
+	if term.IsTerminal(0) {
+		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
+Copy your one-time code: %s
+This code is valid until %s
+Press Enter to open %s in your browser...
+`
+		fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
+		inputCh := make(chan error, 1)
+		go func() {
+			// Wait until Enter is pressed
+			scanner := bufio.NewScanner(d.stdin)
+			if scanner.Scan() {
+				inputCh <- scanner.Err()
+			}
+			close(inputCh)
+		}()
+		select {
+		case <-ctx.Done():
+			fmt.Fprintln(d.stderr, "Cancelled") //nolint:errcheck
+			return ctx.Err()
+		case err := <-inputCh:
+			return err
 		}
-		close(inputCh)
-	}()
-
-	select {
-	case <-ctx.Done():
-		fmt.Fprintln(d.stderr, "Cancelled") //nolint:errcheck
-		return ctx.Err()
-	case err := <-inputCh:
-		return err
 	}
+	const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
+Copy your one-time code: %s
+This code is valid until %s
+%s will open automatically after a few seconds...
+`
+	fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
+	// If stdin is not a terminal, we cannot wait for user input.
+	// So, we just wait for a few seconds to show the message and return.
+	// In case of Git Credential Helper stdin is not a terminal.
+	if err := d.waiter.Wait(ctx, 5*time.Second); err != nil {
+		return err //nolint:wrapcheck
+	}
+	return nil
 }
