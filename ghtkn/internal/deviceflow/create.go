@@ -49,7 +49,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		}
 	}
 
-	token, err := c.pollForAccessToken(ctx, clientID, deviceCode)
+	token, err := c.pollForAccessToken(ctx, logger, clientID, deviceCode)
 	if err != nil {
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
@@ -114,7 +114,7 @@ const additionalInterval = 5 * time.Second
 // pollForAccessToken continuously polls GitHub for an access token.
 // It respects the polling interval and handles authorization pending and slow down responses.
 // The polling continues until the device code expires or the user completes authentication.
-func (c *Client) pollForAccessToken(ctx context.Context, clientID string, deviceCode *DeviceCodeResponse) (*AccessTokenResponse, error) {
+func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *DeviceCodeResponse) (*AccessTokenResponse, error) {
 	interval := time.Duration(deviceCode.Interval) * time.Second
 	if interval < additionalInterval {
 		interval = additionalInterval
@@ -137,9 +137,11 @@ func (c *Client) pollForAccessToken(ctx context.Context, clientID string, device
 			token, err := c.checkAccessToken(ctx, clientID, deviceCode.DeviceCode)
 			if err != nil {
 				if err.Error() == "authorization_pending" {
+					logger.Debug("device flow's authorization is still pending")
 					continue
 				}
 				if err.Error() == "slow_down" {
+					logger.Debug("device flow's polling was too frequent, slowing down")
 					ticker.Reset(interval + 5*time.Second)
 					continue
 				}

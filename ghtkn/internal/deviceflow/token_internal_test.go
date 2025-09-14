@@ -38,8 +38,16 @@ func newMockInput() *Input {
 			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
 		},
 		Logger:       log.NewLogger(),
-		DeviceCodeUI: NewDeviceCodeUI(strings.NewReader("\n"), io.Discard),
+		DeviceCodeUI: NewDeviceCodeUI(strings.NewReader("\n"), io.Discard, &mockWaiter{}),
 	}
+}
+
+type mockWaiter struct {
+	err error
+}
+
+func (w *mockWaiter) Wait(ctx context.Context, duration time.Duration) error {
+	return w.err
 }
 
 func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
@@ -449,8 +457,9 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 				ctx, cancel = context.WithTimeout(ctx, tt.timeout)
 				defer cancel()
 			}
+			logger := slog.New(slog.DiscardHandler)
 
-			got, err := client.pollForAccessToken(ctx, tt.clientID, tt.deviceCode)
+			got, err := client.pollForAccessToken(ctx, logger, tt.clientID, tt.deviceCode)
 			if err != nil {
 				if !tt.wantErr {
 					t.Fatalf("unexpected error: %v", err)
