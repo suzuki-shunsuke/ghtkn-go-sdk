@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v78/github"
 	"golang.org/x/oauth2"
 )
 
