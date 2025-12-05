@@ -8,7 +8,7 @@ require (
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/go-exec v0.0.1
-	github.com/suzuki-shunsuke/slog-error v0.2.0
+	github.com/suzuki-shunsuke/slog-error v0.2.1
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/oauth2 v0.31.0
 	golang.org/x/sys v0.38.0
