@@ -463,7 +463,7 @@ func TestConfig_SelectApp(t *testing.T) {
 			},
 		},
 		{
-			name: "select first when no match",
+			name: "return nil when key does not match",
 			config: &config.Config{
 				Apps: []*config.App{
 					{
@@ -476,12 +476,9 @@ func TestConfig_SelectApp(t *testing.T) {
 					},
 				},
 			},
-			key:   "nonexistent",
-			owner: "",
-			expected: &config.App{
-				Name:     "app1",
-				ClientID: "xxx",
-			},
+			key:      "nonexistent",
+			owner:    "",
+			expected: nil,
 		},
 		{
 			name: "select first when both key and owner are empty",

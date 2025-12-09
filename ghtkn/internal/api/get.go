@@ -82,6 +82,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	if app == nil {
 		return nil, nil, errors.New("app is not found in the config")
 	}
+	logger = logger.With("app_name", app.Name)
 
 	// Get the keyring service name
 	keyringService := input.KeyringService
@@ -90,13 +91,10 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 	}
 
 	// Debug Log
-	logFields := []any{"app_name", app.Name}
 	logger.Debug(
 		"getting or creating a GitHub App User Access Token",
 		"min_expiration", input.MinExpiration,
 	)
-
-	logger = logger.With(logFields...)
 
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		KeyringService: keyringService,
