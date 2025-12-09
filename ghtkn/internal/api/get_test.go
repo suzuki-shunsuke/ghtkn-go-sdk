@@ -29,7 +29,7 @@ func newMockInput() *api.Input {
 		Keyring:      &mockKeyring{},
 		Logger:       log.NewLogger(),
 		ConfigReader: &mockConfigReader{},
-		Getenv:       func(key string) string { return "octocat" },
+		Getenv:       func(key string) string { return "" },
 		NewGitHub:    mockNewGitHub,
 	}
 }
@@ -114,7 +114,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{},
+			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "cached-token",
@@ -143,7 +143,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{},
+			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
 			wantToken: &keyring.AccessToken{
 				AccessToken:    "new-token",
@@ -164,7 +164,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{},
+			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: true,
 		},
 	}
