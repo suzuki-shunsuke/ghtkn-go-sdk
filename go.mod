@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v80 v80.0.0
+	github.com/google/go-github/v81 v81.0.0
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/go-exec v0.0.1
