@@ -17,7 +17,6 @@ require (
 )
 
 require (
-	al.essio.dev/pkg/shellescape v1.5.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
