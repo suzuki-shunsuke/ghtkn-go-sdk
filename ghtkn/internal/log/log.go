@@ -25,6 +25,10 @@ type Logger struct {
 	FailedToGetAppFromKeyring func(logger *slog.Logger, err error)
 	// AppIsNotFoundInKeyring logs when no app is found in the keyring.
 	AppIsNotFoundInKeyring func(logger *slog.Logger)
+	// FailedToWriteDeviceCodeToTemporaryFile logs when the device code cannot be written to a temporary file.
+	FailedToWriteDeviceCodeToTemporaryFile func(logger *slog.Logger, err error)
+	// FailedToRemoveDeviceCodeFile logs when the device code file cannot be removed.
+	FailedToRemoveDeviceCodeFile func(logger *slog.Logger, err error)
 }
 
 // NewLogger creates a new Logger instance with default logging functions.
@@ -48,6 +52,12 @@ func NewLogger() *Logger {
 		},
 		AppIsNotFoundInKeyring: func(logger *slog.Logger) {
 			logger.Debug("app is not found in keyring")
+		},
+		FailedToWriteDeviceCodeToTemporaryFile: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to write a device code to a temporary file")
+		},
+		FailedToRemoveDeviceCodeFile: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to remove a temporary device code file")
 		},
 	}
 }

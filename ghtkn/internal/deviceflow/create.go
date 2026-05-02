@@ -9,9 +9,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/store"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -40,6 +42,16 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	}
 
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
+
+	// Output the device code to a temporary file
+	codeFile, err := c.input.DeviceCodeStore.Write(&store.Code{
+		Code:     deviceCode.DeviceCode,
+		ClientID: clientID,
+	})
+	if err != nil {
+		c.input.Logger.FailedToWriteDeviceCodeToTemporaryFile(logger, err)
+	}
+
 	if err := c.input.DeviceCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
 		return nil, fmt.Errorf("show device code: %w", err)
 	}
@@ -53,6 +65,14 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	if err != nil {
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
+
+	if err := c.input.DeviceCodeStore.Remove(codeFile); err != nil {
+		// Ignore the error if the file does not exist because it may have already been removed by `ghtkn get-code`
+		if !os.IsNotExist(err) {
+			c.input.Logger.FailedToRemoveDeviceCodeFile(logger, err)
+		}
+	}
+
 	now := c.input.Now()
 
 	return &AccessToken{

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/store"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
@@ -31,13 +32,19 @@ type Browser interface {
 // It allows for dependency injection and makes testing easier by providing
 // customizable implementations of external dependencies.
 type Input struct {
-	HTTPClient   *http.Client                       // HTTP client for API requests
-	Now          func() time.Time                   // Function to get current time (for testing)
-	Stderr       io.Writer                          // Writer for error output
-	Browser      Browser                            // Interface for opening URLs in browser
-	NewTicker    func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
-	Logger       *log.Logger                        // Logger for debugging and info messages
-	DeviceCodeUI DeviceCodeUI                       // UI for displaying device flow information
+	HTTPClient      *http.Client                       // HTTP client for API requests
+	Now             func() time.Time                   // Function to get current time (for testing)
+	Stderr          io.Writer                          // Writer for error output
+	Browser         Browser                            // Interface for opening URLs in browser
+	NewTicker       func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
+	Logger          *log.Logger                        // Logger for debugging and info messages
+	DeviceCodeUI    DeviceCodeUI                       // UI for displaying device flow information
+	DeviceCodeStore DeviceCodeStore                    // Interface for storing device codes
+}
+
+type DeviceCodeStore interface {
+	Write(code *store.Code) (string, error)
+	Remove(file string) error
 }
 
 // SetLogger updates the logger instance used by the client.
@@ -51,13 +58,14 @@ func (c *Client) SetLogger(logger *log.Logger) {
 // system stderr, real browser integration, and standard time functions.
 func NewInput() *Input {
 	return &Input{
-		HTTPClient:   http.DefaultClient,
-		Now:          time.Now,
-		Stderr:       os.Stderr,
-		Browser:      &browser.Browser{},
-		NewTicker:    time.NewTicker,
-		Logger:       log.NewLogger(),
-		DeviceCodeUI: NewDeviceCodeUI(os.Stdin, os.Stderr, &SimpleWaiter{}),
+		HTTPClient:      http.DefaultClient,
+		Now:             time.Now,
+		Stderr:          os.Stderr,
+		Browser:         &browser.Browser{},
+		NewTicker:       time.NewTicker,
+		Logger:          log.NewLogger(),
+		DeviceCodeUI:    NewDeviceCodeUI(os.Stdin, os.Stderr, &SimpleWaiter{}),
+		DeviceCodeStore: store.New(),
 	}
 }
 
