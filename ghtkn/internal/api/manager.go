@@ -41,7 +41,7 @@ type Input struct {
 	ConfigReader ConfigReader
 	Getenv       func(string) string
 	GOOS         string
-	NewGitHub    func(ctx context.Context, token string) GitHub
+	NewGitHub    func(ctx context.Context, token string) (GitHub, error)
 }
 
 // GitHub defines the interface for interacting with the GitHub API.
@@ -62,7 +62,7 @@ func NewInput() *Input {
 		ConfigReader: config.NewReader(afero.NewOsFs()),
 		Getenv:       os.Getenv,
 		GOOS:         runtime.GOOS,
-		NewGitHub: func(ctx context.Context, token string) GitHub {
+		NewGitHub: func(ctx context.Context, token string) (GitHub, error) {
 			return github.New(ctx, token)
 		},
 	}

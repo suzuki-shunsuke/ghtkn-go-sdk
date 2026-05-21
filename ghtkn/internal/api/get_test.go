@@ -73,12 +73,12 @@ func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
 	return m.user, m.err
 }
 
-func mockNewGitHub(_ context.Context, _ string) api.GitHub {
+func mockNewGitHub(_ context.Context, _ string) (api.GitHub, error) {
 	return &mockGitHub{
 		user: &github.User{
 			Login: "test-user",
 		},
-	}
+	}, nil
 }
 
 func TestTokenManager_Get(t *testing.T) {
