@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v87/github"
 	"golang.org/x/oauth2"
 )
 
@@ -23,12 +23,16 @@ type Client struct {
 
 // New creates a new GitHub API client authenticated with the provided access token.
 // The client is configured to use OAuth2 authentication for API requests.
-func New(ctx context.Context, token string) *Client {
-	return &Client{
-		users: github.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: token},
-		))).Users,
+func New(ctx context.Context, token string) (*Client, error) {
+	gh, err := github.NewClient(github.WithHTTPClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	))))
+	if err != nil {
+		return nil, fmt.Errorf("create a GitHub client: %w", err)
 	}
+	return &Client{
+		users: gh.Users,
+	}, nil
 }
 
 // GetUser retrieves the authenticated user's information from GitHub.
