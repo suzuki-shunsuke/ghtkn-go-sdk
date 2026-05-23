@@ -44,12 +44,16 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
 
 	// Output the device code to a temporary file
-	codeFile, err := c.input.DeviceCodeStore.Write(&store.Code{
-		Code:     deviceCode.DeviceCode,
-		ClientID: clientID,
-	})
-	if err != nil {
-		c.input.Logger.FailedToWriteDeviceCodeToTemporaryFile(logger, err)
+	var codeFile string
+	if c.input.UserCodeStore != nil {
+		cf, err := c.input.UserCodeStore.Write(&store.Code{
+			Code:     deviceCode.UserCode,
+			ClientID: clientID,
+		})
+		if err != nil {
+			c.input.Logger.FailedToWriteDeviceCodeToTemporaryFile(logger, err)
+		}
+		codeFile = cf
 	}
 
 	if err := c.input.DeviceCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
@@ -66,10 +70,12 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
 
-	if err := c.input.DeviceCodeStore.Remove(codeFile); err != nil {
-		// Ignore the error if the file does not exist because it may have already been removed by `ghtkn get-code`
-		if !os.IsNotExist(err) {
-			c.input.Logger.FailedToRemoveDeviceCodeFile(logger, err)
+	if c.input.UserCodeStore != nil && codeFile != "" {
+		if err := c.input.UserCodeStore.Remove(codeFile); err != nil {
+			// Ignore the error if the file does not exist because it may have already been removed by `ghtkn get-code`
+			if !os.IsNotExist(err) {
+				c.input.Logger.FailedToRemoveDeviceCodeFile(logger, err)
+			}
 		}
 	}
 
