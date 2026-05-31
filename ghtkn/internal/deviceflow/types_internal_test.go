@@ -35,7 +35,7 @@ func newMockInput() *Input {
 			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
 		},
 		Logger:        log.NewLogger(),
-		OnetimeCodeUI: NewOnetimeCodeUI(strings.NewReader("\n"), io.Discard, &mockWaiter{}),
+		OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), io.Discard, &mockWaiter{}),
 	}
 }
 

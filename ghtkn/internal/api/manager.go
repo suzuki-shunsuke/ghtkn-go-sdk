@@ -38,11 +38,11 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	DeviceFlow   DeviceFlow       // Client for creating GitHub App tokens
+	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
 	Keyring      Keyring          // Keyring for token storage
 	Now          func() time.Time // Current time provider for testing
 	Logger       *publog.Logger
-	ConfigReader ConfigReader
+	ConfigReader configReader
 	Getenv       func(string) string
 	GOOS         string
 	NewGitHub    func(ctx context.Context, token string) (GitHub, error)
@@ -78,8 +78,8 @@ func (i *Input) Validate() error {
 	return nil
 }
 
-// DeviceFlow defines the interface for creating GitHub App access tokens.
-type DeviceFlow interface {
+// deviceFlow defines the interface for creating GitHub App access tokens.
+type deviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
 	SetLogger(logger *publog.Logger)
 	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
@@ -92,7 +92,7 @@ type Keyring interface {
 	Set(service, key string, token *pubkeyring.AccessToken) error
 }
 
-// ConfigReader defines the interface for reading configuration files.
-type ConfigReader interface {
+// configReader defines the interface for reading configuration files.
+type configReader interface {
 	Read(cfg *pubconfig.Config, configFilePath string) error
 }

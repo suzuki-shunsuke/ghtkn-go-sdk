@@ -100,7 +100,7 @@ func TestController_createToken(t *testing.T) {
 	tests := []struct {
 		name     string
 		clientID string
-		client   DeviceFlow
+		client   deviceFlow
 		want     *pubkeyring.AccessToken
 		wantErr  bool
 	}{

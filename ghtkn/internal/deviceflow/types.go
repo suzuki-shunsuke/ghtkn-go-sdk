@@ -40,13 +40,13 @@ func NewInput() *Input {
 		Browser:       &browser.Browser{},
 		NewTicker:     time.NewTicker,
 		Logger:        log.NewLogger(),
-		OnetimeCodeUI: NewOnetimeCodeUI(os.Stdin, os.Stderr, &SimpleWaiter{}),
+		OnetimeCodeUI: newOnetimeCodeUI(os.Stdin, os.Stderr, &simpleWaiter{}),
 	}
 }
 
-// AccessTokenResponse represents the response from GitHub's access token endpoint.
+// accessTokenResponse represents the response from GitHub's access token endpoint.
 // It contains either an access token or an error message.
-type AccessTokenResponse struct {
+type accessTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int    `json:"expires_in"`
 

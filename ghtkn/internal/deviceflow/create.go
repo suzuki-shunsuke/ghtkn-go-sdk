@@ -103,7 +103,7 @@ const additionalInterval = 5 * time.Second
 // pollForAccessToken continuously polls GitHub for an access token.
 // It respects the polling interval and handles authorization pending and slow down responses.
 // The polling continues until the device code expires or the user completes authentication.
-func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *pubdeviceflow.DeviceCodeResponse) (*AccessTokenResponse, error) {
+func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *pubdeviceflow.DeviceCodeResponse) (*accessTokenResponse, error) {
 	interval := time.Duration(deviceCode.Interval) * time.Second
 	if interval < additionalInterval {
 		interval = additionalInterval
@@ -146,7 +146,7 @@ func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, cl
 
 // checkAccessToken checks if an access token is available for the given device code.
 // It returns the access token if available, or an error indicating the current status.
-func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode string) (*AccessTokenResponse, error) {
+func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode string) (*accessTokenResponse, error) {
 	reqBody := map[string]string{
 		"client_id":   clientID,
 		"device_code": deviceCode,
@@ -177,7 +177,7 @@ func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode stri
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
-	token := &AccessTokenResponse{}
+	token := &accessTokenResponse{}
 	if err := json.Unmarshal(body, token); err != nil {
 		return nil, fmt.Errorf("unmarshal response body as JSON: %w", err)
 	}

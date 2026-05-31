@@ -30,13 +30,13 @@ func (tm *TokenManager) TokenSource(logger *slog.Logger, input *pubapi.InputGet)
 type TokenSource struct {
 	token  *oauth2.Token     // Cached OAuth2 token
 	mutex  *sync.Mutex       // Mutex for thread-safe access to the token
-	tm     TokenSourceClient // Token manager instance for retrieving tokens
+	tm     tokenSourceClient // Token manager instance for retrieving tokens
 	logger *slog.Logger      // Logger for debugging and error reporting
 	input  *pubapi.InputGet  // Input parameters for token retrieval
 	now    func() time.Time
 }
 
-type TokenSourceClient interface {
+type tokenSourceClient interface {
 	Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error)
 }
 

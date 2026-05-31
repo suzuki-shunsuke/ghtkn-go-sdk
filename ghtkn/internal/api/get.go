@@ -120,16 +120,16 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
 		}); err != nil {
-			return token, app, ErrStoreToken
+			return token, app, errStoreToken
 		}
 	}
 
 	return token, app, nil
 }
 
-// ErrStoreToken is returned when the token cannot be stored in the keyring.
+// errStoreToken is returned when the token cannot be stored in the keyring.
 // This is a non-fatal error as the token is still valid for immediate use.
-var ErrStoreToken = errors.New("could not store the token in keyring")
+var errStoreToken = errors.New("could not store the token in keyring")
 
 // inputGetOrCreateToken contains the parameters needed for token retrieval or creation.
 // It encapsulates the keyring service, app configuration, and expiration requirements

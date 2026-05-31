@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-type Waiter interface {
+type waiter interface {
 	Wait(ctx context.Context, duration time.Duration) error
 }
 
-type SimpleWaiter struct{}
+type simpleWaiter struct{}
 
-func (*SimpleWaiter) Wait(ctx context.Context, duration time.Duration) error {
+func (*simpleWaiter) Wait(ctx context.Context, duration time.Duration) error {
 	timer := time.NewTimer(duration)
 	select {
 	case <-timer.C:

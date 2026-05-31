@@ -12,22 +12,22 @@ import (
 	"golang.org/x/term"
 )
 
-var _ pubdeviceflow.OnetimeCodeUI = &SimpleOnetimeCodeUI{}
+var _ pubdeviceflow.OnetimeCodeUI = &simpleOnetimeCodeUI{}
 
-// SimpleOnetimeCodeUI is a basic implementation of OnetimeCodeUI that displays the
+// simpleOnetimeCodeUI is a basic implementation of OnetimeCodeUI that displays the
 // one-time code (user code) and verification URL to stderr and waits for user input from stdin.
 // It handles the GitHub device flow authentication process by showing the user code
 // and verification URL, then waiting for the user to press Enter.
-type SimpleOnetimeCodeUI struct {
+type simpleOnetimeCodeUI struct {
 	stdin  io.Reader // Input source for reading user interaction (typically os.Stdin)
 	stderr io.Writer // Output destination for displaying messages (typically os.Stderr)
-	waiter Waiter    // Waiter for handling wait operations, can be customized for testing
+	waiter waiter    // waiter for handling wait operations, can be customized for testing
 }
 
-// NewOnetimeCodeUI creates a new SimpleOnetimeCodeUI instance.
+// newOnetimeCodeUI creates a new simpleOnetimeCodeUI instance.
 // It takes stdin for user input and stderr for output messages.
-func NewOnetimeCodeUI(stdin io.Reader, stderr io.Writer, waiter Waiter) *SimpleOnetimeCodeUI {
-	return &SimpleOnetimeCodeUI{
+func newOnetimeCodeUI(stdin io.Reader, stderr io.Writer, waiter waiter) *simpleOnetimeCodeUI {
+	return &simpleOnetimeCodeUI{
 		stdin:  stdin,
 		stderr: stderr,
 		waiter: waiter,
@@ -39,7 +39,7 @@ func NewOnetimeCodeUI(stdin io.Reader, stderr io.Writer, waiter Waiter) *SimpleO
 // The function returns when Enter is pressed or the context is cancelled.
 // Note that it exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
 // In case of Git Credential Helper stdin is not a terminal, so it exits immediately.
-func (d *SimpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *pubdeviceflow.DeviceCodeResponse, expirationDate time.Time) error {
+func (d *simpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *pubdeviceflow.DeviceCodeResponse, expirationDate time.Time) error {
 	if term.IsTerminal(0) {
 		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
 Copy your one-time code: %s

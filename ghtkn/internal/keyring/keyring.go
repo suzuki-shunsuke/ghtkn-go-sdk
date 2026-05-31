@@ -47,7 +47,7 @@ type API interface {
 // This provides the standard system keyring integration for production use.
 func NewInput() *Input {
 	return &Input{
-		API: NewAPI(),
+		API: newAPI(),
 	}
 }
 
