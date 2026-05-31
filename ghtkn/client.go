@@ -28,7 +28,6 @@ type (
 	Browser            = deviceflow.Browser
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
 	DefaultBrowser     = browser.Browser
-	ClientIDReader     = api.PasswordReader
 	InputGet           = api.InputGet
 )
 

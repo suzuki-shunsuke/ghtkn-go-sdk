@@ -1,13 +1,7 @@
-// Package api provides the public request and contract types for the ghtkn client.
+// Package api provides the public request types for the ghtkn client.
 package api
 
-import (
-	"context"
-	"log/slog"
-	"time"
-
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-)
+import "time"
 
 // InputGet contains the input parameters for token retrieval operations.
 // It provides configuration options for specifying which app to use,
@@ -18,9 +12,4 @@ type InputGet struct {
 	ConfigFilePath string        // Path to configuration file (auto-detected if empty)
 	AppOwner       string        // GitHub App Owner
 	MinExpiration  time.Duration // Minimum time before token expiration to trigger renewal
-}
-
-// PasswordReader reads a client ID (password) for the given app.
-type PasswordReader interface {
-	Read(ctx context.Context, logger *slog.Logger, app *config.App) (string, error)
 }
