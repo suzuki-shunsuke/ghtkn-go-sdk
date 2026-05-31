@@ -23,7 +23,7 @@ func TestNewLogger(t *testing.T) {
 	if logger.FailedToOpenBrowser == nil {
 		t.Error("FailedToOpenBrowser function is nil")
 	}
-	if logger.FailedToGetAccessTokenFromKeyring == nil {
+	if logger.FailedToGetAccessTokenFromBackend == nil {
 		t.Error("FailedToGetAccessTokenFromKeyring function is nil")
 	}
 	if logger.AccessTokenIsNotFoundInKeyring == nil {
@@ -80,7 +80,7 @@ func TestLogger_FailedToGetAccessTokenFromKeyring(t *testing.T) {
 	logger := log.NewLogger()
 	testErr := errors.New("keyring access denied")
 
-	logger.FailedToGetAccessTokenFromKeyring(slogger, testErr)
+	logger.FailedToGetAccessTokenFromBackend(slogger, testErr)
 
 	output := buf.String()
 	if !strings.Contains(output, "failed to get access token from keyring") {

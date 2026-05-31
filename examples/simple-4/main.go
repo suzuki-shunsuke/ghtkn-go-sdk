@@ -34,8 +34,8 @@ func run() int {
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
 		},
-		FailedToGetAccessTokenFromKeyring: func(logger *slog.Logger, err error) {
-			slogerr.WithError(logger, err).Warn("failed to get access token from keyring")
+		FailedToGetAccessTokenFromBackend: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to get access token from backend")
 		},
 		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
 			logger.Info("access token is not found in keyring")

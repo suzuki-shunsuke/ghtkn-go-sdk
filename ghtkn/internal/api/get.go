@@ -169,7 +169,7 @@ func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *s
 	// Get an access token from keyring
 	tk, err := tm.input.Backend.Get(ctx, input.App.ClientID)
 	if err != nil {
-		tm.input.Logger.FailedToGetAccessTokenFromKeyring(logger, err)
+		tm.input.Logger.FailedToGetAccessTokenFromBackend(logger, err)
 		return nil
 	}
 	if tk == nil {

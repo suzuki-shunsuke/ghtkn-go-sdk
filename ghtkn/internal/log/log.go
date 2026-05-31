@@ -20,7 +20,7 @@ func NewLogger() *publog.Logger {
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
 		},
-		FailedToGetAccessTokenFromKeyring: func(logger *slog.Logger, err error) {
+		FailedToGetAccessTokenFromBackend: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to get access token from keyring")
 		},
 		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
@@ -46,8 +46,8 @@ func InitLogger(l *publog.Logger) {
 	if l.FailedToOpenBrowser == nil {
 		l.FailedToOpenBrowser = defaultLogger.FailedToOpenBrowser
 	}
-	if l.FailedToGetAccessTokenFromKeyring == nil {
-		l.FailedToGetAccessTokenFromKeyring = defaultLogger.FailedToGetAccessTokenFromKeyring
+	if l.FailedToGetAccessTokenFromBackend == nil {
+		l.FailedToGetAccessTokenFromBackend = defaultLogger.FailedToGetAccessTokenFromBackend
 	}
 	if l.AccessTokenIsNotFoundInKeyring == nil {
 		l.AccessTokenIsNotFoundInKeyring = defaultLogger.AccessTokenIsNotFoundInKeyring

@@ -14,8 +14,8 @@ type Logger struct {
 	Expire func(logger *slog.Logger, exDate time.Time)
 	// FailedToOpenBrowser logs when the browser cannot be opened for authentication.
 	FailedToOpenBrowser func(logger *slog.Logger, err error)
-	// FailedToGetAccessTokenFromKeyring logs when access token retrieval from keyring fails.
-	FailedToGetAccessTokenFromKeyring func(logger *slog.Logger, err error)
+	// FailedToGetAccessTokenFromBackend logs when access token retrieval from backend fails.
+	FailedToGetAccessTokenFromBackend func(logger *slog.Logger, err error)
 	// AccessTokenIsNotFoundInKeyring logs when no access token is found in the keyring.
 	AccessTokenIsNotFoundInKeyring func(logger *slog.Logger)
 	// FailedToGetAppFromKeyring logs when app retrieval from keyring fails.
