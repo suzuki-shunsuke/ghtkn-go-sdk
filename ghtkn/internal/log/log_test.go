@@ -24,10 +24,10 @@ func TestNewLogger(t *testing.T) {
 		t.Error("FailedToOpenBrowser function is nil")
 	}
 	if logger.FailedToGetAccessTokenFromBackend == nil {
-		t.Error("FailedToGetAccessTokenFromKeyring function is nil")
+		t.Error("FailedToGetAccessTokenFromBackend function is nil")
 	}
 	if logger.AccessTokenIsNotFoundInBackend == nil {
-		t.Error("AccessTokenIsNotFoundInKeyring function is nil")
+		t.Error("AccessTokenIsNotFoundInBackend function is nil")
 	}
 }
 
@@ -71,7 +71,7 @@ func TestLogger_FailedToOpenBrowser(t *testing.T) {
 	}
 }
 
-func TestLogger_FailedToGetAccessTokenFromKeyring(t *testing.T) {
+func TestLogger_FailedToGetAccessTokenFromBackend(t *testing.T) {
 	var buf bytes.Buffer
 	slogger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -83,15 +83,15 @@ func TestLogger_FailedToGetAccessTokenFromKeyring(t *testing.T) {
 	logger.FailedToGetAccessTokenFromBackend(slogger, testErr)
 
 	output := buf.String()
-	if !strings.Contains(output, "failed to get access token from keyring") {
-		t.Errorf("Expected log to contain 'failed to get access token from keyring', got: %s", output)
+	if !strings.Contains(output, "failed to get access token from backend") {
+		t.Errorf("Expected log to contain 'failed to get access token from backend', got: %s", output)
 	}
 	if !strings.Contains(output, "keyring access denied") {
 		t.Errorf("Expected log to contain error message, got: %s", output)
 	}
 }
 
-func TestLogger_AccessTokenIsNotFoundInKeyring(t *testing.T) {
+func TestLogger_AccessTokenIsNotFoundInBackend(t *testing.T) {
 	var buf bytes.Buffer
 	slogger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -102,7 +102,7 @@ func TestLogger_AccessTokenIsNotFoundInKeyring(t *testing.T) {
 	logger.AccessTokenIsNotFoundInBackend(slogger)
 
 	output := buf.String()
-	if !strings.Contains(output, "access token is not found in keyring") {
-		t.Errorf("Expected log to contain 'access token is not found in keyring', got: %s", output)
+	if !strings.Contains(output, "access token is not found in backend") {
+		t.Errorf("Expected log to contain 'access token is not found in backend', got: %s", output)
 	}
 }
