@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config/config",
+  "$id": "https://github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config",
   "$ref": "#/$defs/Config",
   "$defs": {
-    "App": {
+    "AppConfig": {
       "properties": {
         "name": {
           "type": "string"
@@ -26,7 +26,7 @@
       "properties": {
         "apps": {
           "items": {
-            "$ref": "#/$defs/App"
+            "$ref": "#/$defs/AppConfig"
           },
           "type": "array"
         }
