@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"golang.org/x/oauth2"
@@ -14,7 +15,7 @@ import (
 // TokenSource creates an OAuth2 token source for the token manager.
 // It returns a token source that can be used with OAuth2 clients to automatically
 // handle token retrieval and caching through the internal token management system.
-func (tm *TokenManager) TokenSource(logger *slog.Logger, input *InputGet) *TokenSource {
+func (tm *TokenManager) TokenSource(logger *slog.Logger, input *pubapi.InputGet) *TokenSource {
 	return &TokenSource{
 		mutex:  &sync.Mutex{},
 		tm:     tm,
@@ -31,12 +32,12 @@ type TokenSource struct {
 	mutex  *sync.Mutex       // Mutex for thread-safe access to the token
 	tm     TokenSourceClient // Token manager instance for retrieving tokens
 	logger *slog.Logger      // Logger for debugging and error reporting
-	input  *InputGet         // Input parameters for token retrieval
+	input  *pubapi.InputGet  // Input parameters for token retrieval
 	now    func() time.Time
 }
 
 type TokenSourceClient interface {
-	Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error)
+	Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error)
 }
 
 // Token implements oauth2.TokenSource.Token() interface.

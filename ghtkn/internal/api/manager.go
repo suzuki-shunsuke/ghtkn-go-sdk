@@ -96,7 +96,3 @@ type Keyring interface {
 type ConfigReader interface {
 	Read(cfg *pubconfig.Config, configFilePath string) error
 }
-
-type PasswordReader interface {
-	Read(ctx context.Context, logger *slog.Logger, app *pubconfig.App) (string, error)
-}

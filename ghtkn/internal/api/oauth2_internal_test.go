@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"golang.org/x/oauth2"
@@ -20,7 +21,7 @@ type mockTokenSourceClient struct {
 	calls int
 }
 
-func (m *mockTokenSourceClient) Get(_ context.Context, _ *slog.Logger, _ *InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error) {
+func (m *mockTokenSourceClient) Get(_ context.Context, _ *slog.Logger, _ *pubapi.InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error) {
 	m.calls++
 	if m.err != nil {
 		return nil, nil, m.err
@@ -37,7 +38,7 @@ func TestTokenManager_TokenSource(t *testing.T) {
 
 	tm := &TokenManager{}
 	logger := newTestLogger()
-	input := &InputGet{ConfigFilePath: "/path/to/config.yaml"}
+	input := &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"}
 
 	ts := tm.TokenSource(logger, input)
 	if ts == nil {

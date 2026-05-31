@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
@@ -91,7 +92,7 @@ func TestTokenManager_Get(t *testing.T) {
 		setupInput func() *api.Input
 		wantErr    bool
 		wantToken  *pubkeyring.AccessToken
-		input      *api.InputGet
+		input      *pubapi.InputGet
 	}{
 		{
 			name: "successful token retrieval from keyring",
@@ -114,7 +115,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
 			wantToken: &pubkeyring.AccessToken{
 				AccessToken:    "cached-token",
@@ -143,7 +144,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
 			wantToken: &pubkeyring.AccessToken{
 				AccessToken:    "new-token",
@@ -164,7 +165,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: true,
 		},
 	}
