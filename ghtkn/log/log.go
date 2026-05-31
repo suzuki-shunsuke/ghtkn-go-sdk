@@ -18,8 +18,4 @@ type Logger struct {
 	FailedToGetAccessTokenFromBackend func(logger *slog.Logger, err error)
 	// AccessTokenIsNotFoundInKeyring logs when no access token is found in the keyring.
 	AccessTokenIsNotFoundInKeyring func(logger *slog.Logger)
-	// FailedToGetAppFromKeyring logs when app retrieval from keyring fails.
-	FailedToGetAppFromKeyring func(logger *slog.Logger, err error)
-	// AppIsNotFoundInKeyring logs when no app is found in the keyring.
-	AppIsNotFoundInKeyring func(logger *slog.Logger)
 }

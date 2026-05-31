@@ -26,12 +26,6 @@ func NewLogger() *publog.Logger {
 		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
 			logger.Debug("access token is not found in keyring")
 		},
-		FailedToGetAppFromKeyring: func(logger *slog.Logger, err error) {
-			slogerr.WithError(logger, err).Warn("failed to get app from keyring")
-		},
-		AppIsNotFoundInKeyring: func(logger *slog.Logger) {
-			logger.Debug("app is not found in keyring")
-		},
 	}
 }
 
@@ -51,11 +45,5 @@ func InitLogger(l *publog.Logger) {
 	}
 	if l.AccessTokenIsNotFoundInKeyring == nil {
 		l.AccessTokenIsNotFoundInKeyring = defaultLogger.AccessTokenIsNotFoundInKeyring
-	}
-	if l.FailedToGetAppFromKeyring == nil {
-		l.FailedToGetAppFromKeyring = defaultLogger.FailedToGetAppFromKeyring
-	}
-	if l.AppIsNotFoundInKeyring == nil {
-		l.AppIsNotFoundInKeyring = defaultLogger.AppIsNotFoundInKeyring
 	}
 }
