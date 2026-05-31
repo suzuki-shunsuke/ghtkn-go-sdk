@@ -104,3 +104,56 @@ func Test_cacheDir(t *testing.T) {
 		})
 	}
 }
+
+func Test_tokenDir(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		env     map[string]string
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "honors GHTKN_TEXT_BACKEND_DIR",
+			env:  map[string]string{"GHTKN_TEXT_BACKEND_DIR": "/tmp/tokens"},
+			want: "/tmp/tokens",
+		},
+		{
+			name: "prefers GHTKN_TEXT_BACKEND_DIR over XDG_CACHE_HOME",
+			env:  map[string]string{"GHTKN_TEXT_BACKEND_DIR": "/tmp/tokens", "XDG_CACHE_HOME": "/tmp/xdg-cache"},
+			want: "/tmp/tokens",
+		},
+		{
+			name: "falls back to XDG_CACHE_HOME/ghtkn/tokens",
+			env:  map[string]string{"XDG_CACHE_HOME": "/tmp/xdg-cache"},
+			want: filepath.Join("/tmp/xdg-cache", "ghtkn", "tokens"),
+		},
+		{
+			name: "falls back to HOME/.cache/ghtkn/tokens",
+			env:  map[string]string{"HOME": "/home/tester"},
+			want: filepath.Join("/home/tester", ".cache", "ghtkn", "tokens"),
+		},
+		{
+			name:    "errors when nothing is set",
+			env:     map[string]string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := tokenDir(func(k string) string { return tt.env[k] })
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("tokenDir() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got != tt.want {
+				t.Errorf("tokenDir() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

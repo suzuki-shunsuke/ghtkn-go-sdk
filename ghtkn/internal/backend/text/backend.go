@@ -14,6 +14,7 @@ import (
 )
 
 // The access token is saved in plaintext to ${XDG_CACHE_HOME}/ghtkn/tokens/<client-id>.
+// The directory can be overridden with the GHTKN_TEXT_BACKEND_DIR environment variable.
 // The file permissions are 0600. No encryption is performed.
 // See https://github.com/suzuki-shunsuke/design-docs/blob/main/ghtkn/backend/README.md
 
@@ -22,16 +23,31 @@ type Backend struct {
 	dir string
 }
 
-// New creates a text backend rooted at ${XDG_CACHE_HOME}/ghtkn/tokens.
-// It returns an error if neither XDG_CACHE_HOME nor HOME is set.
+// New creates a text backend. The storage directory is GHTKN_TEXT_BACKEND_DIR
+// if set, otherwise ${XDG_CACHE_HOME}/ghtkn/tokens (falling back to $HOME/.cache).
+// It returns an error if none of these are set.
 func New() (*Backend, error) {
-	cacheDir, err := cacheDir(os.Getenv)
+	dir, err := tokenDir(os.Getenv)
 	if err != nil {
 		return nil, err
 	}
 	return &Backend{
-		dir: filepath.Join(cacheDir, "ghtkn", "tokens"),
+		dir: dir,
 	}, nil
+}
+
+// tokenDir resolves the directory that stores token files. GHTKN_TEXT_BACKEND_DIR
+// takes precedence; otherwise it is ${cache dir}/ghtkn/tokens.
+func tokenDir(getEnv func(string) string) (string, error) {
+	dir := getEnv("GHTKN_TEXT_BACKEND_DIR")
+	if dir != "" {
+		return dir, nil
+	}
+	cacheDir, err := cacheDir(getEnv)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cacheDir, "ghtkn", "tokens"), nil
 }
 
 // cacheDir resolves the base cache directory, honoring XDG_CACHE_HOME and
