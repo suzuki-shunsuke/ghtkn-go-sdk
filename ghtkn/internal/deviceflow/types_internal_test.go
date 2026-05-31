@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
@@ -16,7 +17,7 @@ type mockBrowser struct {
 	err error
 }
 
-func newMockBrowser(err error) Browser {
+func newMockBrowser(err error) pubdeviceflow.Browser {
 	return &mockBrowser{err: err}
 }
 
@@ -33,8 +34,8 @@ func newMockInput() *Input {
 		NewTicker: func(_ time.Duration) *time.Ticker {
 			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
 		},
-		Logger:       log.NewLogger(),
-		DeviceCodeUI: NewDeviceCodeUI(strings.NewReader("\n"), io.Discard, &mockWaiter{}),
+		Logger:        log.NewLogger(),
+		OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), io.Discard, &mockWaiter{}),
 	}
 }
 

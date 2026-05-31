@@ -4,9 +4,10 @@ package keyring
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
+
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 // Keyring manages access tokens in the system keychain.
@@ -19,7 +20,7 @@ type Keyring struct {
 // It allows for dependency injection and easier testing by providing
 // a customizable API implementation.
 type Input struct {
-	API API // The keyring API implementation for storing and retrieving secrets
+	API backendAPI // The keyring API implementation for storing and retrieving secrets
 }
 
 // DefaultServiceKey is the default service identifier used in the system keychain.
@@ -34,10 +35,10 @@ func New(input *Input) *Keyring {
 	}
 }
 
-// API defines the interface for keyring operations.
+// backendAPI defines the interface for keyring operations.
 // It abstracts the underlying keyring implementation to allow for different backends
 // (system keychain, testing mocks, etc.).
-type API interface {
+type backendAPI interface {
 	Get(service, user string) (string, bool, error) // Retrieves a secret from the keyring
 	Set(service, user, password string) error       // Stores a secret in the keyring
 }
@@ -46,22 +47,12 @@ type API interface {
 // This provides the standard system keyring integration for production use.
 func NewInput() *Input {
 	return &Input{
-		API: NewAPI(),
+		API: newAPI(),
 	}
 }
 
 // dateFormat defines the standard format for date strings in the keyring.
 const dateFormat = time.RFC3339
-
-// ParseDate parses a date string in RFC3339 format.
-// It returns a time.Time value or an error if the string cannot be parsed.
-func ParseDate(s string) (time.Time, error) {
-	t, err := time.Parse(dateFormat, s)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parse a date string: %w", err)
-	}
-	return t, nil
-}
 
 // FormatDate formats a time value as an RFC3339 string.
 // This is the standard format used for expiration dates in the keyring.
@@ -69,31 +60,10 @@ func FormatDate(t time.Time) string {
 	return t.Format(dateFormat)
 }
 
-// AccessToken represents a GitHub App access token stored in the keyring.
-// It contains the token value, expiration information, and user login details.
-type AccessToken struct {
-	AccessToken    string    `json:"access_token"`    // The OAuth access token for GitHub API authentication
-	ExpirationDate time.Time `json:"expiration_date"` // RFC3339 formatted expiration timestamp
-	Login          string    `json:"login"`           // The GitHub user login associated with the token
-}
-
-func (at *AccessToken) Validate() error {
-	if at.AccessToken == "" {
-		return errors.New("access_token is required")
-	}
-	if at.ExpirationDate.IsZero() {
-		return errors.New("expiration_date is required")
-	}
-	if at.Login == "" {
-		return errors.New("login is required")
-	}
-	return nil
-}
-
 // Get retrieves an access token from the keyring.
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
-func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
+func (kr *Keyring) Get(service string, key string) (*pubkeyring.AccessToken, error) {
 	s, exist, err := kr.input.API.Get(service, key)
 	if err != nil {
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
@@ -101,7 +71,7 @@ func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
 	if !exist {
 		return nil, nil
 	}
-	token := &AccessToken{}
+	token := &pubkeyring.AccessToken{}
 	if err := json.Unmarshal([]byte(s), token); err != nil {
 		return nil, fmt.Errorf("unmarshal the token from JSON: %w", err)
 	}
@@ -114,7 +84,7 @@ func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
 // Set stores an access token in the keyring.
 // The key parameter identifies where to store the token.
 // Returns an error if the token cannot be marshaled or stored.
-func (kr *Keyring) Set(service, key string, token *AccessToken) error {
+func (kr *Keyring) Set(service, key string, token *pubkeyring.AccessToken) error {
 	s, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("marshal the token as JSON: %w", err)

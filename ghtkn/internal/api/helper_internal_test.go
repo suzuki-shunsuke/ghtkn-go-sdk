@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type testDeviceFlow struct {
@@ -26,11 +27,11 @@ func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID
 	return m.token, nil
 }
 
-func (m *testDeviceFlow) SetLogger(_ *log.Logger) {}
+func (m *testDeviceFlow) SetLogger(_ *publog.Logger) {}
 
-func (m *testDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {}
+func (m *testDeviceFlow) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
 
-func (m *testDeviceFlow) SetBrowser(_ deviceflow.Browser) {}
+func (m *testDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 
 func TestTokenManager_checkExpired(t *testing.T) {
 	t.Parallel()
@@ -99,8 +100,8 @@ func TestController_createToken(t *testing.T) {
 	tests := []struct {
 		name     string
 		clientID string
-		client   DeviceFlow
-		want     *keyring.AccessToken
+		client   deviceFlow
+		want     *pubkeyring.AccessToken
 		wantErr  bool
 	}{
 		{
@@ -112,7 +113,7 @@ func TestController_createToken(t *testing.T) {
 					ExpirationDate: futureTime,
 				},
 			},
-			want: &keyring.AccessToken{
+			want: &pubkeyring.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: futureTime,
 			},

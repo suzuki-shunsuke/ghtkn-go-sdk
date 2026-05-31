@@ -9,18 +9,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"golang.org/x/oauth2"
 )
 
 type mockTokenSourceClient struct {
-	token *keyring.AccessToken
+	token *pubkeyring.AccessToken
 	err   error
 	calls int
 }
 
-func (m *mockTokenSourceClient) Get(_ context.Context, _ *slog.Logger, _ *InputGet) (*keyring.AccessToken, *config.App, error) {
+func (m *mockTokenSourceClient) Get(_ context.Context, _ *slog.Logger, _ *pubapi.InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error) {
 	m.calls++
 	if m.err != nil {
 		return nil, nil, m.err
@@ -37,7 +38,7 @@ func TestTokenManager_TokenSource(t *testing.T) {
 
 	tm := &TokenManager{}
 	logger := newTestLogger()
-	input := &InputGet{ConfigFilePath: "/path/to/config.yaml"}
+	input := &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"}
 
 	ts := tm.TokenSource(logger, input)
 	if ts == nil {
@@ -96,7 +97,7 @@ func TestTokenSource_Token(t *testing.T) {
 		t.Parallel()
 
 		client := &mockTokenSourceClient{
-			token: &keyring.AccessToken{AccessToken: "new", ExpirationDate: future},
+			token: &pubkeyring.AccessToken{AccessToken: "new", ExpirationDate: future},
 		}
 		ts := &TokenSource{
 			mutex:  &sync.Mutex{},
@@ -125,7 +126,7 @@ func TestTokenSource_Token(t *testing.T) {
 
 		expired := &oauth2.Token{AccessToken: "old", Expiry: past}
 		client := &mockTokenSourceClient{
-			token: &keyring.AccessToken{AccessToken: "new", ExpirationDate: future},
+			token: &pubkeyring.AccessToken{AccessToken: "new", ExpirationDate: future},
 		}
 		ts := &TokenSource{
 			token:  expired,
@@ -174,7 +175,7 @@ func TestTokenSource_Token(t *testing.T) {
 		t.Parallel()
 
 		client := &mockTokenSourceClient{
-			token: &keyring.AccessToken{AccessToken: "new", ExpirationDate: future},
+			token: &pubkeyring.AccessToken{AccessToken: "new", ExpirationDate: future},
 		}
 		ts := &TokenSource{
 			mutex:  &sync.Mutex{},

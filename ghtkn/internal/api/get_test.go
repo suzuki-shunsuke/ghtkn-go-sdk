@@ -1,5 +1,5 @@
 //nolint:funlen
-package api_test
+package api
 
 import (
 	"bytes"
@@ -10,16 +10,16 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
+	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
-func newMockInput() *api.Input {
-	return &api.Input{
+func newMockInput() *Input {
+	return &Input{
 		DeviceFlow: &mockDeviceFlow{
 			token: &deviceflow.AccessToken{
 				AccessToken:    "test-token",
@@ -35,15 +35,15 @@ func newMockInput() *api.Input {
 }
 
 type mockKeyring struct {
-	token *keyring.AccessToken
+	token *pubkeyring.AccessToken
 	err   error
 }
 
-func (m *mockKeyring) Get(_, _ string) (*keyring.AccessToken, error) {
+func (m *mockKeyring) Get(_, _ string) (*pubkeyring.AccessToken, error) {
 	return m.token, m.err
 }
 
-func (m *mockKeyring) Set(_, _ string, _ *keyring.AccessToken) error {
+func (m *mockKeyring) Set(_, _ string, _ *pubkeyring.AccessToken) error {
 	return m.err
 }
 
@@ -51,11 +51,11 @@ type mockConfigReader struct {
 	err error
 }
 
-func (m *mockConfigReader) Read(cfg *config.Config, configFilePath string) error {
+func (m *mockConfigReader) Read(cfg *pubconfig.Config, configFilePath string) error {
 	if m.err != nil {
 		return m.err
 	}
-	cfg.Apps = []*config.App{
+	cfg.Apps = []*pubconfig.App{
 		{
 			Name:     "test-app",
 			ClientID: "xxx",
@@ -73,7 +73,7 @@ func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
 	return m.user, m.err
 }
 
-func mockNewGitHub(_ context.Context, _ string) (api.GitHub, error) {
+func mockNewGitHub(_ context.Context, _ string) (gitHub, error) {
 	return &mockGitHub{
 		user: &github.User{
 			Login: "test-user",
@@ -88,14 +88,14 @@ func TestTokenManager_Get(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupInput func() *api.Input
+		setupInput func() *Input
 		wantErr    bool
-		wantToken  *keyring.AccessToken
-		input      *api.InputGet
+		wantToken  *pubkeyring.AccessToken
+		input      *pubapi.InputGet
 	}{
 		{
 			name: "successful token retrieval from keyring",
-			setupInput: func() *api.Input {
+			setupInput: func() *Input {
 				input := newMockInput()
 				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
@@ -104,7 +104,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 				}
 				input.Keyring = &mockKeyring{
-					token: &keyring.AccessToken{
+					token: &pubkeyring.AccessToken{
 						AccessToken:    "cached-token",
 						ExpirationDate: futureTime,
 					},
@@ -114,9 +114,9 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
-			wantToken: &keyring.AccessToken{
+			wantToken: &pubkeyring.AccessToken{
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
 				Login:          "test-user",
@@ -124,7 +124,7 @@ func TestTokenManager_Get(t *testing.T) {
 		},
 		{
 			name: "expired token in keyring triggers new token creation",
-			setupInput: func() *api.Input {
+			setupInput: func() *Input {
 				input := newMockInput()
 				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
@@ -133,7 +133,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 				}
 				input.Keyring = &mockKeyring{
-					token: &keyring.AccessToken{
+					token: &pubkeyring.AccessToken{
 						AccessToken:    "expired-token",
 						ExpirationDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 					},
@@ -143,9 +143,9 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
-			wantToken: &keyring.AccessToken{
+			wantToken: &pubkeyring.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 				Login:          "test-user",
@@ -153,7 +153,7 @@ func TestTokenManager_Get(t *testing.T) {
 		},
 		{
 			name: "token creation error",
-			setupInput: func() *api.Input {
+			setupInput: func() *Input {
 				input := newMockInput()
 				input.DeviceFlow = &mockDeviceFlow{
 					err: errors.New("token creation failed"),
@@ -164,7 +164,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &api.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: true,
 		},
 	}
@@ -174,7 +174,7 @@ func TestTokenManager_Get(t *testing.T) {
 			t.Parallel()
 
 			input := tt.setupInput()
-			tm := api.New(input)
+			tm := New(input)
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 			token, _, err := tm.Get(t.Context(), logger, tt.input)

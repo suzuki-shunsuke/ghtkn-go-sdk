@@ -1,71 +1,15 @@
 // Package config provides configuration management for ghtkn.
 // It handles reading and validating configuration files for GitHub App authentication.
+// The configuration types themselves live in the public ghtkn/config package.
 package config
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"gopkg.in/yaml.v3"
 )
-
-// Config represents the main configuration structure for ghtkn.
-// It contains settings a list of GitHub Apps.
-type Config struct {
-	Apps []*App `json:"apps"`
-}
-
-// Validate checks if the Config is valid.
-// It ensures the config is not nil and contains at least one app.
-// It also validates each app in the configuration.
-func (c *Config) Validate() error {
-	if c == nil {
-		return errors.New("config is required")
-	}
-	if len(c.Apps) == 0 {
-		return errors.New("apps is required")
-	}
-	names := map[string]struct{}{}
-	owners := map[string]struct{}{}
-	for _, app := range c.Apps {
-		if err := app.Validate(); err != nil {
-			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
-		}
-		if _, ok := names[app.Name]; ok {
-			return fmt.Errorf("app name must be unique: %s", app.Name)
-		}
-		names[app.Name] = struct{}{}
-		if app.GitOwner != "" {
-			if _, ok := owners[app.GitOwner]; ok {
-				return fmt.Errorf("app git_owner must be unique: %s", app.GitOwner)
-			}
-			owners[app.GitOwner] = struct{}{}
-		}
-	}
-	return nil
-}
-
-// App represents a GitHub App configuration.
-// Each app must have a unique name and a client ID for authentication.
-type App struct {
-	Name     string `json:"name"`
-	ClientID string `json:"client_id" yaml:"client_id"`
-	GitOwner string `json:"git_owner,omitempty" yaml:"git_owner"`
-}
-
-// Validate checks if the App configuration is valid.
-// It ensures both Name and ClientID fields are present.
-func (app *App) Validate() error {
-	if app.Name == "" {
-		return errors.New("name is required")
-	}
-	if app.ClientID == "" {
-		return errors.New("client_id is required")
-	}
-	return nil
-}
 
 // Reader handles reading configuration files from the filesystem.
 type Reader struct {
@@ -80,7 +24,7 @@ func NewReader(fs afero.Fs) *Reader {
 // Read reads and parses a configuration file from the given path.
 // It decodes the YAML content into the provided Config struct.
 // If configFilePath is empty, it returns nil without reading anything.
-func (r *Reader) Read(cfg *Config, configFilePath string) error {
+func (r *Reader) Read(cfg *pubconfig.Config, configFilePath string) error {
 	if configFilePath == "" {
 		return nil
 	}

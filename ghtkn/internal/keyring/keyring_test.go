@@ -1,12 +1,12 @@
 //nolint:cyclop,funlen
-package keyring_test
+package keyring
 
 import (
 	"encoding/json"
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 // Mock is a mock implementation of the API interface for testing.
@@ -17,7 +17,7 @@ type mockBackend struct {
 
 // newMockBackend creates a new mock API instance with the provided initial secrets.
 // If secrets is nil, an empty map will be created when needed.
-func newMockBackend(secrets map[string]string) keyring.API {
+func newMockBackend(secrets map[string]string) backendAPI {
 	return &mockBackend{
 		secrets: secrets,
 	}
@@ -48,89 +48,6 @@ func (m *mockBackend) Set(service, user, password string) error {
 	}
 	m.secrets[mockKey(service, user)] = password
 	return nil
-}
-
-// TestParseDate tests the ParseDate function with various inputs.
-func TestParseDate(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		input   string
-		want    time.Time
-		wantErr bool
-	}{
-		{
-			name:  "valid RFC3339 date",
-			input: "2024-01-15T10:30:00Z",
-			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
-		},
-		{
-			name:  "valid RFC3339 date with timezone",
-			input: "2024-06-20T15:45:30+09:00",
-			want:  time.Date(2024, 6, 20, 15, 45, 30, 0, time.FixedZone("", 9*60*60)),
-		},
-		{
-			name:  "valid RFC3339 date with negative timezone",
-			input: "2024-12-31T23:59:59-05:00",
-			want:  time.Date(2024, 12, 31, 23, 59, 59, 0, time.FixedZone("", -5*60*60)),
-		},
-		{
-			name:  "valid RFC3339 date with nanoseconds",
-			input: "2024-03-10T08:15:30.123456789Z",
-			want:  time.Date(2024, 3, 10, 8, 15, 30, 123456789, time.UTC),
-		},
-		{
-			name:    "invalid format - not RFC3339",
-			input:   "2024-01-15 10:30:00",
-			wantErr: true,
-		},
-		{
-			name:    "invalid format - missing time",
-			input:   "2024-01-15",
-			wantErr: true,
-		},
-		{
-			name:    "invalid format - missing timezone",
-			input:   "2024-01-15T10:30:00",
-			wantErr: true,
-		},
-		{
-			name:    "invalid date string",
-			input:   "not a date",
-			wantErr: true,
-		},
-		{
-			name:    "empty string",
-			input:   "",
-			wantErr: true,
-		},
-		{
-			name:    "invalid month",
-			input:   "2024-13-01T10:30:00Z",
-			wantErr: true,
-		},
-		{
-			name:    "invalid day",
-			input:   "2024-02-30T10:30:00Z",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := keyring.ParseDate(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseDate() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && !got.Equal(tt.want) {
-				t.Errorf("ParseDate() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 // TestFormatDate tests the FormatDate function.
@@ -168,7 +85,7 @@ func TestFormatDate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := keyring.FormatDate(tt.input)
+			got := FormatDate(tt.input)
 			if got != tt.want {
 				t.Errorf("FormatDate() = %v, want %v", got, tt.want)
 			}
@@ -181,7 +98,7 @@ func TestKeyring_Get(t *testing.T) {
 	t.Parallel()
 
 	expirationTime := time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)
-	testToken := &keyring.AccessToken{
+	testToken := &pubkeyring.AccessToken{
 		AccessToken:    "ghp_test_token_123",
 		ExpirationDate: expirationTime,
 		Login:          "testuser",
@@ -193,7 +110,7 @@ func TestKeyring_Get(t *testing.T) {
 		service string
 		key     string
 		secrets map[string]string
-		want    *keyring.AccessToken
+		want    *pubkeyring.AccessToken
 		wantErr bool
 	}{
 		{
@@ -237,10 +154,10 @@ func TestKeyring_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := &keyring.Input{
+			input := &Input{
 				API: newMockBackend(tt.secrets),
 			}
-			kr := keyring.New(input)
+			kr := New(input)
 
 			got, err := kr.Get(tt.service, tt.key)
 			if (err != nil) != tt.wantErr {
@@ -278,7 +195,7 @@ func TestKeyring_Set(t *testing.T) {
 	t.Parallel()
 
 	expirationTime := time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)
-	testToken := &keyring.AccessToken{
+	testToken := &pubkeyring.AccessToken{
 		AccessToken:    "ghp_test_token_123",
 		ExpirationDate: expirationTime,
 		Login:          "testuser",
@@ -288,7 +205,7 @@ func TestKeyring_Set(t *testing.T) {
 		name    string
 		service string
 		key     string
-		token   *keyring.AccessToken
+		token   *pubkeyring.AccessToken
 		wantErr bool
 	}{
 		{
@@ -321,10 +238,10 @@ func TestKeyring_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := &keyring.Input{
+			input := &Input{
 				API: newMockBackend(nil),
 			}
-			kr := keyring.New(input)
+			kr := New(input)
 
 			err := kr.Set(tt.service, tt.key, tt.token)
 			if (err != nil) != tt.wantErr {
@@ -363,11 +280,11 @@ func TestKeyring_Set(t *testing.T) {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	input := &keyring.Input{
+	input := &Input{
 		API: newMockBackend(nil),
 	}
 
-	kr := keyring.New(input)
+	kr := New(input)
 	if kr == nil {
 		t.Error("New() returned nil")
 	}
@@ -377,7 +294,7 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := keyring.NewInput()
+	input := NewInput()
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 )
 
 func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
@@ -21,7 +22,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 		name        string
 		clientID    string
 		handler     http.HandlerFunc
-		want        *DeviceCodeResponse
+		want        *pubdeviceflow.DeviceCodeResponse
 		wantErr     bool
 		errContains string
 	}{
@@ -45,7 +46,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 					t.Errorf("expected client_id test-client-id, got %s", req["client_id"])
 				}
 
-				resp := DeviceCodeResponse{
+				resp := pubdeviceflow.DeviceCodeResponse{
 					DeviceCode:      "device123",
 					UserCode:        "USER-CODE",
 					VerificationURI: "https://github.com/login/device",
@@ -55,7 +56,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(resp) //nolint:errchkjson,errcheck
 			},
-			want: &DeviceCodeResponse{
+			want: &pubdeviceflow.DeviceCodeResponse{
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -149,7 +150,7 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 		clientID   string
 		deviceCode string
 		handler    http.HandlerFunc
-		want       *AccessTokenResponse
+		want       *accessTokenResponse
 		wantErr    bool
 		errMsg     string
 	}{
@@ -181,14 +182,14 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 					t.Errorf("unexpected grant_type: %s", req["grant_type"])
 				}
 
-				resp := AccessTokenResponse{
+				resp := accessTokenResponse{
 					AccessToken: "gho_testtoken123",
 					ExpiresIn:   28800,
 				}
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(resp) //nolint:errchkjson,errcheck
 			},
-			want: &AccessTokenResponse{
+			want: &accessTokenResponse{
 				AccessToken: "gho_testtoken123",
 				ExpiresIn:   28800,
 			},
@@ -199,7 +200,7 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			clientID:   "test-client-id",
 			deviceCode: "device123",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
-				resp := AccessTokenResponse{
+				resp := accessTokenResponse{
 					Error: "authorization_pending",
 				}
 				w.Header().Set("Content-Type", "application/json")
@@ -214,7 +215,7 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			clientID:   "test-client-id",
 			deviceCode: "device123",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
-				resp := AccessTokenResponse{
+				resp := accessTokenResponse{
 					Error: "slow_down",
 				}
 				w.Header().Set("Content-Type", "application/json")
@@ -229,7 +230,7 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			clientID:   "test-client-id",
 			deviceCode: "device123",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
-				resp := AccessTokenResponse{
+				resp := accessTokenResponse{
 					Error: "access_denied",
 				}
 				w.Header().Set("Content-Type", "application/json")
@@ -285,7 +286,7 @@ func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			}
 
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("AccessTokenResponse mismatch (-want +got):\n%s", diff)
+				t.Errorf("accessTokenResponse mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -296,9 +297,9 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 	tests := []struct {
 		name        string
 		clientID    string
-		deviceCode  *DeviceCodeResponse
+		deviceCode  *pubdeviceflow.DeviceCodeResponse
 		handler     http.HandlerFunc
-		want        *AccessTokenResponse
+		want        *accessTokenResponse
 		wantErr     bool
 		errContains string
 		timeout     time.Duration
@@ -306,7 +307,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		{
 			name:     "successful after one poll",
 			clientID: "test-client-id",
-			deviceCode: &DeviceCodeResponse{
+			deviceCode: &pubdeviceflow.DeviceCodeResponse{
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -319,13 +320,13 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 					callCount++
 					if callCount == 1 {
 						// First call returns pending
-						resp := AccessTokenResponse{
+						resp := accessTokenResponse{
 							Error: "authorization_pending",
 						}
 						json.NewEncoder(w).Encode(resp) //nolint:errcheck
 					} else {
 						// Second call returns success
-						resp := AccessTokenResponse{
+						resp := accessTokenResponse{
 							AccessToken: "gho_testtoken123",
 							ExpiresIn:   28800,
 						}
@@ -333,7 +334,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 					}
 				}
 			}(),
-			want: &AccessTokenResponse{
+			want: &accessTokenResponse{
 				AccessToken: "gho_testtoken123",
 				ExpiresIn:   28800,
 			},
@@ -343,7 +344,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		{
 			name:     "context cancelled",
 			clientID: "test-client-id",
-			deviceCode: &DeviceCodeResponse{
+			deviceCode: &pubdeviceflow.DeviceCodeResponse{
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -351,7 +352,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 				Interval:        1,
 			},
 			handler: func(w http.ResponseWriter, _ *http.Request) {
-				resp := AccessTokenResponse{
+				resp := accessTokenResponse{
 					Error: "authorization_pending",
 				}
 				json.NewEncoder(w).Encode(resp) //nolint:errcheck,errchkjson
@@ -365,7 +366,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		// {
 		// 	name:     "slow down handling",
 		// 	clientID: "test-client-id",
-		// 	deviceCode: &DeviceCodeResponse{
+		// 	deviceCode: &pubdeviceflow.DeviceCodeResponse{
 		// 		DeviceCode:      "device123",
 		// 		UserCode:        "USER-CODE",
 		// 		VerificationURI: "https://github.com/login/device",
@@ -378,13 +379,13 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		// 			callCount++
 		// 			if callCount == 1 {
 		// 				// First call returns slow_down
-		// 				resp := AccessTokenResponse{
+		// 				resp := accessTokenResponse{
 		// 					Error: "slow_down",
 		// 				}
 		// 				json.NewEncoder(w).Encode(resp)
 		// 			} else {
 		// 				// Subsequent calls return success
-		// 				resp := AccessTokenResponse{
+		// 				resp := accessTokenResponse{
 		// 					AccessToken: "gho_testtoken123",
 		// 					ExpiresIn:   28800,
 		// 				}
@@ -392,7 +393,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		// 			}
 		// 		}
 		// 	}(),
-		// 	want: &AccessTokenResponse{
+		// 	want: &accessTokenResponse{
 		// 		AccessToken: "gho_testtoken123",
 		// 		ExpiresIn:   28800,
 		// 	},
@@ -439,7 +440,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 				return
 			}
 			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("AccessTokenResponse mismatch (-want +got):\n%s", diff)
+				t.Errorf("accessTokenResponse mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -473,7 +474,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 					switch r.URL.Path {
 					case "/login/device/code":
 						// Device code request
-						resp := DeviceCodeResponse{
+						resp := pubdeviceflow.DeviceCodeResponse{
 							DeviceCode:      "device123",
 							UserCode:        "USER-CODE",
 							VerificationURI: "https://github.com/login/device",
@@ -485,14 +486,14 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 						// Access token request
 						if callCount <= 2 {
 							// First call returns pending
-							resp := AccessTokenResponse{
+							resp := accessTokenResponse{
 								Error: "authorization_pending",
 							}
 							json.NewEncoder(w).Encode(resp) //nolint:errcheck
 							return
 						}
 						// Second call returns success
-						resp := AccessTokenResponse{
+						resp := accessTokenResponse{
 							AccessToken: "gho_testtoken123",
 							ExpiresIn:   28800,
 						}

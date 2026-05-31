@@ -10,11 +10,15 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.
@@ -34,19 +38,19 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	DeviceFlow   DeviceFlow       // Client for creating GitHub App tokens
-	Keyring      Keyring          // Keyring for token storage
+	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
+	Keyring      keyringClient    // Keyring for token storage
 	Now          func() time.Time // Current time provider for testing
-	Logger       *log.Logger
-	ConfigReader ConfigReader
+	Logger       *publog.Logger
+	ConfigReader configReader
 	Getenv       func(string) string
 	GOOS         string
-	NewGitHub    func(ctx context.Context, token string) (GitHub, error)
+	NewGitHub    func(ctx context.Context, token string) (gitHub, error)
 }
 
-// GitHub defines the interface for interacting with the GitHub API.
+// gitHub defines the interface for interacting with the GitHub API.
 // It is used to retrieve authenticated user information needed for Git Credential Helper.
-type GitHub interface {
+type gitHub interface {
 	GetUser(ctx context.Context) (*github.User, error)
 }
 
@@ -62,7 +66,7 @@ func NewInput() *Input {
 		ConfigReader: config.NewReader(afero.NewOsFs()),
 		Getenv:       os.Getenv,
 		GOOS:         runtime.GOOS,
-		NewGitHub: func(ctx context.Context, token string) (GitHub, error) {
+		NewGitHub: func(ctx context.Context, token string) (gitHub, error) {
 			return github.New(ctx, token)
 		},
 	}
@@ -74,25 +78,21 @@ func (i *Input) Validate() error {
 	return nil
 }
 
-// DeviceFlow defines the interface for creating GitHub App access tokens.
-type DeviceFlow interface {
+// deviceFlow defines the interface for creating GitHub App access tokens.
+type deviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
-	SetLogger(logger *log.Logger)
-	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
-	SetBrowser(browser deviceflow.Browser)
+	SetLogger(logger *publog.Logger)
+	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
+	SetBrowser(browser pubdeviceflow.Browser)
 }
 
-// Keyring defines the interface for storing and retrieving tokens from the system keyring.
-type Keyring interface {
-	Get(service, key string) (*keyring.AccessToken, error)
-	Set(service, key string, token *keyring.AccessToken) error
+// keyringClient defines the interface for storing and retrieving tokens from the system keyring.
+type keyringClient interface {
+	Get(service, key string) (*pubkeyring.AccessToken, error)
+	Set(service, key string, token *pubkeyring.AccessToken) error
 }
 
-// ConfigReader defines the interface for reading configuration files.
-type ConfigReader interface {
-	Read(cfg *config.Config, configFilePath string) error
-}
-
-type PasswordReader interface {
-	Read(ctx context.Context, logger *slog.Logger, app *config.App) (string, error)
+// configReader defines the interface for reading configuration files.
+type configReader interface {
+	Read(cfg *pubconfig.Config, configFilePath string) error
 }

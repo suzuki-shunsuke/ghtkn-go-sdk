@@ -11,7 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -28,7 +29,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	}
 
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
-	if err := c.input.DeviceCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
+	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
 		return nil, fmt.Errorf("show device code: %w", err)
 	}
 	if err := c.input.Browser.Open(ctx, logger, deviceCode.VerificationURI); err != nil {
@@ -51,7 +52,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 
 // getDeviceCode requests a device code from GitHub's OAuth device endpoint.
 // It returns the device code response containing the user code and verification URL.
-func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCodeResponse, error) {
+func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*pubdeviceflow.DeviceCodeResponse, error) {
 	if clientID == "" {
 		return nil, errors.New("client id is required")
 	}
@@ -88,7 +89,7 @@ func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCod
 			"body", string(body))
 	}
 
-	deviceCode := &DeviceCodeResponse{}
+	deviceCode := &pubdeviceflow.DeviceCodeResponse{}
 	if err := json.Unmarshal(body, deviceCode); err != nil {
 		return nil, fmt.Errorf("unmarshal response body as JSON: %w", err)
 	}
@@ -102,7 +103,7 @@ const additionalInterval = 5 * time.Second
 // pollForAccessToken continuously polls GitHub for an access token.
 // It respects the polling interval and handles authorization pending and slow down responses.
 // The polling continues until the device code expires or the user completes authentication.
-func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *DeviceCodeResponse) (*AccessTokenResponse, error) {
+func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *pubdeviceflow.DeviceCodeResponse) (*accessTokenResponse, error) {
 	interval := time.Duration(deviceCode.Interval) * time.Second
 	if interval < additionalInterval {
 		interval = additionalInterval
@@ -145,7 +146,7 @@ func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, cl
 
 // checkAccessToken checks if an access token is available for the given device code.
 // It returns the access token if available, or an error indicating the current status.
-func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode string) (*AccessTokenResponse, error) {
+func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode string) (*accessTokenResponse, error) {
 	reqBody := map[string]string{
 		"client_id":   clientID,
 		"device_code": deviceCode,
@@ -176,7 +177,7 @@ func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode stri
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
-	token := &AccessTokenResponse{}
+	token := &accessTokenResponse{}
 	if err := json.Unmarshal(body, token); err != nil {
 		return nil, fmt.Errorf("unmarshal response body as JSON: %w", err)
 	}
