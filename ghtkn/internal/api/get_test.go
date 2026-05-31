@@ -15,7 +15,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
-	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 func newMockInput() *Input {
@@ -26,7 +25,7 @@ func newMockInput() *Input {
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
 		},
-		Keyring:      &mockKeyring{},
+		Backend:      &mockKeyring{},
 		Logger:       log.NewLogger(),
 		ConfigReader: &mockConfigReader{},
 		Getenv:       func(key string) string { return "" },
@@ -35,15 +34,15 @@ func newMockInput() *Input {
 }
 
 type mockKeyring struct {
-	token *pubkeyring.AccessToken
+	token *pubapi.AccessToken
 	err   error
 }
 
-func (m *mockKeyring) Get(_, _ string) (*pubkeyring.AccessToken, error) {
+func (m *mockKeyring) Get(_ context.Context, _ string) (*pubapi.AccessToken, error) {
 	return m.token, m.err
 }
 
-func (m *mockKeyring) Set(_, _ string, _ *pubkeyring.AccessToken) error {
+func (m *mockKeyring) Set(_ context.Context, _ string, _ *pubapi.AccessToken) error {
 	return m.err
 }
 
@@ -90,7 +89,7 @@ func TestTokenManager_Get(t *testing.T) {
 		name       string
 		setupInput func() *Input
 		wantErr    bool
-		wantToken  *pubkeyring.AccessToken
+		wantToken  *pubapi.AccessToken
 		input      *pubapi.InputGet
 	}{
 		{
@@ -103,8 +102,8 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: futureTime,
 					},
 				}
-				input.Keyring = &mockKeyring{
-					token: &pubkeyring.AccessToken{
+				input.Backend = &mockKeyring{
+					token: &pubapi.AccessToken{
 						AccessToken:    "cached-token",
 						ExpirationDate: futureTime,
 					},
@@ -116,7 +115,7 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
-			wantToken: &pubkeyring.AccessToken{
+			wantToken: &pubapi.AccessToken{
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
 				Login:          "test-user",
@@ -132,8 +131,8 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 					},
 				}
-				input.Keyring = &mockKeyring{
-					token: &pubkeyring.AccessToken{
+				input.Backend = &mockKeyring{
+					token: &pubapi.AccessToken{
 						AccessToken:    "expired-token",
 						ExpirationDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 					},
@@ -145,7 +144,7 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
 			wantErr: false,
-			wantToken: &pubkeyring.AccessToken{
+			wantToken: &pubapi.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 				Login:          "test-user",
@@ -158,7 +157,7 @@ func TestTokenManager_Get(t *testing.T) {
 				input.DeviceFlow = &mockDeviceFlow{
 					err: errors.New("token creation failed"),
 				}
-				input.Keyring = &mockKeyring{}
+				input.Backend = &mockKeyring{}
 				input.Now = func() time.Time {
 					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 				}

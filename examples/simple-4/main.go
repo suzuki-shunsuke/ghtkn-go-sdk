@@ -22,7 +22,11 @@ func main() {
 
 func run() int {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := ghtkn.New()
+	client, err := ghtkn.New()
+	if err != nil {
+		slogerr.WithError(logger, err).Error("failed to create client")
+		return 1
+	}
 	client.SetLogger(&ghtkn.Logger{
 		Expire: func(logger *slog.Logger, exDate time.Time) {
 			logger.Debug("access token expires", "expiration_date", exDate.Format(time.RFC3339))

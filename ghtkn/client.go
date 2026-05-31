@@ -14,14 +14,13 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	internalapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	intconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"golang.org/x/oauth2"
 )
 
 type (
 	// Public data/contract types live in their own public packages.
-	AccessToken        = keyring.AccessToken
+	AccessToken        = api.AccessToken
 	AppConfig          = config.App
 	Logger             = log.Logger
 	OnetimeCodeUI      = deviceflow.OnetimeCodeUI
@@ -44,10 +43,14 @@ type Client struct {
 }
 
 // New creates a new Client instance with default production dependencies.
-func New() *Client {
-	return &Client{
-		tm: internalapi.New(internalapi.NewInput()),
+func New() (*Client, error) {
+	input, err := internalapi.NewInput()
+	if err != nil {
+		return nil, err
 	}
+	return &Client{
+		tm: internalapi.New(input),
+	}, nil
 }
 
 // Get retrieves a GitHub App access token, creating or renewing it when needed.

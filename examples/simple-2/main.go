@@ -20,7 +20,11 @@ func main() {
 
 func run() int {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := ghtkn.New()
+	client, err := ghtkn.New()
+	if err != nil {
+		slogerr.WithError(logger, err).Error("failed to create client")
+		return 1
+	}
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{
 		AppName: os.Getenv("APP_NAME"), // Optionally set your GitHub App name
 	})

@@ -12,7 +12,11 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	if c := ghtkn.New(); c == nil {
+	c, err := ghtkn.New()
+	if err != nil {
+		t.Fatalf("New() returned an error: %v", err)
+	}
+	if c == nil {
 		t.Fatal("New() returned nil")
 	}
 }
@@ -33,7 +37,10 @@ func (stubOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.Device
 func TestClient_Setters(t *testing.T) {
 	t.Parallel()
 
-	c := ghtkn.New()
+	c, err := ghtkn.New()
+	if err != nil {
+		t.Fatalf("New() returned an error: %v", err)
+	}
 	// Must compile and not panic: public implementations are accepted by the wrapper.
 	c.SetBrowser(stubBrowser{})
 	c.SetBrowser(&ghtkn.DefaultBrowser{})

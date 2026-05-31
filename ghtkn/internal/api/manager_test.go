@@ -42,7 +42,10 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := NewInput()
+	input, err := NewInput()
+	if err != nil {
+		t.Fatalf("NewInput() returned an error: %v", err)
+	}
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
@@ -52,8 +55,8 @@ func TestNewInput(t *testing.T) {
 		t.Error("NewInput().AppTokenClient is nil")
 	}
 
-	if input.Keyring == nil {
-		t.Error("NewInput().Keyring is nil")
+	if input.Backend == nil {
+		t.Error("NewInput().Backend is nil")
 	}
 
 	if input.Now == nil {

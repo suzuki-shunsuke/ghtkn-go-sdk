@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -16,7 +15,7 @@ import (
 func NewLogger() *publog.Logger {
 	return &publog.Logger{
 		Expire: func(logger *slog.Logger, exDate time.Time) {
-			logger.Debug("access token expires", "expiration_date", keyring.FormatDate(exDate))
+			logger.Debug("access token expires", "expiration_date", exDate.Format(time.RFC3339))
 		},
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
