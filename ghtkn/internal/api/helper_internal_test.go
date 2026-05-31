@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
@@ -136,6 +137,7 @@ func TestController_createToken(t *testing.T) {
 
 			input := &Input{
 				DeviceFlow: tt.client,
+				Getenv:     func(string) string { return "" },
 			}
 			tm := &TokenManager{input: input}
 
@@ -152,5 +154,34 @@ func TestController_createToken(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestController_createToken_disableDeviceFlow(t *testing.T) {
+	t.Parallel()
+
+	input := &Input{
+		DeviceFlow: &testDeviceFlow{
+			token: &deviceflow.AccessToken{
+				AccessToken:    "should-not-be-used",
+				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+			},
+		},
+		Getenv: func(key string) string {
+			if key == "GHTKN_DISABLE_DEVICE_FLOW" {
+				return "true"
+			}
+			return ""
+		},
+	}
+	tm := &TokenManager{input: input}
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+	got, err := tm.createToken(t.Context(), logger, "test-client-id")
+	if !errors.Is(err, pubapi.ErrDisableDeviceFlow) {
+		t.Errorf("createToken() error = %v, want ErrDisableDeviceFlow", err)
+	}
+	if got != nil {
+		t.Errorf("createToken() = %v, want nil", got)
 	}
 }
