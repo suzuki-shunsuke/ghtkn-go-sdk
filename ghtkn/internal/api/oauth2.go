@@ -3,36 +3,68 @@ package api
 import (
 	"context"
 	"log/slog"
+	"sync"
+	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/oauth2"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	"golang.org/x/oauth2"
 )
-
-// tokenSourceClient implements the oauth2.Client interface for the token manager.
-// It provides a bridge between the OAuth2 token source and the internal token management system.
-type tokenSourceClient struct {
-	tm     *TokenManager // Token manager instance for retrieving tokens
-	logger *slog.Logger  // Logger for debugging and error reporting
-	input  *InputGet     // Input parameters for token retrieval
-}
-
-// Get implements the oauth2.Client interface.
-// It retrieves a GitHub access token using the token manager and returns the raw token string.
-func (c *tokenSourceClient) Get() (string, error) {
-	token, _, err := c.tm.Get(context.Background(), c.logger, c.input)
-	if err != nil {
-		return "", err
-	}
-	return token.AccessToken, nil
-}
 
 // TokenSource creates an OAuth2 token source for the token manager.
 // It returns a token source that can be used with OAuth2 clients to automatically
 // handle token retrieval and caching through the internal token management system.
-func (tm *TokenManager) TokenSource(logger *slog.Logger, input *InputGet) *oauth2.TokenSource {
-	client := &tokenSourceClient{
+func (tm *TokenManager) TokenSource(logger *slog.Logger, input *InputGet) *TokenSource {
+	return &TokenSource{
+		mutex:  &sync.Mutex{},
 		tm:     tm,
 		logger: logger,
 		input:  input,
+		now:    time.Now,
 	}
-	return oauth2.NewTokenSource(client)
+}
+
+// TokenSource implements oauth2.TokenSource interface for GitHub access tokens.
+// It provides thread-safe caching of tokens and retrieves them from a client when needed.
+type TokenSource struct {
+	token  *oauth2.Token     // Cached OAuth2 token
+	mutex  *sync.Mutex       // Mutex for thread-safe access to the token
+	tm     TokenSourceClient // Token manager instance for retrieving tokens
+	logger *slog.Logger      // Logger for debugging and error reporting
+	input  *InputGet         // Input parameters for token retrieval
+	now    func() time.Time
+}
+
+type TokenSourceClient interface {
+	Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error)
+}
+
+// Token implements oauth2.TokenSource.Token() interface.
+// It returns a cached token if available, otherwise retrieves a new one from the client.
+// The token retrieval is thread-safe and caches the result for subsequent calls.
+func (ks *TokenSource) Token() (*oauth2.Token, error) {
+	// Check if we have a cached token (read lock)
+	ks.mutex.Lock()
+	defer ks.mutex.Unlock()
+	token := ks.token
+	if token != nil && !isExpired(token, ks.now()) {
+		return token, nil
+	}
+
+	// Get new token from client
+
+	t, _, err := ks.tm.Get(context.Background(), ks.logger, ks.input)
+	if err != nil {
+		return nil, err
+	}
+	ks.token = &oauth2.Token{
+		AccessToken: t.AccessToken,
+		Expiry:      t.ExpirationDate,
+	}
+	return ks.token, nil
+}
+
+func isExpired(token *oauth2.Token, now time.Time) bool {
+	// TODO consider min expiration
+	return !token.Expiry.IsZero() && token.Expiry.Before(now)
 }
