@@ -5,6 +5,7 @@
 package text
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // The access token is saved in plaintext to ${XDG_CACHE_HOME}/ghtkn/tokens/<client-id>
@@ -72,8 +74,8 @@ func cacheDir(getEnv func(string) string, goos string) (string, error) {
 	return "", errors.New("XDG_CACHE_HOME or HOME is required to use the text backend")
 }
 
-// Get reads the raw token stored for clientID.
-// It returns (nil, nil) when no token file exists.
+// Get reads the token stored for clientID, trimming the trailing newline
+// appended by Set. It returns (nil, nil) when no token file exists.
 func (b *Backend) Get(_ context.Context, clientID string) ([]byte, error) {
 	bt, err := os.ReadFile(filepath.Join(b.dir, clientID))
 	if err != nil {
@@ -82,10 +84,11 @@ func (b *Backend) Get(_ context.Context, clientID string) ([]byte, error) {
 		}
 		return nil, fmt.Errorf("read a token file: %w", err)
 	}
-	return bt, nil
+	return bytes.TrimSuffix(bt, []byte("\n")), nil
 }
 
-// Set writes the raw token for clientID atomically with file permission 0600.
+// Set writes the token for clientID atomically with file permission 0600.
+// A trailing newline is appended if the token doesn't already end with one.
 // It writes to a temporary file in the same directory and renames it into place,
 // so a concurrent writer can at worst lose its write but never corrupt the file.
 func (b *Backend) Set(_ context.Context, clientID, token string) error {
@@ -97,6 +100,9 @@ func (b *Backend) Set(_ context.Context, clientID, token string) error {
 		return fmt.Errorf("create a temporary file: %w", err)
 	}
 	tmpName := tmp.Name()
+	if !strings.HasSuffix(token, "\n") {
+		token += "\n"
+	}
 	if _, err := tmp.WriteString(token); err != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)

@@ -23,7 +23,7 @@ func TestBackend_GetSet(t *testing.T) {
 		t.Fatalf("Get() before Set = %q, want nil", got)
 	}
 
-	// Set then Get round-trips.
+	// Set then Get round-trips. Set appends a trailing newline that Get trims.
 	if err := b.Set(ctx, "client-id", "token"); err != nil {
 		t.Fatalf("Set() error = %v", err)
 	}
@@ -44,8 +44,9 @@ func TestBackend_GetSet(t *testing.T) {
 		t.Errorf("file perm = %o, want 600", perm)
 	}
 
-	// Set overwrites an existing token.
-	if err := b.Set(ctx, "client-id", "token2"); err != nil {
+	// Set overwrites an existing token; a token that already ends with a newline
+	// is not given a second one, so Get still round-trips it.
+	if err := b.Set(ctx, "client-id", "token2\n"); err != nil {
 		t.Fatalf("Set() overwrite error = %v", err)
 	}
 	got, err = b.Get(ctx, "client-id")
