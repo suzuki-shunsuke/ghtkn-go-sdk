@@ -11,9 +11,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
-// The access token is saved in plaintext to ${XDG_CACHE_HOME}/ghtkn/tokens/<client-id>.
+// The access token is saved in plaintext to ${XDG_CACHE_HOME}/ghtkn/tokens/<client-id>
+// (%LocalAppData%\cache\ghtkn\tokens\<client-id> on Windows).
 // The directory can be overridden with the GHTKN_TEXT_BACKEND_DIR environment variable.
 // The file permissions are 0600. No encryption is performed.
 // See https://github.com/suzuki-shunsuke/design-docs/blob/main/ghtkn/backend/README.md
@@ -24,10 +26,11 @@ type Backend struct {
 }
 
 // New creates a text backend. The storage directory is GHTKN_TEXT_BACKEND_DIR
-// if set, otherwise ${XDG_CACHE_HOME}/ghtkn/tokens (falling back to $HOME/.cache).
+// if set, otherwise ${XDG_CACHE_HOME}/ghtkn/tokens (falling back to $HOME/.cache),
+// or %LocalAppData%\cache\ghtkn\tokens on Windows.
 // It returns an error if none of these are set.
 func New() (*Backend, error) {
-	dir, err := tokenDir(os.Getenv)
+	dir, err := tokenDir(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return nil, err
 	}
@@ -38,21 +41,28 @@ func New() (*Backend, error) {
 
 // tokenDir resolves the directory that stores token files. GHTKN_TEXT_BACKEND_DIR
 // takes precedence; otherwise it is ${cache dir}/ghtkn/tokens.
-func tokenDir(getEnv func(string) string) (string, error) {
+func tokenDir(getEnv func(string) string, goos string) (string, error) {
 	dir := getEnv("GHTKN_TEXT_BACKEND_DIR")
 	if dir != "" {
 		return dir, nil
 	}
-	cacheDir, err := cacheDir(getEnv)
+	cacheDir, err := cacheDir(getEnv, goos)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(cacheDir, "ghtkn", "tokens"), nil
 }
 
-// cacheDir resolves the base cache directory, honoring XDG_CACHE_HOME and
-// falling back to $HOME/.cache, mirroring how the config path is resolved.
-func cacheDir(getEnv func(string) string) (string, error) {
+// cacheDir resolves the base cache directory. On Windows it is %LocalAppData%\cache;
+// otherwise it honors XDG_CACHE_HOME and falls back to $HOME/.cache, mirroring how
+// the config path is resolved.
+func cacheDir(getEnv func(string) string, goos string) (string, error) {
+	if goos == "windows" {
+		if d := getEnv("LocalAppData"); d != "" {
+			return filepath.Join(d, "cache"), nil
+		}
+		return "", errors.New("LocalAppData is required to use the text backend on Windows")
+	}
 	if d := getEnv("XDG_CACHE_HOME"); d != "" {
 		return d, nil
 	}

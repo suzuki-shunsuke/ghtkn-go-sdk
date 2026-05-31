@@ -62,27 +62,50 @@ func Test_cacheDir(t *testing.T) {
 
 	tests := []struct {
 		name    string
+		goos    string
 		env     map[string]string
 		want    string
 		wantErr bool
 	}{
 		{
 			name: "honors XDG_CACHE_HOME",
+			goos: "linux",
 			env:  map[string]string{"XDG_CACHE_HOME": "/tmp/xdg-cache"},
 			want: "/tmp/xdg-cache",
 		},
 		{
 			name: "prefers XDG_CACHE_HOME over HOME",
+			goos: "linux",
 			env:  map[string]string{"XDG_CACHE_HOME": "/tmp/xdg-cache", "HOME": "/home/tester"},
 			want: "/tmp/xdg-cache",
 		},
 		{
 			name: "falls back to HOME/.cache",
+			goos: "linux",
 			env:  map[string]string{"HOME": "/home/tester"},
 			want: filepath.Join("/home/tester", ".cache"),
 		},
 		{
 			name:    "errors when neither is set",
+			goos:    "linux",
+			env:     map[string]string{},
+			wantErr: true,
+		},
+		{
+			name: "on Windows uses LocalAppData/cache",
+			goos: "windows",
+			env:  map[string]string{"LocalAppData": "/local-app-data"},
+			want: filepath.Join("/local-app-data", "cache"),
+		},
+		{
+			name: "on Windows ignores XDG_CACHE_HOME",
+			goos: "windows",
+			env:  map[string]string{"LocalAppData": "/local-app-data", "XDG_CACHE_HOME": "/tmp/xdg-cache"},
+			want: filepath.Join("/local-app-data", "cache"),
+		},
+		{
+			name:    "errors on Windows when LocalAppData is not set",
+			goos:    "windows",
 			env:     map[string]string{},
 			wantErr: true,
 		},
@@ -91,7 +114,7 @@ func Test_cacheDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := cacheDir(func(k string) string { return tt.env[k] })
+			got, err := cacheDir(func(k string) string { return tt.env[k] }, tt.goos)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("cacheDir() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -110,32 +133,44 @@ func Test_tokenDir(t *testing.T) {
 
 	tests := []struct {
 		name    string
+		goos    string
 		env     map[string]string
 		want    string
 		wantErr bool
 	}{
 		{
 			name: "honors GHTKN_TEXT_BACKEND_DIR",
+			goos: "linux",
 			env:  map[string]string{"GHTKN_TEXT_BACKEND_DIR": "/tmp/tokens"},
 			want: "/tmp/tokens",
 		},
 		{
 			name: "prefers GHTKN_TEXT_BACKEND_DIR over XDG_CACHE_HOME",
+			goos: "linux",
 			env:  map[string]string{"GHTKN_TEXT_BACKEND_DIR": "/tmp/tokens", "XDG_CACHE_HOME": "/tmp/xdg-cache"},
 			want: "/tmp/tokens",
 		},
 		{
 			name: "falls back to XDG_CACHE_HOME/ghtkn/tokens",
+			goos: "linux",
 			env:  map[string]string{"XDG_CACHE_HOME": "/tmp/xdg-cache"},
 			want: filepath.Join("/tmp/xdg-cache", "ghtkn", "tokens"),
 		},
 		{
 			name: "falls back to HOME/.cache/ghtkn/tokens",
+			goos: "linux",
 			env:  map[string]string{"HOME": "/home/tester"},
 			want: filepath.Join("/home/tester", ".cache", "ghtkn", "tokens"),
 		},
 		{
+			name: "on Windows uses LocalAppData/cache/ghtkn/tokens",
+			goos: "windows",
+			env:  map[string]string{"LocalAppData": "/local-app-data"},
+			want: filepath.Join("/local-app-data", "cache", "ghtkn", "tokens"),
+		},
+		{
 			name:    "errors when nothing is set",
+			goos:    "linux",
 			env:     map[string]string{},
 			wantErr: true,
 		},
@@ -144,7 +179,7 @@ func Test_tokenDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := tokenDir(func(k string) string { return tt.env[k] })
+			got, err := tokenDir(func(k string) string { return tt.env[k] }, tt.goos)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("tokenDir() error = %v, wantErr %v", err, tt.wantErr)
 			}
