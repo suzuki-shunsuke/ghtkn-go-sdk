@@ -23,7 +23,6 @@ type (
 	// Public data/contract types live in their own public packages.
 	AccessToken        = keyring.AccessToken
 	AppConfig          = config.App
-	Config             = config.Config
 	Logger             = log.Logger
 	DeviceCodeUI       = deviceflow.DeviceCodeUI
 	Browser            = deviceflow.Browser
