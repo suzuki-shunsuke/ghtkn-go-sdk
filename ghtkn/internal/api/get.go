@@ -157,13 +157,11 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 	return token, true, nil
 }
 
-var ErrDisableDeviceFlow = fmt.Errorf("device flow is disabled")
-
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns a keyring.AccessToken with the token details and expiration date.
 func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string) (*pubkeyring.AccessToken, error) {
 	if tm.input.Getenv("GHTKN_DISABLE_DEVICE_FLOW") == "true" {
-		return nil, ErrDisableDeviceFlow
+		return nil, pubapi.ErrDisableDeviceFlow
 	}
 	tk, err := tm.input.DeviceFlow.Create(ctx, logger, clientID)
 	if err != nil {

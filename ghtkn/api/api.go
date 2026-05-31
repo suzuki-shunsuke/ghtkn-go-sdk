@@ -1,7 +1,10 @@
 // Package api provides the public request types for the ghtkn client.
 package api
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // InputGet contains the input parameters for token retrieval operations.
 // It provides configuration options for specifying which app to use,
@@ -13,3 +16,5 @@ type InputGet struct {
 	AppOwner       string        // GitHub App Owner
 	MinExpiration  time.Duration // Minimum time before token expiration to trigger renewal
 }
+
+var ErrDisableDeviceFlow = errors.New("device flow is disabled")
