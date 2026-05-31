@@ -1,7 +1,6 @@
 package text
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,7 +12,7 @@ func TestBackend_GetSet(t *testing.T) {
 	t.Parallel()
 
 	b := &Backend{dir: filepath.Join(t.TempDir(), "ghtkn", "tokens")}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Get before Set returns (nil, nil).
 	got, err := b.Get(ctx, "client-id")

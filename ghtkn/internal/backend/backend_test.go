@@ -70,7 +70,7 @@ func TestBackend_Get(t *testing.T) {
 			t.Parallel()
 
 			b := &Backend{backend: tt.inner}
-			got, err := b.Get(context.Background(), "client-id")
+			got, err := b.Get(t.Context(), "client-id")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Get() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -111,7 +111,7 @@ func TestBackend_Set(t *testing.T) {
 			ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			Login:          "octocat",
 		}
-		if err := b.Set(context.Background(), "client-id", token); err != nil {
+		if err := b.Set(t.Context(), "client-id", token); err != nil {
 			t.Fatalf("Set() error = %v", err)
 		}
 		got := &api.AccessToken{}
@@ -129,7 +129,7 @@ func TestBackend_Set(t *testing.T) {
 		b := &Backend{backend: &mockInner{set: func(_, _ string) error {
 			return errors.New("boom")
 		}}}
-		if err := b.Set(context.Background(), "client-id", &api.AccessToken{}); err == nil {
+		if err := b.Set(t.Context(), "client-id", &api.AccessToken{}); err == nil {
 			t.Error("Set() expected an error, got nil")
 		}
 	})

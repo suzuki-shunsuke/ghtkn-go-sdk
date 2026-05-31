@@ -1,7 +1,6 @@
 package keyring
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -40,7 +39,7 @@ func TestBackend_Get(t *testing.T) {
 			t.Parallel()
 
 			b := &Backend{get: tt.get, service: DefaultServiceKey}
-			got, err := b.Get(context.Background(), "client-id")
+			got, err := b.Get(t.Context(), "client-id")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Get() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -68,7 +67,7 @@ func TestBackend_Set(t *testing.T) {
 			},
 			service: DefaultServiceKey,
 		}
-		if err := b.Set(context.Background(), "client-id", "token"); err != nil {
+		if err := b.Set(t.Context(), "client-id", "token"); err != nil {
 			t.Fatalf("Set() error = %v", err)
 		}
 		if gotService != DefaultServiceKey || gotKey != "client-id" || gotToken != "token" {
@@ -84,7 +83,7 @@ func TestBackend_Set(t *testing.T) {
 			set:     func(_, _, _ string) error { return errors.New("boom") },
 			service: DefaultServiceKey,
 		}
-		if err := b.Set(context.Background(), "client-id", "token"); err == nil {
+		if err := b.Set(t.Context(), "client-id", "token"); err == nil {
 			t.Error("Set() expected an error, got nil")
 		}
 	})
