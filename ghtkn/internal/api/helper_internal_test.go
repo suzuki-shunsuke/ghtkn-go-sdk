@@ -29,7 +29,7 @@ func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID
 
 func (m *testDeviceFlow) SetLogger(_ *publog.Logger) {}
 
-func (m *testDeviceFlow) SetDeviceCodeUI(_ pubdeviceflow.DeviceCodeUI) {}
+func (m *testDeviceFlow) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
 
 func (m *testDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 

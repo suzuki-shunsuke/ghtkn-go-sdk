@@ -26,10 +26,10 @@ func (c *Client) SetLogger(logger *publog.Logger) {
 	c.input.Logger = logger
 }
 
-// SetDeviceCodeUI updates the device code UI implementation used by the client.
-// This allows customization of how device flow information is presented to users.
-func (c *Client) SetDeviceCodeUI(ui pubdeviceflow.DeviceCodeUI) {
-	c.input.DeviceCodeUI = ui
+// SetOnetimeCodeUI updates the one-time code UI implementation used by the client.
+// This allows customization of how the one-time code (user code) is presented to users.
+func (c *Client) SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI) {
+	c.input.OnetimeCodeUI = ui
 }
 
 // SetBrowser updates the browser implementation used by the client.

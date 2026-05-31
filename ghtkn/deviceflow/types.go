@@ -1,5 +1,5 @@
 // Package deviceflow provides the public types for GitHub App OAuth device flow,
-// used to display device flow information and open verification URLs.
+// used to display the one-time code (user code) and open verification URLs.
 package deviceflow
 
 import (
@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// DeviceCodeUI provides an interface for displaying device flow information to users.
-type DeviceCodeUI interface {
+// OnetimeCodeUI provides an interface for displaying the one-time code (user code)
+// and verification URL to users during the device flow.
+type OnetimeCodeUI interface {
 	Show(ctx context.Context, logger *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error
 }
 

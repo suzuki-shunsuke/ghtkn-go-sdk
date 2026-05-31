@@ -82,7 +82,7 @@ func (i *Input) Validate() error {
 type DeviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
 	SetLogger(logger *publog.Logger)
-	SetDeviceCodeUI(ui pubdeviceflow.DeviceCodeUI)
+	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
 	SetBrowser(browser pubdeviceflow.Browser)
 }
 

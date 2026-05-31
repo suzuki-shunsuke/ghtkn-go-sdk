@@ -24,7 +24,7 @@ type (
 	AccessToken        = keyring.AccessToken
 	AppConfig          = config.App
 	Logger             = log.Logger
-	DeviceCodeUI       = deviceflow.DeviceCodeUI
+	OnetimeCodeUI      = deviceflow.OnetimeCodeUI
 	Browser            = deviceflow.Browser
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
 	DefaultBrowser     = browser.Browser
@@ -64,9 +64,9 @@ func (c *Client) SetLogger(logger *Logger) {
 	c.tm.SetLogger(logger)
 }
 
-// SetDeviceCodeUI sets the UI implementation used to display device flow information.
-func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
-	c.tm.SetDeviceCodeUI(ui)
+// SetOnetimeCodeUI sets the UI implementation used to display the one-time code (user code) during the device flow.
+func (c *Client) SetOnetimeCodeUI(ui OnetimeCodeUI) {
+	c.tm.SetOnetimeCodeUI(ui)
 }
 
 // SetBrowser sets the implementation used to open the GitHub verification URL.

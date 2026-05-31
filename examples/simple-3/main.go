@@ -51,7 +51,7 @@ func (b *Browser) Open(ctx context.Context, logger *slog.Logger, url string) err
 
 func core(logger *slog.Logger) error {
 	client := ghtkn.New()
-	client.SetDeviceCodeUI(&UI{})
+	client.SetOnetimeCodeUI(&UI{})
 	client.SetBrowser(&Browser{})
 
 	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{})

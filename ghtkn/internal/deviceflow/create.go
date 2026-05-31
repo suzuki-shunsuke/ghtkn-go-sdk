@@ -29,7 +29,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	}
 
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
-	if err := c.input.DeviceCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
+	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
 		return nil, fmt.Errorf("show device code: %w", err)
 	}
 	if err := c.input.Browser.Open(ctx, logger, deviceCode.VerificationURI); err != nil {

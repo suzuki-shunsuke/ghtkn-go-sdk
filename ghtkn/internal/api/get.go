@@ -26,10 +26,10 @@ func (tm *TokenManager) SetLogger(logger *publog.Logger) {
 	tm.input.DeviceFlow.SetLogger(logger)
 }
 
-// SetDeviceCodeUI updates the device code UI implementation used during OAuth device flow.
-// This allows customization of how device flow information is presented to users.
-func (tm *TokenManager) SetDeviceCodeUI(ui pubdeviceflow.DeviceCodeUI) {
-	tm.input.DeviceFlow.SetDeviceCodeUI(ui)
+// SetOnetimeCodeUI updates the one-time code UI implementation used during OAuth device flow.
+// This allows customization of how the one-time code (user code) is presented to users.
+func (tm *TokenManager) SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI) {
+	tm.input.DeviceFlow.SetOnetimeCodeUI(ui)
 }
 
 // SetBrowser updates the browser implementation used to open verification URLs.

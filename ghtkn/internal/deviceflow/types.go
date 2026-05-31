@@ -1,6 +1,6 @@
 // Package deviceflow handles GitHub App access token generation using OAuth device flow.
 // It provides functionality to authenticate GitHub Apps and obtain access tokens.
-// The public contract types (DeviceCodeUI, Browser, DeviceCodeResponse) live in the
+// The public contract types (OnetimeCodeUI, Browser, DeviceCodeResponse) live in the
 // public ghtkn/deviceflow package.
 package deviceflow
 
@@ -20,13 +20,13 @@ import (
 // It allows for dependency injection and makes testing easier by providing
 // customizable implementations of external dependencies.
 type Input struct {
-	HTTPClient   *http.Client                       // HTTP client for API requests
-	Now          func() time.Time                   // Function to get current time (for testing)
-	Stderr       io.Writer                          // Writer for error output
-	Browser      pubdeviceflow.Browser              // Interface for opening URLs in browser
-	NewTicker    func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
-	Logger       *publog.Logger                     // Logger for debugging and info messages
-	DeviceCodeUI pubdeviceflow.DeviceCodeUI         // UI for displaying device flow information
+	HTTPClient    *http.Client                       // HTTP client for API requests
+	Now           func() time.Time                   // Function to get current time (for testing)
+	Stderr        io.Writer                          // Writer for error output
+	Browser       pubdeviceflow.Browser              // Interface for opening URLs in browser
+	NewTicker     func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
+	Logger        *publog.Logger                     // Logger for debugging and info messages
+	OnetimeCodeUI pubdeviceflow.OnetimeCodeUI        // UI for displaying the one-time code (user code)
 }
 
 // NewInput creates a new Input instance with default dependencies.
@@ -34,13 +34,13 @@ type Input struct {
 // system stderr, real browser integration, and standard time functions.
 func NewInput() *Input {
 	return &Input{
-		HTTPClient:   http.DefaultClient,
-		Now:          time.Now,
-		Stderr:       os.Stderr,
-		Browser:      &browser.Browser{},
-		NewTicker:    time.NewTicker,
-		Logger:       log.NewLogger(),
-		DeviceCodeUI: NewDeviceCodeUI(os.Stdin, os.Stderr, &SimpleWaiter{}),
+		HTTPClient:    http.DefaultClient,
+		Now:           time.Now,
+		Stderr:        os.Stderr,
+		Browser:       &browser.Browser{},
+		NewTicker:     time.NewTicker,
+		Logger:        log.NewLogger(),
+		OnetimeCodeUI: NewOnetimeCodeUI(os.Stdin, os.Stderr, &SimpleWaiter{}),
 	}
 }
 

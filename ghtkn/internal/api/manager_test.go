@@ -19,7 +19,7 @@ type mockDeviceFlow struct {
 
 func (m *mockDeviceFlow) SetLogger(_ *publog.Logger) {}
 
-func (m *mockDeviceFlow) SetDeviceCodeUI(_ pubdeviceflow.DeviceCodeUI) {}
+func (m *mockDeviceFlow) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
 
 func (m *mockDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 

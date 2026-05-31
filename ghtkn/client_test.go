@@ -23,10 +23,10 @@ type stubBrowser struct{}
 
 func (stubBrowser) Open(_ context.Context, _ *slog.Logger, _ string) error { return nil }
 
-// stubDeviceCodeUI is a user-defined DeviceCodeUI implementation.
-type stubDeviceCodeUI struct{}
+// stubOnetimeCodeUI is a user-defined OnetimeCodeUI implementation.
+type stubOnetimeCodeUI struct{}
 
-func (stubDeviceCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.DeviceCodeResponse, _ time.Time) error {
+func (stubOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.DeviceCodeResponse, _ time.Time) error {
 	return nil
 }
 
@@ -37,7 +37,7 @@ func TestClient_Setters(t *testing.T) {
 	// Must compile and not panic: public implementations are accepted by the wrapper.
 	c.SetBrowser(stubBrowser{})
 	c.SetBrowser(&ghtkn.DefaultBrowser{})
-	c.SetDeviceCodeUI(stubDeviceCodeUI{})
+	c.SetOnetimeCodeUI(stubOnetimeCodeUI{})
 	c.SetLogger(&ghtkn.Logger{})
 }
 
