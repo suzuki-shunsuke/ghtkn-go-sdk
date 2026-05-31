@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"net"
 	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 // fakeAgent listens on a Unix socket and serves one request per connection using
@@ -17,10 +17,10 @@ import (
 type fakeAgent struct {
 	socket   string
 	listener net.Listener
-	requests []*request
+	requests []*agentapi.Request
 }
 
-func startFakeAgent(t *testing.T, handler func(*request) *response) *fakeAgent {
+func startFakeAgent(t *testing.T, handler func(*agentapi.Request) *agentapi.Response) *fakeAgent {
 	t.Helper()
 	socket := filepath.Join(t.TempDir(), "agent.sock")
 	listener, err := net.Listen("unix", socket)
@@ -41,13 +41,13 @@ func startFakeAgent(t *testing.T, handler func(*request) *response) *fakeAgent {
 	return f
 }
 
-func (f *fakeAgent) serve(conn net.Conn, handler func(*request) *response) {
+func (f *fakeAgent) serve(conn net.Conn, handler func(*agentapi.Request) *agentapi.Response) {
 	defer conn.Close() //nolint:errcheck
 	line, err := bufio.NewReader(conn).ReadBytes('\n')
 	if err != nil {
 		return
 	}
-	req := &request{}
+	req := &agentapi.Request{}
 	if err := json.Unmarshal(line, req); err != nil {
 		return
 	}
@@ -63,19 +63,19 @@ func TestBackend_setGetRoundTrip(t *testing.T) {
 	t.Parallel()
 	// The agent echoes back whatever was SET, keyed by client ID.
 	store := map[string]json.RawMessage{}
-	f := startFakeAgent(t, func(req *request) *response {
+	f := startFakeAgent(t, func(req *agentapi.Request) *agentapi.Response {
 		switch req.Command {
-		case commandSet:
+		case agentapi.CommandSet:
 			store[req.ClientID] = req.Token
-			return &response{OK: true}
-		case commandGet:
+			return &agentapi.Response{OK: true}
+		case agentapi.CommandGet:
 			tok, ok := store[req.ClientID]
 			if !ok {
-				return &response{Error: respNotFound}
+				return &agentapi.Response{Error: agentapi.RespNotFound}
 			}
-			return &response{OK: true, Token: tok}
+			return &agentapi.Response{OK: true, Token: tok}
 		default:
-			return &response{Error: "unknown command"}
+			return &agentapi.Response{Error: "unknown command"}
 		}
 	})
 	b := &Backend{socket: f.socket}
@@ -96,8 +96,8 @@ func TestBackend_setGetRoundTrip(t *testing.T) {
 
 func TestBackend_getMiss(t *testing.T) {
 	t.Parallel()
-	f := startFakeAgent(t, func(*request) *response {
-		return &response{Error: respNotFound}
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespNotFound}
 	})
 	got, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.absent")
 	if err != nil {
@@ -110,8 +110,8 @@ func TestBackend_getMiss(t *testing.T) {
 
 func TestBackend_serverError(t *testing.T) {
 	t.Parallel()
-	f := startFakeAgent(t, func(*request) *response {
-		return &response{Error: "boom"}
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: "boom"}
 	})
 	if _, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x"); err == nil {
 		t.Fatal("a server error response must produce an error")
@@ -123,11 +123,11 @@ func TestBackend_agentNotRunning(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "absent.sock")
 	b := &Backend{socket: socket}
 	ctx := context.Background()
-	if _, err := b.Get(ctx, "Iv1.x"); !errors.Is(err, errAgentNotRunning) {
-		t.Fatalf("Get err = %v, want errAgentNotRunning", err)
+	if _, err := b.Get(ctx, "Iv1.x"); !agentapi.IsNotRunning(err) {
+		t.Fatalf("Get err = %v, want ErrAgentNotRunning", err)
 	}
-	if err := b.Set(ctx, "Iv1.x", "{}"); !errors.Is(err, errAgentNotRunning) {
-		t.Fatalf("Set err = %v, want errAgentNotRunning", err)
+	if err := b.Set(ctx, "Iv1.x", "{}"); !agentapi.IsNotRunning(err) {
+		t.Fatalf("Set err = %v, want ErrAgentNotRunning", err)
 	}
 }
 
@@ -135,7 +135,7 @@ func TestBackend_agentNotRunning(t *testing.T) {
 // emits must match the agent server's Request fields.
 func TestBackend_setRequestShape(t *testing.T) {
 	t.Parallel()
-	f := startFakeAgent(t, func(*request) *response { return &response{OK: true} })
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response { return &agentapi.Response{OK: true} })
 	value := `{"access_token":"abc"}`
 	if err := (&Backend{socket: f.socket}).Set(context.Background(), "Iv1.x", value); err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestBackend_setRequestShape(t *testing.T) {
 		t.Fatalf("got %d requests, want 1", len(f.requests))
 	}
 	req := f.requests[0]
-	if req.Command != commandSet || req.ClientID != "Iv1.x" {
+	if req.Command != agentapi.CommandSet || req.ClientID != "Iv1.x" {
 		t.Fatalf("unexpected request: %+v", req)
 	}
 	if diff := cmp.Diff(value, string(req.Token)); diff != "" {

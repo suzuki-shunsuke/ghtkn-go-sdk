@@ -8,11 +8,12 @@ import (
 // goosWindows is the runtime.GOOS value for Windows.
 const goosWindows = "windows"
 
-// socketPath resolves the path of the agent's Unix domain socket. GHTKN_AGENT_SOCKET
+// SocketPath resolves the path of the agent's Unix domain socket. GHTKN_AGENT_SOCKET
 // takes precedence; otherwise it prefers $XDG_RUNTIME_DIR/ghtkn/socket and falls back
-// to $XDG_CACHE_HOME/ghtkn/agent.sock, then $HOME/.cache/ghtkn/agent.sock. This
-// mirrors how the agent server resolves the socket path.
-func socketPath(getEnv func(string) string, goos string) (string, error) {
+// to $XDG_CACHE_HOME/ghtkn/agent.sock, then $HOME/.cache/ghtkn/agent.sock
+// (%LocalAppData%\cache\ghtkn\agent.sock on Windows). Both the agent server and the
+// client resolve the socket through this function so they always agree on the path.
+func SocketPath(getEnv func(string) string, goos string) (string, error) {
 	if s := getEnv("GHTKN_AGENT_SOCKET"); s != "" {
 		return s, nil
 	}

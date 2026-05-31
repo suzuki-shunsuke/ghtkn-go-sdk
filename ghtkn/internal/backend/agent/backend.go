@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 // Backend stores and retrieves access tokens through a running ghtkn agent over a
@@ -23,9 +25,9 @@ type Backend struct {
 // the XDG-based default) but does not connect; a missing agent is reported on the
 // first Get or Set.
 func New() (*Backend, error) {
-	socket, err := socketPath(os.Getenv, runtime.GOOS)
+	socket, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // SocketPath returns a descriptive error
 	}
 	return &Backend{
 		socket: socket,
@@ -34,17 +36,17 @@ func New() (*Backend, error) {
 
 // Get retrieves the raw token stored for clientID from the agent.
 // It returns (nil, nil) when the agent has no token for the client ID, and
-// errAgentNotRunning when no agent is listening.
+// agentapi.ErrAgentNotRunning when no agent is listening.
 func (b *Backend) Get(ctx context.Context, clientID string) ([]byte, error) {
-	resp, err := roundTrip(ctx, b.socket, &request{Command: commandGet, ClientID: clientID})
+	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{Command: agentapi.CommandGet, ClientID: clientID})
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
 	}
 	if !resp.OK {
-		if resp.Error == respNotFound {
+		if resp.Error == agentapi.RespNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("the ghtkn agent failed to get the token: %s", resp.Error)
+		return nil, fmt.Errorf("get an access token through the agent: %s", resp.Error)
 	}
 	if len(resp.Token) == 0 {
 		return nil, nil
@@ -55,16 +57,16 @@ func (b *Backend) Get(ctx context.Context, clientID string) ([]byte, error) {
 // Set stores the raw token for clientID in the agent.
 // The token is already a JSON document, so it is sent verbatim as the request token.
 func (b *Backend) Set(ctx context.Context, clientID, token string) error {
-	resp, err := roundTrip(ctx, b.socket, &request{
-		Command:  commandSet,
+	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{
+		Command:  agentapi.CommandSet,
 		ClientID: clientID,
 		Token:    json.RawMessage(token),
 	})
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // Send returns a descriptive error
 	}
 	if !resp.OK {
-		return fmt.Errorf("the ghtkn agent failed to set the token: %s", resp.Error)
+		return fmt.Errorf("set an access token through the agent: %s", resp.Error)
 	}
 	return nil
 }

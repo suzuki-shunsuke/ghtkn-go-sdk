@@ -45,6 +45,12 @@ func TestSocketPath(t *testing.T) {
 			want: "/home/me/.cache/ghtkn/agent.sock",
 		},
 		{
+			name: "windows localappdata",
+			env:  map[string]string{"LocalAppData": `C:\Users\me\AppData\Local`},
+			goos: "windows",
+			want: filepath.Join(`C:\Users\me\AppData\Local`, "cache", "ghtkn", "agent.sock"),
+		},
+		{
 			name:    "nothing set",
 			env:     map[string]string{},
 			goos:    "linux",
@@ -55,7 +61,7 @@ func TestSocketPath(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			getEnv := func(k string) string { return d.env[k] }
-			got, err := socketPath(getEnv, d.goos)
+			got, err := SocketPath(getEnv, d.goos)
 			if d.wantErr {
 				if err == nil {
 					t.Fatal("expected an error")
@@ -66,7 +72,7 @@ func TestSocketPath(t *testing.T) {
 				t.Fatal(err)
 			}
 			if got != filepath.FromSlash(d.want) {
-				t.Fatalf("socketPath = %q, want %q", got, d.want)
+				t.Fatalf("SocketPath = %q, want %q", got, d.want)
 			}
 		})
 	}
