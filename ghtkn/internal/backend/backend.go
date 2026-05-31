@@ -1,7 +1,7 @@
 // Package backend stores and retrieves GitHub App access tokens through a
 // pluggable backend. The concrete backend is selected by the GHTKN_BACKEND
 // environment variable, allowing users to switch from the default OS keyring
-// to alternatives such as the plaintext text backend.
+// to alternatives such as the agent or the plaintext text backend.
 package backend
 
 import (
@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/text"
 )
@@ -30,10 +31,19 @@ type backend interface {
 }
 
 // New creates a Backend based on the GHTKN_BACKEND environment variable.
-// An empty value or "keyring" selects the OS keyring (the default); "text" selects
-// the plaintext file backend. Any other value returns an error.
+// An empty value or "keyring" selects the OS keyring (the default); "agent" selects
+// the ghtkn agent; "text" selects the plaintext file backend. Any other value
+// returns an error.
 func New() (*Backend, error) {
 	switch s := os.Getenv("GHTKN_BACKEND"); s {
+	case "agent":
+		a, err := agent.New()
+		if err != nil {
+			return nil, err
+		}
+		return &Backend{
+			backend: a,
+		}, nil
 	case "text":
 		t, err := text.New()
 		if err != nil {
