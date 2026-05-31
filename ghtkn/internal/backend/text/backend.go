@@ -25,7 +25,7 @@ type Backend struct {
 // New creates a text backend rooted at ${XDG_CACHE_HOME}/ghtkn/tokens.
 // It returns an error if neither XDG_CACHE_HOME nor HOME is set.
 func New() (*Backend, error) {
-	cacheDir, err := cacheDir()
+	cacheDir, err := cacheDir(os.Getenv)
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +36,11 @@ func New() (*Backend, error) {
 
 // cacheDir resolves the base cache directory, honoring XDG_CACHE_HOME and
 // falling back to $HOME/.cache, mirroring how the config path is resolved.
-func cacheDir() (string, error) {
-	if d := os.Getenv("XDG_CACHE_HOME"); d != "" {
+func cacheDir(getEnv func(string) string) (string, error) {
+	if d := getEnv("XDG_CACHE_HOME"); d != "" {
 		return d, nil
 	}
-	if home := os.Getenv("HOME"); home != "" {
+	if home := getEnv("HOME"); home != "" {
 		return filepath.Join(home, ".cache"), nil
 	}
 	return "", errors.New("XDG_CACHE_HOME or HOME is required to use the text backend")

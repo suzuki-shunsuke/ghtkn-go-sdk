@@ -58,35 +58,50 @@ func TestBackend_GetSet(t *testing.T) {
 	}
 }
 
-func TestNew(t *testing.T) {
-	t.Run("honors XDG_CACHE_HOME", func(t *testing.T) {
-		t.Setenv("XDG_CACHE_HOME", "/tmp/xdg-cache")
-		b, err := New()
-		if err != nil {
-			t.Fatalf("New() error = %v", err)
-		}
-		if want := filepath.Join("/tmp/xdg-cache", "ghtkn", "tokens"); b.dir != want {
-			t.Errorf("dir = %q, want %q", b.dir, want)
-		}
-	})
+func Test_cacheDir(t *testing.T) {
+	t.Parallel()
 
-	t.Run("falls back to HOME/.cache", func(t *testing.T) {
-		t.Setenv("XDG_CACHE_HOME", "")
-		t.Setenv("HOME", "/home/tester")
-		b, err := New()
-		if err != nil {
-			t.Fatalf("New() error = %v", err)
-		}
-		if want := filepath.Join("/home/tester", ".cache", "ghtkn", "tokens"); b.dir != want {
-			t.Errorf("dir = %q, want %q", b.dir, want)
-		}
-	})
+	tests := []struct {
+		name    string
+		env     map[string]string
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "honors XDG_CACHE_HOME",
+			env:  map[string]string{"XDG_CACHE_HOME": "/tmp/xdg-cache"},
+			want: "/tmp/xdg-cache",
+		},
+		{
+			name: "prefers XDG_CACHE_HOME over HOME",
+			env:  map[string]string{"XDG_CACHE_HOME": "/tmp/xdg-cache", "HOME": "/home/tester"},
+			want: "/tmp/xdg-cache",
+		},
+		{
+			name: "falls back to HOME/.cache",
+			env:  map[string]string{"HOME": "/home/tester"},
+			want: filepath.Join("/home/tester", ".cache"),
+		},
+		{
+			name:    "errors when neither is set",
+			env:     map[string]string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("errors when neither is set", func(t *testing.T) {
-		t.Setenv("XDG_CACHE_HOME", "")
-		t.Setenv("HOME", "")
-		if _, err := New(); err == nil {
-			t.Error("New() expected an error when XDG_CACHE_HOME and HOME are unset")
-		}
-	})
+			got, err := cacheDir(func(k string) string { return tt.env[k] })
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("cacheDir() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got != tt.want {
+				t.Errorf("cacheDir() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
