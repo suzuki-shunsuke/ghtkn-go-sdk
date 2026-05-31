@@ -173,7 +173,7 @@ func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *s
 		return nil
 	}
 	if tk == nil {
-		tm.input.Logger.AccessTokenIsNotFoundInKeyring(logger)
+		tm.input.Logger.AccessTokenIsNotFoundInBackend(logger)
 		return nil
 	}
 	// Check if the access token expires

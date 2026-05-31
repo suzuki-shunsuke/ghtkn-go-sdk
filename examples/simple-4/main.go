@@ -37,7 +37,7 @@ func run() int {
 		FailedToGetAccessTokenFromBackend: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to get access token from backend")
 		},
-		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
+		AccessTokenIsNotFoundInBackend: func(logger *slog.Logger) {
 			logger.Info("access token is not found in keyring")
 		},
 	})

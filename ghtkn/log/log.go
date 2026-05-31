@@ -16,6 +16,6 @@ type Logger struct {
 	FailedToOpenBrowser func(logger *slog.Logger, err error)
 	// FailedToGetAccessTokenFromBackend logs when access token retrieval from backend fails.
 	FailedToGetAccessTokenFromBackend func(logger *slog.Logger, err error)
-	// AccessTokenIsNotFoundInKeyring logs when no access token is found in the keyring.
-	AccessTokenIsNotFoundInKeyring func(logger *slog.Logger)
+	// AccessTokenIsNotFoundInBackend logs when no access token is found in the backend.
+	AccessTokenIsNotFoundInBackend func(logger *slog.Logger)
 }

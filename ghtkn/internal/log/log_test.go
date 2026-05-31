@@ -26,7 +26,7 @@ func TestNewLogger(t *testing.T) {
 	if logger.FailedToGetAccessTokenFromBackend == nil {
 		t.Error("FailedToGetAccessTokenFromKeyring function is nil")
 	}
-	if logger.AccessTokenIsNotFoundInKeyring == nil {
+	if logger.AccessTokenIsNotFoundInBackend == nil {
 		t.Error("AccessTokenIsNotFoundInKeyring function is nil")
 	}
 }
@@ -99,7 +99,7 @@ func TestLogger_AccessTokenIsNotFoundInKeyring(t *testing.T) {
 
 	logger := log.NewLogger()
 
-	logger.AccessTokenIsNotFoundInKeyring(slogger)
+	logger.AccessTokenIsNotFoundInBackend(slogger)
 
 	output := buf.String()
 	if !strings.Contains(output, "access token is not found in keyring") {
