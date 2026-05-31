@@ -136,6 +136,7 @@ func TestController_createToken(t *testing.T) {
 
 			input := &Input{
 				DeviceFlow: tt.client,
+				Getenv:     func(string) string { return "" },
 			}
 			tm := &TokenManager{input: input}
 
