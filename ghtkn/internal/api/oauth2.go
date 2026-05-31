@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"golang.org/x/oauth2"
 )
 
@@ -36,7 +36,7 @@ type TokenSource struct {
 }
 
 type TokenSourceClient interface {
-	Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error)
+	Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error)
 }
 
 // Token implements oauth2.TokenSource.Token() interface.

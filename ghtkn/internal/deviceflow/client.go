@@ -1,6 +1,9 @@
 package deviceflow
 
-import "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+import (
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+)
 
 // Client handles GitHub App authentication and access token generation using OAuth device flow.
 // It manages the complete authentication flow including device code requests, user authorization,
@@ -19,18 +22,18 @@ func NewClient(input *Input) *Client {
 
 // SetLogger updates the logger instance used by the client.
 // This allows dynamic reconfiguration of logging behavior.
-func (c *Client) SetLogger(logger *log.Logger) {
+func (c *Client) SetLogger(logger *publog.Logger) {
 	c.input.Logger = logger
 }
 
 // SetDeviceCodeUI updates the device code UI implementation used by the client.
 // This allows customization of how device flow information is presented to users.
-func (c *Client) SetDeviceCodeUI(ui DeviceCodeUI) {
+func (c *Client) SetDeviceCodeUI(ui pubdeviceflow.DeviceCodeUI) {
 	c.input.DeviceCodeUI = ui
 }
 
 // SetBrowser updates the browser implementation used by the client.
 // This allows customization of how verification URLs are opened in the browser.
-func (c *Client) SetBrowser(b Browser) {
+func (c *Client) SetBrowser(b pubdeviceflow.Browser) {
 	c.input.Browser = b
 }

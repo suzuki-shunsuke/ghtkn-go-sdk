@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"testing"
 
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type mockDeviceFlow struct {
@@ -16,11 +17,11 @@ type mockDeviceFlow struct {
 	err   error
 }
 
-func (m *mockDeviceFlow) SetLogger(_ *log.Logger) {}
+func (m *mockDeviceFlow) SetLogger(_ *publog.Logger) {}
 
-func (m *mockDeviceFlow) SetDeviceCodeUI(_ deviceflow.DeviceCodeUI) {}
+func (m *mockDeviceFlow) SetDeviceCodeUI(_ pubdeviceflow.DeviceCodeUI) {}
 
-func (m *mockDeviceFlow) SetBrowser(_ deviceflow.Browser) {}
+func (m *mockDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 
 func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
 	if m.err != nil {

@@ -7,30 +7,14 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
-// Logger provides structured logging functions for ghtkn operations.
-// Each field is a function that logs specific events with appropriate log levels.
-type Logger struct {
-	// Expire logs when an access token expiration date is processed.
-	Expire func(logger *slog.Logger, exDate time.Time)
-	// FailedToOpenBrowser logs when the browser cannot be opened for authentication.
-	FailedToOpenBrowser func(logger *slog.Logger, err error)
-	// FailedToGetAccessTokenFromKeyring logs when access token retrieval from keyring fails.
-	FailedToGetAccessTokenFromKeyring func(logger *slog.Logger, err error)
-	// AccessTokenIsNotFoundInKeyring logs when no access token is found in the keyring.
-	AccessTokenIsNotFoundInKeyring func(logger *slog.Logger)
-	// FailedToGetAppFromKeyring logs when app retrieval from keyring fails.
-	FailedToGetAppFromKeyring func(logger *slog.Logger, err error)
-	// AppIsNotFoundInKeyring logs when no app is found in the keyring.
-	AppIsNotFoundInKeyring func(logger *slog.Logger)
-}
-
 // NewLogger creates a new Logger instance with default logging functions.
 // Each logging function is pre-configured with appropriate log levels and messages.
-func NewLogger() *Logger {
-	return &Logger{
+func NewLogger() *publog.Logger {
+	return &publog.Logger{
 		Expire: func(logger *slog.Logger, exDate time.Time) {
 			logger.Debug("access token expires", "expiration_date", keyring.FormatDate(exDate))
 		},
@@ -55,7 +39,7 @@ func NewLogger() *Logger {
 // InitLogger initializes any nil logging functions in the provided Logger with default implementations.
 // This function allows partial customization of logging behavior by only overriding specific
 // log functions while falling back to defaults for unset functions.
-func InitLogger(l *Logger) {
+func InitLogger(l *publog.Logger) {
 	defaultLogger := NewLogger()
 	if l.Expire == nil {
 		l.Expire = defaultLogger.Expire

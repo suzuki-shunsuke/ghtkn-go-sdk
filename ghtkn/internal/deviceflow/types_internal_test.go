@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
@@ -16,7 +17,7 @@ type mockBrowser struct {
 	err error
 }
 
-func newMockBrowser(err error) Browser {
+func newMockBrowser(err error) pubdeviceflow.Browser {
 	return &mockBrowser{err: err}
 }
 

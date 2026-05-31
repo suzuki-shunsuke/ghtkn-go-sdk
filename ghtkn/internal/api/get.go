@@ -7,10 +7,13 @@ import (
 	"log/slog"
 	"time"
 
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -27,7 +30,7 @@ type InputGet struct {
 
 // SetLogger updates the logger instance used by the token manager.
 // It propagates the logger to both the token manager and device flow components.
-func (tm *TokenManager) SetLogger(logger *log.Logger) {
+func (tm *TokenManager) SetLogger(logger *publog.Logger) {
 	log.InitLogger(logger)
 	tm.input.Logger = logger
 	tm.input.DeviceFlow.SetLogger(logger)
@@ -35,24 +38,24 @@ func (tm *TokenManager) SetLogger(logger *log.Logger) {
 
 // SetDeviceCodeUI updates the device code UI implementation used during OAuth device flow.
 // This allows customization of how device flow information is presented to users.
-func (tm *TokenManager) SetDeviceCodeUI(ui deviceflow.DeviceCodeUI) {
+func (tm *TokenManager) SetDeviceCodeUI(ui pubdeviceflow.DeviceCodeUI) {
 	tm.input.DeviceFlow.SetDeviceCodeUI(ui)
 }
 
 // SetBrowser updates the browser implementation used to open verification URLs.
 // This allows customization of how the GitHub verification page is opened during device flow.
-func (tm *TokenManager) SetBrowser(ui deviceflow.Browser) {
+func (tm *TokenManager) SetBrowser(ui pubdeviceflow.Browser) {
 	tm.input.DeviceFlow.SetBrowser(ui)
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
-func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, *config.App, error) {
+func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error) {
 	if input == nil {
 		input = &InputGet{}
 	}
-	cfg := &config.Config{}
+	cfg := &pubconfig.Config{}
 
 	// Get a config file path
 	configPath := input.ConfigFilePath
@@ -122,7 +125,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *Inp
 
 	if changed {
 		// Store the token in keyring
-		if err := tm.input.Keyring.Set(keyringService, app.ClientID, &keyring.AccessToken{
+		if err := tm.input.Keyring.Set(keyringService, app.ClientID, &pubkeyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
@@ -142,16 +145,16 @@ var ErrStoreToken = errors.New("could not store the token in keyring")
 // It encapsulates the keyring service, app configuration, and expiration requirements
 // used internally by the getOrCreateToken function.
 type inputGetOrCreateToken struct {
-	KeyringService string        // Service name for keyring operations
-	App            *config.App   // App configuration containing client ID and other settings
-	MinExpiration  time.Duration // Minimum time before expiration to consider token valid
+	KeyringService string         // Service name for keyring operations
+	App            *pubconfig.App // App configuration containing client ID and other settings
+	MinExpiration  time.Duration  // Minimum time before expiration to consider token valid
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
 // It returns the token, a boolean indicating whether the token was newly created or modified,
 // and any error that occurred. The changed flag is used to determine if the token should be
 // saved back to the keyring.
-func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*keyring.AccessToken, bool, error) {
+func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubkeyring.AccessToken, bool, error) {
 	// Get an access token from keyring
 	if token := tm.getAccessTokenFromKeyring(logger, input.KeyringService, input.App.ClientID, input.MinExpiration); token != nil {
 		return token, false, nil
@@ -166,12 +169,12 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns a keyring.AccessToken with the token details and expiration date.
-func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
+func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string) (*pubkeyring.AccessToken, error) {
 	tk, err := tm.input.DeviceFlow.Create(ctx, logger, clientID)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
-	return &keyring.AccessToken{
+	return &pubkeyring.AccessToken{
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
 	}, nil
@@ -179,7 +182,7 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 
 // getAccessTokenFromKeyring retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
-func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService, key string, minExpiration time.Duration) *keyring.AccessToken {
+func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, keyringService, key string, minExpiration time.Duration) *pubkeyring.AccessToken {
 	// Get an access token from keyring
 	tk, err := tm.input.Keyring.Get(keyringService, key)
 	if err != nil {
@@ -210,7 +213,7 @@ func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Durati
 
 // readConfig loads and validates the configuration from the configured file path.
 // It returns an error if the configuration cannot be read or is invalid.
-func (tm *TokenManager) readConfig(cfg *config.Config, configFilePath string) error {
+func (tm *TokenManager) readConfig(cfg *pubconfig.Config, configFilePath string) error {
 	if err := tm.input.ConfigReader.Read(cfg, configFilePath); err != nil {
 		return fmt.Errorf("read config: %w", slogerr.With(err, "config", configFilePath))
 	}

@@ -4,166 +4,9 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
-
-func TestConfig_Validate(t *testing.T) { //nolint:funlen
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		config  *config.Config
-		wantErr bool
-	}{
-		{
-			name: "valid config",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "test-app",
-						ClientID: "xxx",
-					},
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "valid config with multiple apps",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-					},
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name:    "nil config",
-			config:  nil,
-			wantErr: true,
-		},
-		{
-			name: "empty apps",
-			config: &config.Config{
-				Apps: []*config.App{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "nil apps",
-			config: &config.Config{
-				Apps: nil,
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid app in config",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "valid-app",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "", // invalid - empty name
-						ClientID: "yyy",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "multiple invalid apps",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "", // invalid - empty name
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "", // invalid - empty client_id
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "duplicate app names",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "duplicate-app",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "duplicate-app",
-						ClientID: "yyy",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "duplicate git owners",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-						GitOwner: "same-owner",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						GitOwner: "same-owner",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "valid config with unique git owners",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-						GitOwner: "owner1",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						GitOwner: "owner2",
-					},
-					{
-						Name:     "app3",
-						ClientID: "zzz",
-						// GitOwner is optional, so it can be empty
-					},
-				},
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
 
 func TestNewReader(t *testing.T) {
 	t.Parallel()
@@ -176,60 +19,6 @@ func TestNewReader(t *testing.T) {
 	}
 }
 
-func TestApp_Validate(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		app     *config.App
-		wantErr bool
-	}{
-		{
-			name: "valid app",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "xxx",
-			},
-			wantErr: false,
-		},
-		{
-			name: "empty name",
-			app: &config.App{
-				Name:     "",
-				ClientID: "xxx",
-			},
-			wantErr: true,
-		},
-		{
-			name: "zero app_id",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "",
-			},
-			wantErr: true,
-		},
-		{
-			name: "both empty",
-			app: &config.App{
-				Name:     "",
-				ClientID: "",
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := tt.app.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("App.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestReader_Read(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
@@ -238,7 +27,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		configPath     string
 		configContent  string
 		fileExists     bool
-		expectedConfig *config.Config
+		expectedConfig *pubconfig.Config
 		wantErr        bool
 	}{
 		{
@@ -246,7 +35,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 			configPath:     "",
 			configContent:  "",
 			fileExists:     false,
-			expectedConfig: &config.Config{},
+			expectedConfig: &pubconfig.Config{},
 			wantErr:        false,
 		},
 		{
@@ -256,8 +45,8 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
   - name: test-app
     client_id: xxx`,
 			fileExists: true,
-			expectedConfig: &config.Config{
-				Apps: []*config.App{
+			expectedConfig: &pubconfig.Config{
+				Apps: []*pubconfig.App{
 					{
 						Name:     "test-app",
 						ClientID: "xxx",
@@ -275,8 +64,8 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
   - name: app2
     client_id: yyy`,
 			fileExists: true,
-			expectedConfig: &config.Config{
-				Apps: []*config.App{
+			expectedConfig: &pubconfig.Config{
+				Apps: []*pubconfig.App{
 					{
 						Name:     "app1",
 						ClientID: "xxx",
@@ -310,8 +99,8 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 			configPath:    "/test/config.yaml",
 			configContent: `apps: []`,
 			fileExists:    true,
-			expectedConfig: &config.Config{
-				Apps: []*config.App{},
+			expectedConfig: &pubconfig.Config{
+				Apps: []*pubconfig.App{},
 			},
 			wantErr: false,
 		},
@@ -330,7 +119,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 			}
 
 			reader := config.NewReader(fs)
-			cfg := &config.Config{}
+			cfg := &pubconfig.Config{}
 
 			err := reader.Read(cfg, tt.configPath)
 			if (err != nil) != tt.wantErr {
@@ -358,15 +147,15 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 	}
 }
 
-func TestConfig_SelectApp(t *testing.T) {
+func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tests := []struct {
 		name     string
-		config   *config.Config
+		config   *pubconfig.Config
 		key      string
 		owner    string
-		expected *config.App
+		expected *pubconfig.App
 	}{
 		{
 			name:     "nil config",
@@ -377,8 +166,8 @@ func TestConfig_SelectApp(t *testing.T) {
 		},
 		{
 			name: "empty apps",
-			config: &config.Config{
-				Apps: []*config.App{},
+			config: &pubconfig.Config{
+				Apps: []*pubconfig.App{},
 			},
 			key:      "any-key",
 			owner:    "",
@@ -386,94 +175,48 @@ func TestConfig_SelectApp(t *testing.T) {
 		},
 		{
 			name: "select by owner match",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-						GitOwner: "owner1",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						GitOwner: "owner2",
-					},
-					{
-						Name:     "app3",
-						ClientID: "zzz",
-						GitOwner: "owner3",
-					},
+			config: &pubconfig.Config{
+				Apps: []*pubconfig.App{
+					{Name: "app1", ClientID: "xxx", GitOwner: "owner1"},
+					{Name: "app2", ClientID: "yyy", GitOwner: "owner2"},
+					{Name: "app3", ClientID: "zzz", GitOwner: "owner3"},
 				},
 			},
-			key:   "",
-			owner: "owner2",
-			expected: &config.App{
-				Name:     "app2",
-				ClientID: "yyy",
-				GitOwner: "owner2",
-			},
+			key:      "",
+			owner:    "owner2",
+			expected: &pubconfig.App{Name: "app2", ClientID: "yyy", GitOwner: "owner2"},
 		},
 		{
 			name: "select by key match",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-					},
-					{
-						Name:     "app3",
-						ClientID: "zzz",
-					},
+			config: &pubconfig.Config{
+				Apps: []*pubconfig.App{
+					{Name: "app1", ClientID: "xxx"},
+					{Name: "app2", ClientID: "yyy"},
+					{Name: "app3", ClientID: "zzz"},
 				},
 			},
-			key:   "app3",
-			owner: "",
-			expected: &config.App{
-				Name:     "app3",
-				ClientID: "zzz",
-			},
+			key:      "app3",
+			owner:    "",
+			expected: &pubconfig.App{Name: "app3", ClientID: "zzz"},
 		},
 		{
 			name: "owner takes priority over key",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-						GitOwner: "owner1",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-						GitOwner: "owner2",
-					},
+			config: &pubconfig.Config{
+				Apps: []*pubconfig.App{
+					{Name: "app1", ClientID: "xxx", GitOwner: "owner1"},
+					{Name: "app2", ClientID: "yyy", GitOwner: "owner2"},
 				},
 			},
-			key:   "app2",
-			owner: "owner1",
-			expected: &config.App{
-				Name:     "app1",
-				ClientID: "xxx",
-				GitOwner: "owner1",
-			},
+			key:      "app2",
+			owner:    "owner1",
+			expected: &pubconfig.App{Name: "app1", ClientID: "xxx", GitOwner: "owner1"},
 		},
 		{
 			name: "return nil when key does not match",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-					},
+			config: &pubconfig.Config{
+				Apps: []*pubconfig.App{
+					{Name: "app1", ClientID: "xxx"},
+					{Name: "app2", ClientID: "yyy"},
 				},
 			},
 			key:      "nonexistent",
@@ -482,24 +225,15 @@ func TestConfig_SelectApp(t *testing.T) {
 		},
 		{
 			name: "select first when both key and owner are empty",
-			config: &config.Config{
-				Apps: []*config.App{
-					{
-						Name:     "app1",
-						ClientID: "xxx",
-					},
-					{
-						Name:     "app2",
-						ClientID: "yyy",
-					},
+			config: &pubconfig.Config{
+				Apps: []*pubconfig.App{
+					{Name: "app1", ClientID: "xxx"},
+					{Name: "app2", ClientID: "yyy"},
 				},
 			},
-			key:   "",
-			owner: "",
-			expected: &config.App{
-				Name:     "app1",
-				ClientID: "xxx",
-			},
+			key:      "",
+			owner:    "",
+			expected: &pubconfig.App{Name: "app1", ClientID: "xxx"},
 		},
 	}
 

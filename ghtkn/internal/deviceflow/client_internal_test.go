@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 )
 
 func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
@@ -21,7 +22,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 		name        string
 		clientID    string
 		handler     http.HandlerFunc
-		want        *DeviceCodeResponse
+		want        *pubdeviceflow.DeviceCodeResponse
 		wantErr     bool
 		errContains string
 	}{
@@ -45,7 +46,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 					t.Errorf("expected client_id test-client-id, got %s", req["client_id"])
 				}
 
-				resp := DeviceCodeResponse{
+				resp := pubdeviceflow.DeviceCodeResponse{
 					DeviceCode:      "device123",
 					UserCode:        "USER-CODE",
 					VerificationURI: "https://github.com/login/device",
@@ -55,7 +56,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(resp) //nolint:errchkjson,errcheck
 			},
-			want: &DeviceCodeResponse{
+			want: &pubdeviceflow.DeviceCodeResponse{
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -296,7 +297,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 	tests := []struct {
 		name        string
 		clientID    string
-		deviceCode  *DeviceCodeResponse
+		deviceCode  *pubdeviceflow.DeviceCodeResponse
 		handler     http.HandlerFunc
 		want        *AccessTokenResponse
 		wantErr     bool
@@ -306,7 +307,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		{
 			name:     "successful after one poll",
 			clientID: "test-client-id",
-			deviceCode: &DeviceCodeResponse{
+			deviceCode: &pubdeviceflow.DeviceCodeResponse{
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -343,7 +344,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		{
 			name:     "context cancelled",
 			clientID: "test-client-id",
-			deviceCode: &DeviceCodeResponse{
+			deviceCode: &pubdeviceflow.DeviceCodeResponse{
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -365,7 +366,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 		// {
 		// 	name:     "slow down handling",
 		// 	clientID: "test-client-id",
-		// 	deviceCode: &DeviceCodeResponse{
+		// 	deviceCode: &pubdeviceflow.DeviceCodeResponse{
 		// 		DeviceCode:      "device123",
 		// 		UserCode:        "USER-CODE",
 		// 		VerificationURI: "https://github.com/login/device",
@@ -473,7 +474,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 					switch r.URL.Path {
 					case "/login/device/code":
 						// Device code request
-						resp := DeviceCodeResponse{
+						resp := pubdeviceflow.DeviceCodeResponse{
 							DeviceCode:      "device123",
 							UserCode:        "USER-CODE",
 							VerificationURI: "https://github.com/login/device",

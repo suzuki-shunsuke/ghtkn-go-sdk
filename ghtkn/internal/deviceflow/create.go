@@ -11,7 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -51,7 +52,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 
 // getDeviceCode requests a device code from GitHub's OAuth device endpoint.
 // It returns the device code response containing the user code and verification URL.
-func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCodeResponse, error) {
+func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*pubdeviceflow.DeviceCodeResponse, error) {
 	if clientID == "" {
 		return nil, errors.New("client id is required")
 	}
@@ -88,7 +89,7 @@ func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCod
 			"body", string(body))
 	}
 
-	deviceCode := &DeviceCodeResponse{}
+	deviceCode := &pubdeviceflow.DeviceCodeResponse{}
 	if err := json.Unmarshal(body, deviceCode); err != nil {
 		return nil, fmt.Errorf("unmarshal response body as JSON: %w", err)
 	}
@@ -102,7 +103,7 @@ const additionalInterval = 5 * time.Second
 // pollForAccessToken continuously polls GitHub for an access token.
 // It respects the polling interval and handles authorization pending and slow down responses.
 // The polling continues until the device code expires or the user completes authentication.
-func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *DeviceCodeResponse) (*AccessTokenResponse, error) {
+func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *pubdeviceflow.DeviceCodeResponse) (*AccessTokenResponse, error) {
 	interval := time.Duration(deviceCode.Interval) * time.Second
 	if interval < additionalInterval {
 		interval = additionalInterval

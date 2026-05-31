@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 // Mock is a mock implementation of the API interface for testing.
@@ -181,7 +182,7 @@ func TestKeyring_Get(t *testing.T) {
 	t.Parallel()
 
 	expirationTime := time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)
-	testToken := &keyring.AccessToken{
+	testToken := &pubkeyring.AccessToken{
 		AccessToken:    "ghp_test_token_123",
 		ExpirationDate: expirationTime,
 		Login:          "testuser",
@@ -193,7 +194,7 @@ func TestKeyring_Get(t *testing.T) {
 		service string
 		key     string
 		secrets map[string]string
-		want    *keyring.AccessToken
+		want    *pubkeyring.AccessToken
 		wantErr bool
 	}{
 		{
@@ -278,7 +279,7 @@ func TestKeyring_Set(t *testing.T) {
 	t.Parallel()
 
 	expirationTime := time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)
-	testToken := &keyring.AccessToken{
+	testToken := &pubkeyring.AccessToken{
 		AccessToken:    "ghp_test_token_123",
 		ExpirationDate: expirationTime,
 		Login:          "testuser",
@@ -288,7 +289,7 @@ func TestKeyring_Set(t *testing.T) {
 		name    string
 		service string
 		key     string
-		token   *keyring.AccessToken
+		token   *pubkeyring.AccessToken
 		wantErr bool
 	}{
 		{

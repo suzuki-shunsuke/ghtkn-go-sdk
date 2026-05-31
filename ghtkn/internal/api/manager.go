@@ -10,11 +10,15 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.
@@ -37,7 +41,7 @@ type Input struct {
 	DeviceFlow   DeviceFlow       // Client for creating GitHub App tokens
 	Keyring      Keyring          // Keyring for token storage
 	Now          func() time.Time // Current time provider for testing
-	Logger       *log.Logger
+	Logger       *publog.Logger
 	ConfigReader ConfigReader
 	Getenv       func(string) string
 	GOOS         string
@@ -77,22 +81,22 @@ func (i *Input) Validate() error {
 // DeviceFlow defines the interface for creating GitHub App access tokens.
 type DeviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
-	SetLogger(logger *log.Logger)
-	SetDeviceCodeUI(ui deviceflow.DeviceCodeUI)
-	SetBrowser(browser deviceflow.Browser)
+	SetLogger(logger *publog.Logger)
+	SetDeviceCodeUI(ui pubdeviceflow.DeviceCodeUI)
+	SetBrowser(browser pubdeviceflow.Browser)
 }
 
 // Keyring defines the interface for storing and retrieving tokens from the system keyring.
 type Keyring interface {
-	Get(service, key string) (*keyring.AccessToken, error)
-	Set(service, key string, token *keyring.AccessToken) error
+	Get(service, key string) (*pubkeyring.AccessToken, error)
+	Set(service, key string, token *pubkeyring.AccessToken) error
 }
 
 // ConfigReader defines the interface for reading configuration files.
 type ConfigReader interface {
-	Read(cfg *config.Config, configFilePath string) error
+	Read(cfg *pubconfig.Config, configFilePath string) error
 }
 
 type PasswordReader interface {
-	Read(ctx context.Context, logger *slog.Logger, app *config.App) (string, error)
+	Read(ctx context.Context, logger *slog.Logger, app *pubconfig.App) (string, error)
 }

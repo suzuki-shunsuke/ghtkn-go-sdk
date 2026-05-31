@@ -6,12 +6,13 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/browser"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	intconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // New creates a new Client instance with the provided input configuration.
@@ -20,6 +21,7 @@ func New() *Client {
 }
 
 type (
+	// Public data/contract types live in their own public packages.
 	AccessToken        = keyring.AccessToken
 	AppConfig          = config.App
 	Config             = config.Config
@@ -28,12 +30,13 @@ type (
 	Browser            = deviceflow.Browser
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
 	DefaultBrowser     = browser.Browser
-	ClientIDReader     = api.PasswordReader
-	InputGet           = api.InputGet
-	Client             = api.TokenManager
+	// The token manager and its inputs remain internal implementation.
+	ClientIDReader = api.PasswordReader
+	InputGet       = api.InputGet
+	Client         = api.TokenManager
 )
 
 // GetConfigPath returns the default configuration file path for ghtkn.
 func GetConfigPath() (string, error) {
-	return config.GetPath(os.Getenv, runtime.GOOS)
+	return intconfig.GetPath(os.Getenv, runtime.GOOS)
 }

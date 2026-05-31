@@ -8,16 +8,11 @@ import (
 	"log/slog"
 	"time"
 
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"golang.org/x/term"
 )
 
-var _ DeviceCodeUI = &SimpleDeviceCodeUI{}
-
-// DeviceCodeUI provides an interface for displaying device flow information to users.
-// Implementations should show the device code, verification URL, and handle user interaction.
-type DeviceCodeUI interface {
-	Show(ctx context.Context, logger *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error
-}
+var _ pubdeviceflow.DeviceCodeUI = &SimpleDeviceCodeUI{}
 
 // SimpleDeviceCodeUI is a basic implementation of DeviceCodeUI that displays device flow
 // information to stderr and waits for user input from stdin.
@@ -44,7 +39,7 @@ func NewDeviceCodeUI(stdin io.Reader, stderr io.Writer, waiter Waiter) *SimpleDe
 // The function returns when Enter is pressed or the context is cancelled.
 // Note that it exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
 // In case of Git Credential Helper stdin is not a terminal, so it exits immediately.
-func (d *SimpleDeviceCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error {
+func (d *SimpleDeviceCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *pubdeviceflow.DeviceCodeResponse, expirationDate time.Time) error {
 	if term.IsTerminal(0) {
 		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
 Copy your one-time code: %s

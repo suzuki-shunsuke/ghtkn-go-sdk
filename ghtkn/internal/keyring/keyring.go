@@ -4,9 +4,10 @@ package keyring
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
+
+	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 // Keyring manages access tokens in the system keychain.
@@ -69,31 +70,10 @@ func FormatDate(t time.Time) string {
 	return t.Format(dateFormat)
 }
 
-// AccessToken represents a GitHub App access token stored in the keyring.
-// It contains the token value, expiration information, and user login details.
-type AccessToken struct {
-	AccessToken    string    `json:"access_token"`    // The OAuth access token for GitHub API authentication
-	ExpirationDate time.Time `json:"expiration_date"` // RFC3339 formatted expiration timestamp
-	Login          string    `json:"login"`           // The GitHub user login associated with the token
-}
-
-func (at *AccessToken) Validate() error {
-	if at.AccessToken == "" {
-		return errors.New("access_token is required")
-	}
-	if at.ExpirationDate.IsZero() {
-		return errors.New("expiration_date is required")
-	}
-	if at.Login == "" {
-		return errors.New("login is required")
-	}
-	return nil
-}
-
 // Get retrieves an access token from the keyring.
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
-func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
+func (kr *Keyring) Get(service string, key string) (*pubkeyring.AccessToken, error) {
 	s, exist, err := kr.input.API.Get(service, key)
 	if err != nil {
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
@@ -101,7 +81,7 @@ func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
 	if !exist {
 		return nil, nil
 	}
-	token := &AccessToken{}
+	token := &pubkeyring.AccessToken{}
 	if err := json.Unmarshal([]byte(s), token); err != nil {
 		return nil, fmt.Errorf("unmarshal the token from JSON: %w", err)
 	}
@@ -114,7 +94,7 @@ func (kr *Keyring) Get(service string, key string) (*AccessToken, error) {
 // Set stores an access token in the keyring.
 // The key parameter identifies where to store the token.
 // Returns an error if the token cannot be marshaled or stored.
-func (kr *Keyring) Set(service, key string, token *AccessToken) error {
+func (kr *Keyring) Set(service, key string, token *pubkeyring.AccessToken) error {
 	s, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("marshal the token as JSON: %w", err)
