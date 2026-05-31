@@ -104,11 +104,7 @@ const additionalInterval = 5 * time.Second
 // It respects the polling interval and handles authorization pending and slow down responses.
 // The polling continues until the device code expires or the user completes authentication.
 func (c *Client) pollForAccessToken(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *pubdeviceflow.DeviceCodeResponse) (*accessTokenResponse, error) {
-	interval := time.Duration(deviceCode.Interval) * time.Second
-	if interval < additionalInterval {
-		interval = additionalInterval
-	}
-
+	interval := max(time.Duration(deviceCode.Interval)*time.Second, additionalInterval)
 	ticker := c.input.NewTicker(interval)
 	defer ticker.Stop()
 
