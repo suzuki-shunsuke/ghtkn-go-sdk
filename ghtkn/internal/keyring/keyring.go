@@ -20,7 +20,7 @@ type Keyring struct {
 // It allows for dependency injection and easier testing by providing
 // a customizable API implementation.
 type Input struct {
-	API API // The keyring API implementation for storing and retrieving secrets
+	API backendAPI // The keyring API implementation for storing and retrieving secrets
 }
 
 // DefaultServiceKey is the default service identifier used in the system keychain.
@@ -35,10 +35,10 @@ func New(input *Input) *Keyring {
 	}
 }
 
-// API defines the interface for keyring operations.
+// backendAPI defines the interface for keyring operations.
 // It abstracts the underlying keyring implementation to allow for different backends
 // (system keychain, testing mocks, etc.).
-type API interface {
+type backendAPI interface {
 	Get(service, user string) (string, bool, error) // Retrieves a secret from the keyring
 	Set(service, user, password string) error       // Stores a secret in the keyring
 }
@@ -53,16 +53,6 @@ func NewInput() *Input {
 
 // dateFormat defines the standard format for date strings in the keyring.
 const dateFormat = time.RFC3339
-
-// ParseDate parses a date string in RFC3339 format.
-// It returns a time.Time value or an error if the string cannot be parsed.
-func ParseDate(s string) (time.Time, error) {
-	t, err := time.Parse(dateFormat, s)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parse a date string: %w", err)
-	}
-	return t, nil
-}
 
 // FormatDate formats a time value as an RFC3339 string.
 // This is the standard format used for expiration dates in the keyring.

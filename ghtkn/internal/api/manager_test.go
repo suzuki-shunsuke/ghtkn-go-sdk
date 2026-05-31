@@ -1,5 +1,5 @@
 //nolint:revive
-package api_test
+package api
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -33,8 +32,8 @@ func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	input := &api.Input{}
-	tm := api.New(input)
+	input := &Input{}
+	tm := New(input)
 	if tm == nil {
 		t.Error("New() returned nil")
 	}
@@ -43,7 +42,7 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := api.NewInput()
+	input := NewInput()
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
@@ -67,7 +66,7 @@ func TestInput_Validate(t *testing.T) {
 
 	// Currently, Input.Validate() always returns nil
 	// since there are no validation rules for the Input struct
-	input := &api.Input{}
+	input := &Input{}
 
 	err := input.Validate()
 	if err != nil {

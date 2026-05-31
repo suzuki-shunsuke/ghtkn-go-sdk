@@ -1,5 +1,5 @@
 //nolint:funlen
-package api_test
+package api
 
 import (
 	"bytes"
@@ -12,15 +12,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
-func newMockInput() *api.Input {
-	return &api.Input{
+func newMockInput() *Input {
+	return &Input{
 		DeviceFlow: &mockDeviceFlow{
 			token: &deviceflow.AccessToken{
 				AccessToken:    "test-token",
@@ -74,7 +73,7 @@ func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
 	return m.user, m.err
 }
 
-func mockNewGitHub(_ context.Context, _ string) (api.GitHub, error) {
+func mockNewGitHub(_ context.Context, _ string) (gitHub, error) {
 	return &mockGitHub{
 		user: &github.User{
 			Login: "test-user",
@@ -89,14 +88,14 @@ func TestTokenManager_Get(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupInput func() *api.Input
+		setupInput func() *Input
 		wantErr    bool
 		wantToken  *pubkeyring.AccessToken
 		input      *pubapi.InputGet
 	}{
 		{
 			name: "successful token retrieval from keyring",
-			setupInput: func() *api.Input {
+			setupInput: func() *Input {
 				input := newMockInput()
 				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
@@ -125,7 +124,7 @@ func TestTokenManager_Get(t *testing.T) {
 		},
 		{
 			name: "expired token in keyring triggers new token creation",
-			setupInput: func() *api.Input {
+			setupInput: func() *Input {
 				input := newMockInput()
 				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
@@ -154,7 +153,7 @@ func TestTokenManager_Get(t *testing.T) {
 		},
 		{
 			name: "token creation error",
-			setupInput: func() *api.Input {
+			setupInput: func() *Input {
 				input := newMockInput()
 				input.DeviceFlow = &mockDeviceFlow{
 					err: errors.New("token creation failed"),
@@ -175,7 +174,7 @@ func TestTokenManager_Get(t *testing.T) {
 			t.Parallel()
 
 			input := tt.setupInput()
-			tm := api.New(input)
+			tm := New(input)
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 			token, _, err := tm.Get(t.Context(), logger, tt.input)

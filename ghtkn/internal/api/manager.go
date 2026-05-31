@@ -39,18 +39,18 @@ func New(input *Input) *TokenManager {
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
 	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
-	Keyring      Keyring          // Keyring for token storage
+	Keyring      keyringClient    // Keyring for token storage
 	Now          func() time.Time // Current time provider for testing
 	Logger       *publog.Logger
 	ConfigReader configReader
 	Getenv       func(string) string
 	GOOS         string
-	NewGitHub    func(ctx context.Context, token string) (GitHub, error)
+	NewGitHub    func(ctx context.Context, token string) (gitHub, error)
 }
 
-// GitHub defines the interface for interacting with the GitHub API.
+// gitHub defines the interface for interacting with the GitHub API.
 // It is used to retrieve authenticated user information needed for Git Credential Helper.
-type GitHub interface {
+type gitHub interface {
 	GetUser(ctx context.Context) (*github.User, error)
 }
 
@@ -66,7 +66,7 @@ func NewInput() *Input {
 		ConfigReader: config.NewReader(afero.NewOsFs()),
 		Getenv:       os.Getenv,
 		GOOS:         runtime.GOOS,
-		NewGitHub: func(ctx context.Context, token string) (GitHub, error) {
+		NewGitHub: func(ctx context.Context, token string) (gitHub, error) {
 			return github.New(ctx, token)
 		},
 	}
@@ -86,8 +86,8 @@ type deviceFlow interface {
 	SetBrowser(browser pubdeviceflow.Browser)
 }
 
-// Keyring defines the interface for storing and retrieving tokens from the system keyring.
-type Keyring interface {
+// keyringClient defines the interface for storing and retrieving tokens from the system keyring.
+type keyringClient interface {
 	Get(service, key string) (*pubkeyring.AccessToken, error)
 	Set(service, key string, token *pubkeyring.AccessToken) error
 }
