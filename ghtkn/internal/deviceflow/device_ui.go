@@ -62,6 +62,8 @@ Press Enter to open %s in your browser...
 			return ctx.Err()
 		case err := <-inputCh:
 			return err
+		case <-time.After(10 * time.Second):
+			return nil
 		}
 	}
 	const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
