@@ -136,11 +136,15 @@ type inputGetOrCreateToken struct {
 // saved back to the keyring.
 func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, bool, error) {
 	// Get an access token from keyring
-	if token := tm.getAccessTokenFromBackend(ctx, logger, input); token != nil {
+	token, err := tm.getAccessTokenFromBackend(ctx, logger, input)
+	if err != nil {
+		return nil, false, err
+	}
+	if token != nil {
 		return token, false, nil
 	}
 	// Create access token
-	token, err := tm.createToken(ctx, logger, input.App.ClientID)
+	token, err = tm.createToken(ctx, logger, input.App.ClientID)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
@@ -165,24 +169,23 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, cl
 
 // getAccessTokenFromBackend retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
-func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) *pubapi.AccessToken {
+func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, error) {
 	// Get an access token from keyring
 	tk, err := tm.input.Backend.Get(ctx, input.App.ClientID)
 	if err != nil {
-		tm.input.Logger.FailedToGetAccessTokenFromBackend(logger, err)
-		return nil
+		return nil, err
 	}
 	if tk == nil {
 		tm.input.Logger.AccessTokenIsNotFoundInBackend(logger)
-		return nil
+		return nil, nil
 	}
 	// Check if the access token expires
 	if tm.checkExpired(tk.ExpirationDate, input.MinExpiration) {
 		tm.input.Logger.Expire(logger, tk.ExpirationDate)
-		return nil
+		return nil, nil
 	}
 	// Not expires
-	return tk
+	return tk, nil
 }
 
 // checkExpired determines if an access token should be considered expired.

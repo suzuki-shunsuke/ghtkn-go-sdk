@@ -14,8 +14,6 @@ type Logger struct {
 	Expire func(logger *slog.Logger, exDate time.Time)
 	// FailedToOpenBrowser logs when the browser cannot be opened for authentication.
 	FailedToOpenBrowser func(logger *slog.Logger, err error)
-	// FailedToGetAccessTokenFromBackend logs when access token retrieval from backend fails.
-	FailedToGetAccessTokenFromBackend func(logger *slog.Logger, err error)
 	// AccessTokenIsNotFoundInBackend logs when no access token is found in the backend.
 	AccessTokenIsNotFoundInBackend func(logger *slog.Logger)
 }

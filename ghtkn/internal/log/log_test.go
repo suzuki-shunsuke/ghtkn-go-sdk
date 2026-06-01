@@ -23,9 +23,6 @@ func TestNewLogger(t *testing.T) {
 	if logger.FailedToOpenBrowser == nil {
 		t.Error("FailedToOpenBrowser function is nil")
 	}
-	if logger.FailedToGetAccessTokenFromBackend == nil {
-		t.Error("FailedToGetAccessTokenFromBackend function is nil")
-	}
 	if logger.AccessTokenIsNotFoundInBackend == nil {
 		t.Error("AccessTokenIsNotFoundInBackend function is nil")
 	}
@@ -67,26 +64,6 @@ func TestLogger_FailedToOpenBrowser(t *testing.T) {
 		t.Errorf("Expected log to contain 'failed to open the browser', got: %s", output)
 	}
 	if !strings.Contains(output, "browser not found") {
-		t.Errorf("Expected log to contain error message, got: %s", output)
-	}
-}
-
-func TestLogger_FailedToGetAccessTokenFromBackend(t *testing.T) {
-	var buf bytes.Buffer
-	slogger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
-	logger := log.NewLogger()
-	testErr := errors.New("keyring access denied")
-
-	logger.FailedToGetAccessTokenFromBackend(slogger, testErr)
-
-	output := buf.String()
-	if !strings.Contains(output, "failed to get access token from backend") {
-		t.Errorf("Expected log to contain 'failed to get access token from backend', got: %s", output)
-	}
-	if !strings.Contains(output, "keyring access denied") {
 		t.Errorf("Expected log to contain error message, got: %s", output)
 	}
 }
