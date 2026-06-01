@@ -30,7 +30,7 @@ func TestSocketPath(t *testing.T) {
 			name: "xdg runtime dir",
 			env:  map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000"},
 			goos: "linux",
-			want: "/run/user/1000/ghtkn/socket",
+			want: "/run/user/1000/ghtkn/agent.sock",
 		},
 		{
 			name: "xdg cache home fallback",

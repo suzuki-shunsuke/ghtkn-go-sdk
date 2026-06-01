@@ -9,8 +9,8 @@ import (
 const goosWindows = "windows"
 
 // SocketPath resolves the path of the agent's Unix domain socket. GHTKN_AGENT_SOCKET
-// takes precedence; otherwise it prefers $XDG_RUNTIME_DIR/ghtkn/socket and falls back
-// to $XDG_CACHE_HOME/ghtkn/agent.sock, then $HOME/.cache/ghtkn/agent.sock
+// takes precedence; otherwise it prefers $XDG_RUNTIME_DIR/ghtkn/agent.sock and falls
+// back to $XDG_CACHE_HOME/ghtkn/agent.sock, then $HOME/.cache/ghtkn/agent.sock
 // (%LocalAppData%\cache\ghtkn\agent.sock on Windows). Both the agent server and the
 // client resolve the socket through this function so they always agree on the path.
 func SocketPath(getEnv func(string) string, goos string) (string, error) {
@@ -18,7 +18,7 @@ func SocketPath(getEnv func(string) string, goos string) (string, error) {
 		return s, nil
 	}
 	if dir := getEnv("XDG_RUNTIME_DIR"); dir != "" {
-		return filepath.Join(dir, "ghtkn", "socket"), nil
+		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
 	}
 	if dir := getEnv("XDG_CACHE_HOME"); dir != "" {
 		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
