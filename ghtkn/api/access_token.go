@@ -1,5 +1,4 @@
-// Package keyring provides the public access token type stored by ghtkn.
-package keyring
+package api
 
 import (
 	"errors"

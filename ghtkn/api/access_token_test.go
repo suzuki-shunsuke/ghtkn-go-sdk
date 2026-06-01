@@ -1,10 +1,10 @@
-package keyring_test
+package api_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 )
 
 func TestAccessToken_Validate(t *testing.T) {
@@ -14,27 +14,27 @@ func TestAccessToken_Validate(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		token   *keyring.AccessToken
+		token   *api.AccessToken
 		wantErr bool
 	}{
 		{
 			name:    "valid",
-			token:   &keyring.AccessToken{AccessToken: "token", ExpirationDate: exp, Login: "octocat"},
+			token:   &api.AccessToken{AccessToken: "token", ExpirationDate: exp, Login: "octocat"},
 			wantErr: false,
 		},
 		{
 			name:    "missing access_token",
-			token:   &keyring.AccessToken{ExpirationDate: exp, Login: "octocat"},
+			token:   &api.AccessToken{ExpirationDate: exp, Login: "octocat"},
 			wantErr: true,
 		},
 		{
 			name:    "missing expiration_date",
-			token:   &keyring.AccessToken{AccessToken: "token", Login: "octocat"},
+			token:   &api.AccessToken{AccessToken: "token", Login: "octocat"},
 			wantErr: true,
 		},
 		{
 			name:    "missing login",
-			token:   &keyring.AccessToken{AccessToken: "token", ExpirationDate: exp},
+			token:   &api.AccessToken{AccessToken: "token", ExpirationDate: exp},
 			wantErr: true,
 		},
 	}

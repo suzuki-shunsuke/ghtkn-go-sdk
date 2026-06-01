@@ -12,7 +12,6 @@ import (
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
@@ -102,7 +101,7 @@ func TestController_createToken(t *testing.T) {
 		name     string
 		clientID string
 		client   deviceFlow
-		want     *pubkeyring.AccessToken
+		want     *pubapi.AccessToken
 		wantErr  bool
 	}{
 		{
@@ -114,7 +113,7 @@ func TestController_createToken(t *testing.T) {
 					ExpirationDate: futureTime,
 				},
 			},
-			want: &pubkeyring.AccessToken{
+			want: &pubapi.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: futureTime,
 			},
