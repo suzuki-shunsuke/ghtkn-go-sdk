@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -136,9 +137,9 @@ func TestBackend_Set(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	t.Run("empty defaults to keyring", func(t *testing.T) {
-		t.Setenv("GHTKN_BACKEND", "")
-		b, err := New()
+		b, err := New("", os.Getenv)
 		if err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
@@ -148,23 +149,24 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("keyring", func(t *testing.T) {
-		t.Setenv("GHTKN_BACKEND", "keyring")
-		if _, err := New(); err != nil {
+		if _, err := New("keyring", os.Getenv); err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
 	})
 
 	t.Run("text", func(t *testing.T) {
-		t.Setenv("GHTKN_BACKEND", "text")
-		t.Setenv("XDG_CACHE_HOME", t.TempDir())
-		if _, err := New(); err != nil {
+		if _, err := New("text", func(s string) string {
+			if s == "XDG_CACHE_HOME" {
+				return t.TempDir()
+			}
+			return os.Getenv(s)
+		}); err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
 	})
 
 	t.Run("unsupported backend errors", func(t *testing.T) {
-		t.Setenv("GHTKN_BACKEND", "bogus")
-		if _, err := New(); err == nil {
+		if _, err := New("bogus", os.Getenv); err == nil {
 			t.Error("New() expected an error for an unsupported backend")
 		}
 	})

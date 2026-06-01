@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"runtime"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
@@ -24,8 +23,8 @@ type Backend struct {
 // New creates an agent backend. It resolves the socket path (GHTKN_AGENT_SOCKET, then
 // the XDG-based default) but does not connect; a missing agent is reported on the
 // first Get or Set.
-func New() (*Backend, error) {
-	socket, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
+func New(getEnv func(string) string) (*Backend, error) {
+	socket, err := agentapi.SocketPath(getEnv, runtime.GOOS)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // SocketPath returns a descriptive error
 	}

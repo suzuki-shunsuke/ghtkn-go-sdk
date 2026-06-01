@@ -44,7 +44,7 @@ type Client struct {
 
 // New creates a new Client instance with default production dependencies.
 func New() (*Client, error) {
-	input, err := internalapi.NewInput()
+	input, err := internalapi.NewInput(os.Getenv)
 	if err != nil {
 		return nil, err
 	}

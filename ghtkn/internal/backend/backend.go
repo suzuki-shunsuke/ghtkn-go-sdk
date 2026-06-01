@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/agent"
@@ -34,10 +33,10 @@ type backend interface {
 // An empty value or "keyring" selects the OS keyring (the default); "agent" selects
 // the ghtkn agent; "text" selects the plaintext file backend. Any other value
 // returns an error.
-func New() (*Backend, error) {
-	switch s := os.Getenv("GHTKN_BACKEND"); s {
+func New(s string, getEnv func(string) string) (*Backend, error) {
+	switch s {
 	case "agent":
-		a, err := agent.New()
+		a, err := agent.New(getEnv)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +44,7 @@ func New() (*Backend, error) {
 			backend: a,
 		}, nil
 	case "text":
-		t, err := text.New()
+		t, err := text.New(getEnv)
 		if err != nil {
 			return nil, err
 		}

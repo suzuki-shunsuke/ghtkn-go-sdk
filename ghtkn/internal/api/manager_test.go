@@ -4,6 +4,7 @@ package api
 import (
 	"context"
 	"log/slog"
+	"os"
 	"testing"
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
@@ -42,7 +43,7 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input, err := NewInput()
+	input, err := NewInput(os.Getenv)
 	if err != nil {
 		t.Fatalf("NewInput() returned an error: %v", err)
 	}

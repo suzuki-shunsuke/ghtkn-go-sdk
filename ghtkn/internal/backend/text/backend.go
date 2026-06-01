@@ -31,8 +31,8 @@ type Backend struct {
 // if set, otherwise ${XDG_CACHE_HOME}/ghtkn/tokens (falling back to $HOME/.cache),
 // or %LocalAppData%\cache\ghtkn\tokens on Windows.
 // It returns an error if none of these are set.
-func New() (*Backend, error) {
-	dir, err := tokenDir(os.Getenv, runtime.GOOS)
+func New(getEnv func(string) string) (*Backend, error) {
+	dir, err := tokenDir(getEnv, runtime.GOOS)
 	if err != nil {
 		return nil, err
 	}

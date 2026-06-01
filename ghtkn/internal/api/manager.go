@@ -5,7 +5,6 @@ package api
 import (
 	"context"
 	"log/slog"
-	"os"
 	"runtime"
 	"time"
 
@@ -56,8 +55,8 @@ type gitHub interface {
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
-func NewInput() (*Input, error) {
-	b, err := backend.New()
+func NewInput(getEnv func(string) string) (*Input, error) {
+	b, err := backend.New(getEnv("GHTKN_BACKEND"), getEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +66,7 @@ func NewInput() (*Input, error) {
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(afero.NewOsFs()),
-		Getenv:       os.Getenv,
+		Getenv:       getEnv,
 		GOOS:         runtime.GOOS,
 		NewGitHub: func(ctx context.Context, token string) (gitHub, error) {
 			return github.New(ctx, token)
