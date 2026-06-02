@@ -30,8 +30,9 @@ type (
 	InputGet           = api.InputGet
 )
 
-// ErrDisableDeviceFlow is returned by Get when the device flow is disabled via
-// the GHTKN_DISABLE_DEVICE_FLOW environment variable. Detect it with errors.Is.
+// ErrDisableDeviceFlow is returned by Get when the device flow is disabled
+// (GHTKN_ENABLE_DEVICE_FLOW=false, or InputGet.EnableDeviceFlow set to false).
+// Detect it with errors.Is.
 var ErrDisableDeviceFlow = api.ErrDisableDeviceFlow
 
 // Client retrieves GitHub App access tokens.

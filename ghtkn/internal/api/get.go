@@ -82,8 +82,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	)
 
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
-		MinExpiration: input.MinExpiration,
-		App:           app,
+		MinExpiration:    input.MinExpiration,
+		App:              app,
+		EnableDeviceFlow: enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
@@ -126,8 +127,19 @@ var errStoreToken = errors.New("could not store the token in keyring")
 // It encapsulates the app configuration and expiration requirements
 // used internally by the getOrCreateToken function.
 type inputGetOrCreateToken struct {
-	App           *pubconfig.App // App configuration containing client ID and other settings
-	MinExpiration time.Duration  // Minimum time before expiration to consider token valid
+	App              *pubconfig.App // App configuration containing client ID and other settings
+	MinExpiration    time.Duration  // Minimum time before expiration to consider token valid
+	EnableDeviceFlow bool           // Whether the device flow may run to create a new token
+}
+
+// enableDeviceFlow resolves whether the device flow may run. An explicit override
+// (e.g. a CLI flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
+// environment variable decides, defaulting to enabled unless it is set to "false".
+func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
+	if override != nil {
+		return *override
+	}
+	return getEnv("GHTKN_ENABLE_DEVICE_FLOW") != "false"
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
@@ -144,7 +156,7 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Create access token
-	token, err = tm.createToken(ctx, logger, input.App.ClientID)
+	token, err = tm.createToken(ctx, logger, input.App.ClientID, input.EnableDeviceFlow)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
@@ -153,8 +165,8 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns a keyring.AccessToken with the token details and expiration date.
-func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string) (*pubapi.AccessToken, error) {
-	if tm.input.Getenv("GHTKN_DISABLE_DEVICE_FLOW") == "true" {
+func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string, enableDeviceFlow bool) (*pubapi.AccessToken, error) {
+	if !enableDeviceFlow {
 		return nil, pubapi.ErrDisableDeviceFlow
 	}
 	tk, err := tm.input.DeviceFlow.Create(ctx, logger, clientID)
