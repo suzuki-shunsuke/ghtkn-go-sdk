@@ -27,4 +27,4 @@ type InputGet struct {
 // blocking, the operation fails immediately. The message instructs a coding
 // agent NOT to run `ghtkn get` itself (it would fail the same way) but to ask
 // the user to run it in their own interactive terminal.
-var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because it's disabled by GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get` in their own interactive terminal to authenticate")
+var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because it's disabled by GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get -s -d` in their own interactive terminal to authenticate")
