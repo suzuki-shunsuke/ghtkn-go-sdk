@@ -20,6 +20,9 @@ func NewLogger() *publog.Logger {
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
 		},
+		OpenedBrowser: func(logger *slog.Logger, url string) {
+			logger.Info("opened the browser", "url", url)
+		},
 		AccessTokenIsNotFoundInBackend: func(logger *slog.Logger) {
 			logger.Debug("access token is not found in backend")
 		},
@@ -36,6 +39,9 @@ func InitLogger(l *publog.Logger) {
 	}
 	if l.FailedToOpenBrowser == nil {
 		l.FailedToOpenBrowser = defaultLogger.FailedToOpenBrowser
+	}
+	if l.OpenedBrowser == nil {
+		l.OpenedBrowser = defaultLogger.OpenedBrowser
 	}
 	if l.AccessTokenIsNotFoundInBackend == nil {
 		l.AccessTokenIsNotFoundInBackend = defaultLogger.AccessTokenIsNotFoundInBackend

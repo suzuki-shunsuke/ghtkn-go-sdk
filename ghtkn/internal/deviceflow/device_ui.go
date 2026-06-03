@@ -44,7 +44,7 @@ func (d *simpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCo
 		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
 Copy your one-time code: %s
 This code is valid until %s
-Press Enter to open %s in your browser...
+Press Enter to open %s in your browser (it opens automatically after 10 seconds)...
 `
 		fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
 		inputCh := make(chan error, 1)

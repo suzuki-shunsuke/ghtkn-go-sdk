@@ -36,6 +36,8 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		if !errors.Is(err, browser.ErrNoCommandFound) {
 			c.input.Logger.FailedToOpenBrowser(logger, err)
 		}
+	} else {
+		c.input.Logger.OpenedBrowser(logger, deviceCode.VerificationURI)
 	}
 
 	token, err := c.pollForAccessToken(ctx, logger, clientID, deviceCode)

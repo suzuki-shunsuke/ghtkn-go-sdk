@@ -23,6 +23,9 @@ func TestNewLogger(t *testing.T) {
 	if logger.FailedToOpenBrowser == nil {
 		t.Error("FailedToOpenBrowser function is nil")
 	}
+	if logger.OpenedBrowser == nil {
+		t.Error("OpenedBrowser function is nil")
+	}
 	if logger.AccessTokenIsNotFoundInBackend == nil {
 		t.Error("AccessTokenIsNotFoundInBackend function is nil")
 	}
@@ -65,6 +68,25 @@ func TestLogger_FailedToOpenBrowser(t *testing.T) {
 	}
 	if !strings.Contains(output, "browser not found") {
 		t.Errorf("Expected log to contain error message, got: %s", output)
+	}
+}
+
+func TestLogger_OpenedBrowser(t *testing.T) {
+	var buf bytes.Buffer
+	slogger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	logger := log.NewLogger()
+
+	logger.OpenedBrowser(slogger, "https://github.com/login/device")
+
+	output := buf.String()
+	if !strings.Contains(output, "opened the browser") {
+		t.Errorf("Expected log to contain 'opened the browser', got: %s", output)
+	}
+	if !strings.Contains(output, "https://github.com/login/device") {
+		t.Errorf("Expected log to contain the URL, got: %s", output)
 	}
 }
 
