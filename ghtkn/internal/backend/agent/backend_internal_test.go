@@ -131,6 +131,21 @@ func TestBackend_agentNotRunning(t *testing.T) {
 	}
 }
 
+func TestBackend_locked(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespLocked}
+	})
+	b := &Backend{socket: f.socket}
+	ctx := context.Background()
+	if _, err := b.Get(ctx, "Iv1.x"); !agentapi.IsLocked(err) {
+		t.Fatalf("Get err = %v, want ErrAgentLocked", err)
+	}
+	if err := b.Set(ctx, "Iv1.x", "{}"); !agentapi.IsLocked(err) {
+		t.Fatalf("Set err = %v, want ErrAgentLocked", err)
+	}
+}
+
 // TestBackend_setRequestShape guards the wire contract: the request the client
 // emits must match the agent server's Request fields.
 func TestBackend_setRequestShape(t *testing.T) {

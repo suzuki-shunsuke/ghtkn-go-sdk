@@ -45,6 +45,9 @@ func (b *Backend) Get(ctx context.Context, clientID string) ([]byte, error) {
 		if resp.Error == agentapi.RespNotFound {
 			return nil, nil
 		}
+		if resp.Error == agentapi.RespLocked {
+			return nil, agentapi.ErrAgentLocked
+		}
 		return nil, fmt.Errorf("get an access token through the agent: %s", resp.Error)
 	}
 	if len(resp.Token) == 0 {
@@ -65,6 +68,9 @@ func (b *Backend) Set(ctx context.Context, clientID, token string) error {
 		return err //nolint:wrapcheck // Send returns a descriptive error
 	}
 	if !resp.OK {
+		if resp.Error == agentapi.RespLocked {
+			return agentapi.ErrAgentLocked
+		}
 		return fmt.Errorf("set an access token through the agent: %s", resp.Error)
 	}
 	return nil

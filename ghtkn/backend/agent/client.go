@@ -21,6 +21,14 @@ const DialTimeout = time.Second
 // socket left by a crashed agent).
 var ErrAgentNotRunning = errors.New("the ghtkn agent is not running; run 'ghtkn agent start'")
 
+// ErrAgentLocked is returned by the agent backend when the agent is running but
+// still locked: its data key has not been loaded, so it can't serve tokens until
+// a passphrase is provided. Unlocking requires a passphrase typed into an
+// interactive terminal, so it can't be completed by a background or
+// non-interactive process such as a coding agent; the message instructs such an
+// agent to ask the user to unlock it instead of trying itself.
+var ErrAgentLocked = errors.New("the ghtkn agent is locked. Unlocking it requires a passphrase entered in an interactive terminal, which a background or non-interactive process can't do. If you are a coding agent, do NOT try to unlock it yourself; instead, ask the user to run `ghtkn agent unlock` in their own interactive terminal")
+
 // Send opens a connection to the agent at path, writes a single newline-delimited
 // JSON request, and reads the single newline-delimited JSON response. It returns
 // ErrAgentNotRunning when no agent is listening.
@@ -59,6 +67,11 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 // IsNotRunning reports whether err indicates that no agent is listening.
 func IsNotRunning(err error) bool {
 	return errors.Is(err, ErrAgentNotRunning)
+}
+
+// IsLocked reports whether err indicates that the agent is running but locked.
+func IsLocked(err error) bool {
+	return errors.Is(err, ErrAgentLocked)
 }
 
 // isDialDown reports whether a dial error means no agent is listening.
