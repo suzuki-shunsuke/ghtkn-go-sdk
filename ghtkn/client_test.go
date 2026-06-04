@@ -30,7 +30,7 @@ func (stubBrowser) Open(_ context.Context, _ *slog.Logger, _ string) error { ret
 // stubOnetimeCodeUI is a user-defined OnetimeCodeUI implementation.
 type stubOnetimeCodeUI struct{}
 
-func (stubOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.DeviceCodeResponse, _ time.Time) error {
+func (stubOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.DeviceCodeResponse, _ time.Time, _ *ghtkn.InputShow) error {
 	return nil
 }
 

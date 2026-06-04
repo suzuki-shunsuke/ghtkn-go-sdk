@@ -31,7 +31,7 @@ func run() int {
 
 type UI struct{}
 
-func (ui *UI) Show(_ context.Context, _ *slog.Logger, deviceCode *ghtkn.DeviceCodeResponse, expirationDate time.Time) error {
+func (ui *UI) Show(_ context.Context, _ *slog.Logger, deviceCode *ghtkn.DeviceCodeResponse, expirationDate time.Time, _ *ghtkn.InputShow) error {
 	fmt.Fprintf(os.Stderr, "Please access %s and enter code %s by %s\n", deviceCode.VerificationURI, deviceCode.UserCode, expirationDate.Format(time.RFC3339))
 	return nil
 }

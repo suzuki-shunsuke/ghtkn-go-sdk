@@ -26,6 +26,7 @@ type (
 	OnetimeCodeUI      = deviceflow.OnetimeCodeUI
 	Browser            = deviceflow.Browser
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
+	InputShow          = deviceflow.InputShow
 	DefaultBrowser     = browser.Browser
 	InputGet           = api.InputGet
 )

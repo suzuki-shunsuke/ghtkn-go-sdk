@@ -13,3 +13,8 @@ func cmds() []string {
 func openB(ctx context.Context, url string) error {
 	return runCmd(ctx, url)
 }
+
+// availableB reports whether a browser command is available on macOS.
+func availableB() bool {
+	return hasCmd()
+}
