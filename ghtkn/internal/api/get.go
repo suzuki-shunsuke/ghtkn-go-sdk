@@ -37,14 +37,13 @@ func (tm *TokenManager) SetBrowser(ui pubdeviceflow.Browser) {
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.
-// It checks for cached tokens, creates new tokens if needed,
-// retrieves the authenticated user's login for Git Credential Helper if necessary.
+// It checks for cached tokens and creates new tokens if needed.
 //
 // If the GHTKN_GITHUB_TOKEN environment variable is set, its value is returned
 // as is without reading the config or contacting GitHub. This is useful when a
 // tool embedding the ghtkn SDK must be handed a Personal Access Token directly.
 // In this case the returned app config is nil and the access token has no
-// expiration date or login.
+// expiration date.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
 	if token := tm.input.Getenv("GHTKN_GITHUB_TOKEN"); token != "" {
 		return &pubapi.AccessToken{AccessToken: token}, nil, nil
@@ -99,27 +98,11 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		return nil, nil, fmt.Errorf("get or create token: %w", err)
 	}
 
-	if token.Login == "" {
-		// Get the authenticated user info for Git Credential Helper.
-		// Git Credential Helper requires both username and password for authentication.
-		// The username is the GitHub user's login name retrieved via the GitHub API.
-		gh, err := tm.input.NewGitHub(ctx, token.AccessToken)
-		if err != nil {
-			return nil, app, fmt.Errorf("create a GitHub client: %w", err)
-		}
-		user, err := gh.GetUser(ctx)
-		if err != nil {
-			return nil, app, fmt.Errorf("get authenticated user: %w", err)
-		}
-		token.Login = user.Login
-	}
-
 	if changed {
 		// Store the token in keyring
 		if err := tm.input.Backend.Set(ctx, app.ClientID, &pubapi.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
-			Login:          token.Login,
 		}); err != nil {
 			return token, app, errStoreToken
 		}

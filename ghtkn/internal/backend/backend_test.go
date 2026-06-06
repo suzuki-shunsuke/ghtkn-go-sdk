@@ -33,7 +33,7 @@ func TestBackend_Get(t *testing.T) {
 	t.Parallel()
 
 	exp := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
-	valid := `{"access_token":"tok","expiration_date":"2025-01-15T10:30:00Z","login":"octocat"}`
+	valid := `{"access_token":"tok","expiration_date":"2025-01-15T10:30:00Z"}`
 	tests := []struct {
 		name    string
 		inner   *mockInner
@@ -43,7 +43,7 @@ func TestBackend_Get(t *testing.T) {
 		{
 			name:  "valid token",
 			inner: &mockInner{data: []byte(valid)},
-			want:  &api.AccessToken{AccessToken: "tok", ExpirationDate: exp, Login: "octocat"},
+			want:  &api.AccessToken{AccessToken: "tok", ExpirationDate: exp},
 		},
 		{
 			name:  "not found returns nil",
@@ -88,8 +88,7 @@ func TestBackend_Get(t *testing.T) {
 				t.Fatalf("Get() = nil, want %v", tt.want)
 			}
 			if got.AccessToken != tt.want.AccessToken ||
-				!got.ExpirationDate.Equal(tt.want.ExpirationDate) ||
-				got.Login != tt.want.Login {
+				!got.ExpirationDate.Equal(tt.want.ExpirationDate) {
 				t.Errorf("Get() = %+v, want %+v", got, tt.want)
 			}
 		})
@@ -110,7 +109,6 @@ func TestBackend_Set(t *testing.T) {
 		token := &api.AccessToken{
 			AccessToken:    "tok",
 			ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
-			Login:          "octocat",
 		}
 		if err := b.Set(t.Context(), "client-id", token); err != nil {
 			t.Fatalf("Set() error = %v", err)
@@ -119,7 +117,7 @@ func TestBackend_Set(t *testing.T) {
 		if err := json.Unmarshal([]byte(stored), got); err != nil {
 			t.Fatalf("stored value is not valid JSON: %v", err)
 		}
-		if got.AccessToken != token.AccessToken || got.Login != token.Login {
+		if got.AccessToken != token.AccessToken {
 			t.Errorf("stored token = %+v, want %+v", got, token)
 		}
 	})

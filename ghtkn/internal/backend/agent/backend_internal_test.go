@@ -81,7 +81,7 @@ func TestBackend_setGetRoundTrip(t *testing.T) {
 	b := &Backend{socket: f.socket}
 	ctx := context.Background()
 
-	value := `{"access_token":"abc","expiration_date":"2026-01-01T00:00:00Z","login":"me"}`
+	value := `{"access_token":"abc","expiration_date":"2026-01-01T00:00:00Z"}`
 	if err := b.Set(ctx, "Iv1.x", value); err != nil {
 		t.Fatal(err)
 	}

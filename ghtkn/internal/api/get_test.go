@@ -13,7 +13,6 @@ import (
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
@@ -29,7 +28,6 @@ func newMockInput() *Input {
 		Logger:       log.NewLogger(),
 		ConfigReader: &mockConfigReader{},
 		Getenv:       func(key string) string { return "" },
-		NewGitHub:    mockNewGitHub,
 	}
 }
 
@@ -61,23 +59,6 @@ func (m *mockConfigReader) Read(cfg *pubconfig.Config, configFilePath string) er
 		},
 	}
 	return nil
-}
-
-type mockGitHub struct {
-	user *github.User
-	err  error
-}
-
-func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
-	return m.user, m.err
-}
-
-func mockNewGitHub(_ context.Context, _ string) (gitHub, error) {
-	return &mockGitHub{
-		user: &github.User{
-			Login: "test-user",
-		},
-	}, nil
 }
 
 func TestTokenManager_Get(t *testing.T) {
@@ -136,7 +117,6 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &pubapi.AccessToken{
 				AccessToken:    "cached-token",
 				ExpirationDate: futureTime,
-				Login:          "test-user",
 			},
 		},
 		{
@@ -165,7 +145,6 @@ func TestTokenManager_Get(t *testing.T) {
 			wantToken: &pubapi.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
-				Login:          "test-user",
 			},
 		},
 		{

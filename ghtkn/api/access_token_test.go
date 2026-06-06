@@ -19,22 +19,17 @@ func TestAccessToken_Validate(t *testing.T) {
 	}{
 		{
 			name:    "valid",
-			token:   &api.AccessToken{AccessToken: "token", ExpirationDate: exp, Login: "octocat"},
+			token:   &api.AccessToken{AccessToken: "token", ExpirationDate: exp},
 			wantErr: false,
 		},
 		{
 			name:    "missing access_token",
-			token:   &api.AccessToken{ExpirationDate: exp, Login: "octocat"},
+			token:   &api.AccessToken{ExpirationDate: exp},
 			wantErr: true,
 		},
 		{
 			name:    "missing expiration_date",
-			token:   &api.AccessToken{AccessToken: "token", Login: "octocat"},
-			wantErr: true,
-		},
-		{
-			name:    "missing login",
-			token:   &api.AccessToken{AccessToken: "token", ExpirationDate: exp},
+			token:   &api.AccessToken{AccessToken: "token"},
 			wantErr: true,
 		},
 	}

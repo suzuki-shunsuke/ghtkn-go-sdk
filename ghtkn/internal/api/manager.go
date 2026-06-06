@@ -15,7 +15,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
@@ -44,13 +43,6 @@ type Input struct {
 	ConfigReader configReader
 	Getenv       func(string) string
 	GOOS         string
-	NewGitHub    func(ctx context.Context, token string) (gitHub, error)
-}
-
-// gitHub defines the interface for interacting with the GitHub API.
-// It is used to retrieve authenticated user information needed for Git Credential Helper.
-type gitHub interface {
-	GetUser(ctx context.Context) (*github.User, error)
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -68,9 +60,6 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 		ConfigReader: config.NewReader(afero.NewOsFs()),
 		Getenv:       getEnv,
 		GOOS:         runtime.GOOS,
-		NewGitHub: func(ctx context.Context, token string) (gitHub, error) {
-			return github.New(ctx, token)
-		},
 	}, nil
 }
 
