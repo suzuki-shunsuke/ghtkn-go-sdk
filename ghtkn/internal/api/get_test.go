@@ -93,6 +93,24 @@ func TestTokenManager_Get(t *testing.T) {
 		input      *pubapi.InputGet
 	}{
 		{
+			name: "GHTKN_GITHUB_TOKEN environment variable is returned as is",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.Getenv = func(key string) string {
+					if key == "GHTKN_GITHUB_TOKEN" {
+						return "env-token"
+					}
+					return ""
+				}
+				return input
+			},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			wantErr: false,
+			wantToken: &pubapi.AccessToken{
+				AccessToken: "env-token",
+			},
+		},
+		{
 			name: "successful token retrieval from keyring",
 			setupInput: func() *Input {
 				input := newMockInput()

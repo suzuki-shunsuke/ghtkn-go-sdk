@@ -39,7 +39,16 @@ func (tm *TokenManager) SetBrowser(ui pubdeviceflow.Browser) {
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary.
+//
+// If the GHTKN_GITHUB_TOKEN environment variable is set, its value is returned
+// as is without reading the config or contacting GitHub. This is useful when a
+// tool embedding the ghtkn SDK must be handed a Personal Access Token directly.
+// In this case the returned app config is nil and the access token has no
+// expiration date or login.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
+	if token := tm.input.Getenv("GHTKN_GITHUB_TOKEN"); token != "" {
+		return &pubapi.AccessToken{AccessToken: token}, nil, nil
+	}
 	if input == nil {
 		input = &pubapi.InputGet{}
 	}
