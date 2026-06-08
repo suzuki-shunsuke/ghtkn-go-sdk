@@ -17,3 +17,9 @@ func cmds() []string {
 func openB(_ context.Context, url string) error {
 	return windows.ShellExecute(0, nil, windows.StringToUTF16Ptr(url), nil, nil, windows.SW_SHOWNORMAL)
 }
+
+// availableB reports whether a browser can be opened on Windows.
+// ShellExecute is always available, so it returns true.
+func availableB() bool {
+	return true
+}

@@ -39,12 +39,25 @@ func newOnetimeCodeUI(stdin io.Reader, stderr io.Writer, waiter waiter) *simpleO
 // The function returns when Enter is pressed or the context is cancelled.
 // Note that it exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
 // In case of Git Credential Helper stdin is not a terminal, so it exits immediately.
-func (d *simpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *pubdeviceflow.DeviceCodeResponse, expirationDate time.Time) error {
+func (d *simpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *pubdeviceflow.DeviceCodeResponse, expirationDate time.Time, input *pubdeviceflow.InputShow) error {
+	if !input.OpenBrowser {
+		// The browser won't be opened automatically (disabled, or no browser is
+		// available), so ask the user to open the URL themselves. Polling proceeds
+		// immediately; there is nothing to wait for.
+		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
+Copy your one-time code: %s
+This code is valid until %s
+Open the following URL in your browser and enter the one-time code above:
+%s
+`
+		fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
+		return nil
+	}
 	if term.IsTerminal(0) {
 		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
 Copy your one-time code: %s
 This code is valid until %s
-Press Enter to open %s in your browser...
+Press Enter to open %s in your browser (it opens automatically after 10 seconds)...
 `
 		fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
 		inputCh := make(chan error, 1)

@@ -5,19 +5,17 @@ package api
 import (
 	"context"
 	"log/slog"
-	"os"
 	"runtime"
 	"time"
 
 	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/github"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
-	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
@@ -39,37 +37,30 @@ func New(input *Input) *TokenManager {
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
 	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
-	Keyring      keyringClient    // Keyring for token storage
+	Backend      Backend          // Keyring for token storage
 	Now          func() time.Time // Current time provider for testing
 	Logger       *publog.Logger
 	ConfigReader configReader
 	Getenv       func(string) string
 	GOOS         string
-	NewGitHub    func(ctx context.Context, token string) (gitHub, error)
-}
-
-// gitHub defines the interface for interacting with the GitHub API.
-// It is used to retrieve authenticated user information needed for Git Credential Helper.
-type gitHub interface {
-	GetUser(ctx context.Context) (*github.User, error)
 }
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
-func NewInput() *Input {
-	ki := keyring.NewInput()
+func NewInput(getEnv func(string) string) (*Input, error) {
+	b, err := backend.New(getEnv("GHTKN_BACKEND"), getEnv)
+	if err != nil {
+		return nil, err
+	}
 	return &Input{
 		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
-		Keyring:      keyring.New(ki),
+		Backend:      b,
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(afero.NewOsFs()),
-		Getenv:       os.Getenv,
+		Getenv:       getEnv,
 		GOOS:         runtime.GOOS,
-		NewGitHub: func(ctx context.Context, token string) (gitHub, error) {
-			return github.New(ctx, token)
-		},
-	}
+	}, nil
 }
 
 // Validate checks if the Input configuration is valid.
@@ -86,10 +77,10 @@ type deviceFlow interface {
 	SetBrowser(browser pubdeviceflow.Browser)
 }
 
-// keyringClient defines the interface for storing and retrieving tokens from the system keyring.
-type keyringClient interface {
-	Get(service, key string) (*pubkeyring.AccessToken, error)
-	Set(service, key string, token *pubkeyring.AccessToken) error
+// Backend defines the interface for storing and retrieving tokens from the system keyring.
+type Backend interface {
+	Get(ctx context.Context, clientID string) (*api.AccessToken, error)
+	Set(ctx context.Context, clientID string, token *api.AccessToken) error
 }
 
 // configReader defines the interface for reading configuration files.

@@ -31,7 +31,7 @@ func run() int {
 
 type UI struct{}
 
-func (ui *UI) Show(_ context.Context, _ *slog.Logger, deviceCode *ghtkn.DeviceCodeResponse, expirationDate time.Time) error {
+func (ui *UI) Show(_ context.Context, _ *slog.Logger, deviceCode *ghtkn.DeviceCodeResponse, expirationDate time.Time, _ *ghtkn.InputShow) error {
 	fmt.Fprintf(os.Stderr, "Please access %s and enter code %s by %s\n", deviceCode.VerificationURI, deviceCode.UserCode, expirationDate.Format(time.RFC3339))
 	return nil
 }
@@ -50,7 +50,10 @@ func (b *Browser) Open(ctx context.Context, logger *slog.Logger, url string) err
 }
 
 func core(logger *slog.Logger) error {
-	client := ghtkn.New()
+	client, err := ghtkn.New()
+	if err != nil {
+		return err
+	}
 	client.SetOnetimeCodeUI(&UI{})
 	client.SetBrowser(&Browser{})
 

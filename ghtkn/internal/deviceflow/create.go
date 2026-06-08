@@ -16,9 +16,18 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// availabilityChecker is an optional interface a Browser may implement to report
+// whether it can actually open a browser on this host. When the configured Browser
+// implements it and reports false, the verification URL is shown for the user to
+// open manually instead of attempting (and failing) an automatic open.
+type availabilityChecker interface {
+	Available() bool
+}
+
 // Create initiates the OAuth device flow and returns an access token.
-// It displays the verification URL and user code, optionally opens a browser,
-// and polls for the access token until the user completes authentication.
+// It displays the verification URL and user code, opens a browser when one is
+// available, and polls for the access token until the user completes authentication.
+// When no browser is available, the user is asked to open the URL themselves.
 func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID string) (*AccessToken, error) {
 	if clientID == "" {
 		return nil, errors.New("client id is required")
@@ -28,13 +37,24 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		return nil, fmt.Errorf("get device code: %w", err)
 	}
 
+	// Decide up front whether the browser will actually be opened, so the UI can
+	// show the right instruction and we only attempt an open that can succeed.
+	willOpen := true
+	if ac, ok := c.input.Browser.(availabilityChecker); ok {
+		willOpen = ac.Available()
+	}
+
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
-	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate); err != nil {
+	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate, &pubdeviceflow.InputShow{OpenBrowser: willOpen}); err != nil {
 		return nil, fmt.Errorf("show device code: %w", err)
 	}
-	if err := c.input.Browser.Open(ctx, logger, deviceCode.VerificationURI); err != nil {
-		if !errors.Is(err, browser.ErrNoCommandFound) {
-			c.input.Logger.FailedToOpenBrowser(logger, err)
+	if willOpen {
+		if err := c.input.Browser.Open(ctx, logger, deviceCode.VerificationURI); err != nil {
+			if !errors.Is(err, browser.ErrNoCommandFound) {
+				c.input.Logger.FailedToOpenBrowser(logger, err)
+			}
+		} else {
+			c.input.Logger.OpenedBrowser(logger, deviceCode.VerificationURI)
 		}
 	}
 

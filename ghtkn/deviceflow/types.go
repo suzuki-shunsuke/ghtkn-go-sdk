@@ -11,7 +11,17 @@ import (
 // OnetimeCodeUI provides an interface for displaying the one-time code (user code)
 // and verification URL to users during the device flow.
 type OnetimeCodeUI interface {
-	Show(ctx context.Context, logger *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time) error
+	Show(ctx context.Context, logger *slog.Logger, deviceCode *DeviceCodeResponse, expirationDate time.Time, input *InputShow) error
+}
+
+// InputShow carries the optional parameters for OnetimeCodeUI.Show. It is a struct
+// (rather than positional arguments) so new fields can be added later without
+// breaking implementations.
+type InputShow struct {
+	// OpenBrowser reports whether the browser will be opened automatically
+	// afterwards. When false, the UI should ask the user to open the URL
+	// themselves instead.
+	OpenBrowser bool
 }
 
 // Browser provides an interface for opening URLs in a web browser.

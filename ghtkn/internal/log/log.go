@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/keyring"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -16,22 +15,16 @@ import (
 func NewLogger() *publog.Logger {
 	return &publog.Logger{
 		Expire: func(logger *slog.Logger, exDate time.Time) {
-			logger.Debug("access token expires", "expiration_date", keyring.FormatDate(exDate))
+			logger.Debug("access token expires", "expiration_date", exDate.Format(time.RFC3339))
 		},
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
 		},
-		FailedToGetAccessTokenFromKeyring: func(logger *slog.Logger, err error) {
-			slogerr.WithError(logger, err).Warn("failed to get access token from keyring")
+		OpenedBrowser: func(logger *slog.Logger, url string) {
+			logger.Info("opened the browser", "url", url)
 		},
-		AccessTokenIsNotFoundInKeyring: func(logger *slog.Logger) {
-			logger.Debug("access token is not found in keyring")
-		},
-		FailedToGetAppFromKeyring: func(logger *slog.Logger, err error) {
-			slogerr.WithError(logger, err).Warn("failed to get app from keyring")
-		},
-		AppIsNotFoundInKeyring: func(logger *slog.Logger) {
-			logger.Debug("app is not found in keyring")
+		AccessTokenIsNotFoundInBackend: func(logger *slog.Logger) {
+			logger.Debug("access token is not found in backend")
 		},
 	}
 }
@@ -47,16 +40,10 @@ func InitLogger(l *publog.Logger) {
 	if l.FailedToOpenBrowser == nil {
 		l.FailedToOpenBrowser = defaultLogger.FailedToOpenBrowser
 	}
-	if l.FailedToGetAccessTokenFromKeyring == nil {
-		l.FailedToGetAccessTokenFromKeyring = defaultLogger.FailedToGetAccessTokenFromKeyring
+	if l.OpenedBrowser == nil {
+		l.OpenedBrowser = defaultLogger.OpenedBrowser
 	}
-	if l.AccessTokenIsNotFoundInKeyring == nil {
-		l.AccessTokenIsNotFoundInKeyring = defaultLogger.AccessTokenIsNotFoundInKeyring
-	}
-	if l.FailedToGetAppFromKeyring == nil {
-		l.FailedToGetAppFromKeyring = defaultLogger.FailedToGetAppFromKeyring
-	}
-	if l.AppIsNotFoundInKeyring == nil {
-		l.AppIsNotFoundInKeyring = defaultLogger.AppIsNotFoundInKeyring
+	if l.AccessTokenIsNotFoundInBackend == nil {
+		l.AccessTokenIsNotFoundInBackend = defaultLogger.AccessTokenIsNotFoundInBackend
 	}
 }

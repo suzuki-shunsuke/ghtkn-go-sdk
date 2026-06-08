@@ -14,25 +14,26 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	internalapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/api"
 	intconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"golang.org/x/oauth2"
 )
 
 type (
 	// Public data/contract types live in their own public packages.
-	AccessToken        = keyring.AccessToken
+	AccessToken        = api.AccessToken
 	AppConfig          = config.App
 	Logger             = log.Logger
 	OnetimeCodeUI      = deviceflow.OnetimeCodeUI
 	Browser            = deviceflow.Browser
 	DeviceCodeResponse = deviceflow.DeviceCodeResponse
+	InputShow          = deviceflow.InputShow
 	DefaultBrowser     = browser.Browser
 	InputGet           = api.InputGet
 )
 
-// ErrDisableDeviceFlow is returned by Get when the device flow is disabled via
-// the GHTKN_DISABLE_DEVICE_FLOW environment variable. Detect it with errors.Is.
+// ErrDisableDeviceFlow is returned by Get when the device flow is disabled
+// (GHTKN_ENABLE_DEVICE_FLOW=false, or InputGet.EnableDeviceFlow set to false).
+// Detect it with errors.Is.
 var ErrDisableDeviceFlow = api.ErrDisableDeviceFlow
 
 // Client retrieves GitHub App access tokens.
@@ -44,10 +45,14 @@ type Client struct {
 }
 
 // New creates a new Client instance with default production dependencies.
-func New() *Client {
-	return &Client{
-		tm: internalapi.New(internalapi.NewInput()),
+func New() (*Client, error) {
+	input, err := internalapi.NewInput(os.Getenv)
+	if err != nil {
+		return nil, err
 	}
+	return &Client{
+		tm: internalapi.New(input),
+	}, nil
 }
 
 // Get retrieves a GitHub App access token, creating or renewing it when needed.

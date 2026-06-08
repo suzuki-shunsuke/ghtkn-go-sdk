@@ -12,7 +12,6 @@ import (
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
-	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
@@ -102,7 +101,7 @@ func TestController_createToken(t *testing.T) {
 		name     string
 		clientID string
 		client   deviceFlow
-		want     *pubkeyring.AccessToken
+		want     *pubapi.AccessToken
 		wantErr  bool
 	}{
 		{
@@ -114,7 +113,7 @@ func TestController_createToken(t *testing.T) {
 					ExpirationDate: futureTime,
 				},
 			},
-			want: &pubkeyring.AccessToken{
+			want: &pubapi.AccessToken{
 				AccessToken:    "new-token",
 				ExpirationDate: futureTime,
 			},
@@ -143,7 +142,7 @@ func TestController_createToken(t *testing.T) {
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := tm.createToken(t.Context(), logger, tt.clientID)
+			got, err := tm.createToken(t.Context(), logger, tt.clientID, true)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -167,21 +166,46 @@ func TestController_createToken_disableDeviceFlow(t *testing.T) {
 				ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 			},
 		},
-		Getenv: func(key string) string {
-			if key == "GHTKN_DISABLE_DEVICE_FLOW" {
-				return "true"
-			}
-			return ""
-		},
 	}
 	tm := &TokenManager{input: input}
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-	got, err := tm.createToken(t.Context(), logger, "test-client-id")
+	got, err := tm.createToken(t.Context(), logger, "test-client-id", false)
 	if !errors.Is(err, pubapi.ErrDisableDeviceFlow) {
 		t.Errorf("createToken() error = %v, want ErrDisableDeviceFlow", err)
 	}
 	if got != nil {
 		t.Errorf("createToken() = %v, want nil", got)
+	}
+}
+
+func TestEnableDeviceFlow(t *testing.T) {
+	t.Parallel()
+	ptr := func(b bool) *bool { return &b }
+	data := []struct {
+		name     string
+		override *bool
+		env      string
+		want     bool
+	}{
+		{name: "default enabled when unset", override: nil, env: "", want: true},
+		{name: "env false disables", override: nil, env: "false", want: false},
+		{name: "env true enables", override: nil, env: "true", want: true},
+		{name: "override true beats env false", override: ptr(true), env: "false", want: true},
+		{name: "override false beats env true", override: ptr(false), env: "true", want: false},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			getEnv := func(k string) string {
+				if k == "GHTKN_ENABLE_DEVICE_FLOW" {
+					return d.env
+				}
+				return ""
+			}
+			if got := enableDeviceFlow(d.override, getEnv); got != d.want {
+				t.Errorf("enableDeviceFlow = %v, want %v", got, d.want)
+			}
+		})
 	}
 }

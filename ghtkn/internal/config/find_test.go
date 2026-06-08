@@ -16,6 +16,26 @@ func TestGetPath(t *testing.T) { //nolint:funlen
 		goos    string
 		wantErr bool
 	}{
+		// GHTKN_CONFIG override
+		{
+			name: "GHTKN_CONFIG overrides the resolved path",
+			envs: map[string]string{
+				"GHTKN_CONFIG": filepath.Join("/custom", "ghtkn.yaml"),
+			},
+			goos:    "linux",
+			want:    filepath.Join("/custom", "ghtkn.yaml"),
+			wantErr: false,
+		},
+		{
+			name: "GHTKN_CONFIG takes precedence over XDG_CONFIG_HOME",
+			envs: map[string]string{
+				"GHTKN_CONFIG":    filepath.Join("/custom", "ghtkn.yaml"),
+				"XDG_CONFIG_HOME": "/home/user/.config",
+			},
+			goos:    "linux",
+			want:    filepath.Join("/custom", "ghtkn.yaml"),
+			wantErr: false,
+		},
 		// Linux/macOS tests
 		{
 			name: "Linux: standard XDG config path",

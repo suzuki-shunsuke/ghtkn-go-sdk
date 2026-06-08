@@ -12,7 +12,11 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	if c := ghtkn.New(); c == nil {
+	c, err := ghtkn.New()
+	if err != nil {
+		t.Fatalf("New() returned an error: %v", err)
+	}
+	if c == nil {
 		t.Fatal("New() returned nil")
 	}
 }
@@ -26,14 +30,17 @@ func (stubBrowser) Open(_ context.Context, _ *slog.Logger, _ string) error { ret
 // stubOnetimeCodeUI is a user-defined OnetimeCodeUI implementation.
 type stubOnetimeCodeUI struct{}
 
-func (stubOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.DeviceCodeResponse, _ time.Time) error {
+func (stubOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, _ *ghtkn.DeviceCodeResponse, _ time.Time, _ *ghtkn.InputShow) error {
 	return nil
 }
 
 func TestClient_Setters(t *testing.T) {
 	t.Parallel()
 
-	c := ghtkn.New()
+	c, err := ghtkn.New()
+	if err != nil {
+		t.Fatalf("New() returned an error: %v", err)
+	}
 	// Must compile and not panic: public implementations are accepted by the wrapper.
 	c.SetBrowser(stubBrowser{})
 	c.SetBrowser(&ghtkn.DefaultBrowser{})

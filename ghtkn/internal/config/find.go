@@ -5,10 +5,14 @@ import (
 	"path/filepath"
 )
 
-// GetPath returns the default configuration file path for ghtkn.
-// It combines the XDG_CONFIG_HOME directory with the ghtkn configuration filename.
-// The typical path is $XDG_CONFIG_HOME/ghtkn/ghtkn.yaml.
+// GetPath returns the configuration file path for ghtkn.
+// If GHTKN_CONFIG is set, its value is returned as-is, overriding everything else.
+// Otherwise it combines the XDG_CONFIG_HOME directory with the ghtkn configuration
+// filename; the typical path is $XDG_CONFIG_HOME/ghtkn/ghtkn.yaml.
 func GetPath(getEnv func(string) string, goos string) (string, error) {
+	if f := getEnv("GHTKN_CONFIG"); f != "" {
+		return f, nil
+	}
 	if goos == "windows" {
 		appData := getEnv("APPDATA")
 		if appData != "" {

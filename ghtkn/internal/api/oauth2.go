@@ -8,7 +8,6 @@ import (
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	pubkeyring "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"golang.org/x/oauth2"
 )
 
@@ -37,7 +36,7 @@ type TokenSource struct {
 }
 
 type tokenSourceClient interface {
-	Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubkeyring.AccessToken, *pubconfig.App, error)
+	Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubapi.AccessToken, *pubconfig.App, error)
 }
 
 // Token implements oauth2.TokenSource.Token() interface.
