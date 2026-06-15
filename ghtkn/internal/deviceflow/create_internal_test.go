@@ -97,7 +97,7 @@ func TestClient_Create_browser(t *testing.T) {
 				OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
 			}
 
-			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), "test-client-id")
+			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{ClientID: "test-client-id"})
 			if err != nil {
 				t.Fatalf("Create() error = %v", err)
 			}

@@ -71,7 +71,7 @@ func (i *Input) Validate() error {
 
 // deviceFlow defines the interface for creating GitHub App access tokens.
 type deviceFlow interface {
-	Create(ctx context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error)
+	Create(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error)
 	SetLogger(logger *publog.Logger)
 	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
 	SetBrowser(browser pubdeviceflow.Browser)

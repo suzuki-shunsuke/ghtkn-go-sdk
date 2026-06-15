@@ -24,15 +24,24 @@ type availabilityChecker interface {
 	Available() bool
 }
 
+// InputCreate holds the parameters for Create.
+type InputCreate struct {
+	// ClientID is the GitHub App's client ID used to start the device flow. Required.
+	ClientID string
+	// AppName is the GitHub App name shown in the one-time code prompt. Optional;
+	// when empty, the App Name line is omitted from the message.
+	AppName string
+}
+
 // Create initiates the OAuth device flow and returns an access token.
 // It displays the verification URL and user code, opens a browser when one is
 // available, and polls for the access token until the user completes authentication.
 // When no browser is available, the user is asked to open the URL themselves.
-func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID string) (*AccessToken, error) {
-	if clientID == "" {
+func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCreate) (*AccessToken, error) {
+	if input.ClientID == "" {
 		return nil, errors.New("client id is required")
 	}
-	deviceCode, err := c.getDeviceCode(ctx, clientID)
+	deviceCode, err := c.getDeviceCode(ctx, input.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("get device code: %w", err)
 	}
@@ -45,7 +54,10 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	}
 
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
-	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate, &pubdeviceflow.InputShow{OpenBrowser: willOpen}); err != nil {
+	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate, &pubdeviceflow.InputShow{
+		OpenBrowser: willOpen,
+		AppName:     input.AppName,
+	}); err != nil {
 		return nil, fmt.Errorf("show device code: %w", err)
 	}
 	if willOpen {
@@ -58,7 +70,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		}
 	}
 
-	token, err := c.pollForAccessToken(ctx, logger, clientID, deviceCode)
+	token, err := c.pollForAccessToken(ctx, logger, input.ClientID, deviceCode)
 	if err != nil {
 		return nil, fmt.Errorf("get access token: %w", err)
 	}

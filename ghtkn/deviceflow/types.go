@@ -22,6 +22,9 @@ type InputShow struct {
 	// afterwards. When false, the UI should ask the user to open the URL
 	// themselves instead.
 	OpenBrowser bool
+	// AppName is the GitHub App name shown alongside the one-time code. It is
+	// optional; when empty, the UI omits the App Name line from the message.
+	AppName string
 }
 
 // Browser provides an interface for opening URLs in a web browser.

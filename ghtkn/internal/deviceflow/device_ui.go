@@ -40,26 +40,37 @@ func newOnetimeCodeUI(stdin io.Reader, stderr io.Writer, waiter waiter) *simpleO
 // Note that it exits immediately without waiting input if stdin is not a terminal (pipe/redirect).
 // In case of Git Credential Helper stdin is not a terminal, so it exits immediately.
 func (d *simpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCode *pubdeviceflow.DeviceCodeResponse, expirationDate time.Time, input *pubdeviceflow.InputShow) error {
+	msgHeader := `The application uses the device flow to generate your GitHub User Access Token.
+Copy your one-time code: %s
+`
+	if input.AppName != "" {
+		msgHeader += `App Name: %s
+`
+	}
+	msgHeader += `This code is valid until %s
+`
+	// Build the format arguments to match the verbs in msgHeader. The App Name
+	// line (and its verb) is only present when AppName is set, so AppName must be
+	// omitted from the arguments otherwise to keep verbs and arguments aligned.
+	args := []any{deviceCode.UserCode}
+	if input.AppName != "" {
+		args = append(args, input.AppName)
+	}
+	args = append(args, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI)
 	if !input.OpenBrowser {
 		// The browser won't be opened automatically (disabled, or no browser is
 		// available), so ask the user to open the URL themselves. Polling proceeds
 		// immediately; there is nothing to wait for.
-		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
-Copy your one-time code: %s
-This code is valid until %s
-Open the following URL in your browser and enter the one-time code above:
+		msgTemplate := msgHeader + `Open the following URL in your browser and enter the one-time code above:
 %s
 `
-		fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
+		fmt.Fprintf(d.stderr, msgTemplate, args...) //nolint:errcheck
 		return nil
 	}
 	if term.IsTerminal(0) {
-		const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
-Copy your one-time code: %s
-This code is valid until %s
-Press Enter to open %s in your browser (it opens automatically after 10 seconds)...
+		msgTemplate := msgHeader + `Press Enter to open %s in your browser (it opens automatically after 10 seconds)...
 `
-		fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
+		fmt.Fprintf(d.stderr, msgTemplate, args...) //nolint:errcheck
 		inputCh := make(chan error, 1)
 		go func() {
 			// Wait until Enter is pressed
@@ -79,12 +90,9 @@ Press Enter to open %s in your browser (it opens automatically after 10 seconds)
 			return nil
 		}
 	}
-	const msgTemplate = `The application uses the device flow to generate your GitHub User Access Token.
-Copy your one-time code: %s
-This code is valid until %s
-%s will open automatically after a few seconds...
+	msgTemplate := msgHeader + `%s will open automatically after a few seconds...
 `
-	fmt.Fprintf(d.stderr, msgTemplate, deviceCode.UserCode, expirationDate.Format(time.RFC3339), deviceCode.VerificationURI) //nolint:errcheck
+	fmt.Fprintf(d.stderr, msgTemplate, args...) //nolint:errcheck
 	// If stdin is not a terminal, we cannot wait for user input.
 	// So, we just wait for a few seconds to show the message and return.
 	// In case of Git Credential Helper stdin is not a terminal.
