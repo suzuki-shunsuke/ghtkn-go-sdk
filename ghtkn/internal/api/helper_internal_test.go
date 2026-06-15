@@ -20,7 +20,7 @@ type testDeviceFlow struct {
 	err   error
 }
 
-func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
+func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -142,7 +142,7 @@ func TestController_createToken(t *testing.T) {
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := tm.createToken(t.Context(), logger, tt.clientID, true)
+			got, err := tm.createToken(t.Context(), logger, &deviceflow.InputCreate{ClientID: tt.clientID}, true)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -170,7 +170,7 @@ func TestController_createToken_disableDeviceFlow(t *testing.T) {
 	tm := &TokenManager{input: input}
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-	got, err := tm.createToken(t.Context(), logger, "test-client-id", false)
+	got, err := tm.createToken(t.Context(), logger, &deviceflow.InputCreate{ClientID: "test-client-id"}, false)
 	if !errors.Is(err, pubapi.ErrDisableDeviceFlow) {
 		t.Errorf("createToken() error = %v, want ErrDisableDeviceFlow", err)
 	}

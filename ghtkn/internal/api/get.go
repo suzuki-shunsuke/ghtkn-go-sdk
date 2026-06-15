@@ -11,6 +11,7 @@ import (
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -150,7 +151,10 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Create access token
-	token, err = tm.createToken(ctx, logger, input.App.ClientID, input.EnableDeviceFlow)
+	token, err = tm.createToken(ctx, logger, &deviceflow.InputCreate{
+		ClientID: input.App.ClientID,
+		AppName:  input.App.Name,
+	}, input.EnableDeviceFlow)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
@@ -159,11 +163,11 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns a keyring.AccessToken with the token details and expiration date.
-func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string, enableDeviceFlow bool) (*pubapi.AccessToken, error) {
+func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate, enableDeviceFlow bool) (*pubapi.AccessToken, error) {
 	if !enableDeviceFlow {
 		return nil, pubapi.ErrDisableDeviceFlow
 	}
-	tk, err := tm.input.DeviceFlow.Create(ctx, logger, clientID)
+	tk, err := tm.input.DeviceFlow.Create(ctx, logger, input)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}

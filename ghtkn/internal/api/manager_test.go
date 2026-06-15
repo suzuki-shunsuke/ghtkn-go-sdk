@@ -23,7 +23,7 @@ func (m *mockDeviceFlow) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
 
 func (m *mockDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 
-func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, clientID string) (*deviceflow.AccessToken, error) {
+func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

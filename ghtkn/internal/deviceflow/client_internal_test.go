@@ -535,7 +535,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 
 			logger := slog.New(slog.DiscardHandler)
 
-			got, err := client.Create(t.Context(), logger, tt.clientID)
+			got, err := client.Create(t.Context(), logger, &InputCreate{ClientID: tt.clientID})
 			if err != nil {
 				if !tt.wantErr {
 					t.Fatalf("unexpected error: %v", err)
