@@ -81,7 +81,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	if app == nil {
 		return nil, nil, errors.New("app is not found in the config")
 	}
-	logger = logger.With("app_name", app.Name)
+
+	attrs := slogerr.NewAttrs(1)
+	logger = attrs.Add(logger, "app_name", app.Name)
 
 	// Debug Log
 	logger.Debug(
@@ -95,7 +97,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		EnableDeviceFlow: enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("get or create token: %w", err)
+		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
 	}
 
 	if changed {
@@ -104,7 +106,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 		}); err != nil {
-			return token, app, errStoreToken
+			return token, app, attrs.With(errStoreToken)
 		}
 	}
 
