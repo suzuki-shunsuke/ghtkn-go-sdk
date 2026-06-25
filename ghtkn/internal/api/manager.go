@@ -16,8 +16,8 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/revoke"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/go-revoke-github-access-token/revoke"
 )
 
 // TokenManager manages the process of retrieving GitHub App access tokens.
