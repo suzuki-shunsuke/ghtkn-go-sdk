@@ -51,7 +51,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	appNames := input.AppNames
 	if len(appNames) == 0 {
 		// No app names given: fall back to GHTKN_APP, then the default app.
-		app := config.SelectApp(cfg, tm.input.Getenv("GHTKN_APP"), input.AppOwner)
+		app := config.SelectApp(cfg, tm.input.Getenv("GHTKN_APP"), "")
 		if app == nil {
 			return errors.New("app is not found in the config")
 		}
@@ -62,7 +62,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	// clientIDs of tokens read from the backend, to delete after revocation.
 	var clientIDs []string
 	for _, name := range appNames {
-		app := config.SelectApp(cfg, name, input.AppOwner)
+		app := config.SelectApp(cfg, name, "")
 		if app == nil {
 			return fmt.Errorf("app is not found in the config: %s", name)
 		}

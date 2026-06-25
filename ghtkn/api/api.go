@@ -29,8 +29,6 @@ type InputRevoke struct {
 	AppNames []string
 	// ConfigFilePath is the path to the configuration file (auto-detected if empty).
 	ConfigFilePath string
-	// AppOwner optionally selects an app by its GitHub App Owner.
-	AppOwner string
 }
 
 // ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
