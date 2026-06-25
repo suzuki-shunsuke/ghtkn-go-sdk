@@ -75,3 +75,23 @@ func (b *Backend) Set(ctx context.Context, clientID, token string) error {
 	}
 	return nil
 }
+
+// Delete removes the token stored for clientID from the agent.
+// It is a no-op when the agent has no token for the client ID, and returns
+// agentapi.ErrAgentLocked when the agent is running but still locked.
+func (b *Backend) Delete(ctx context.Context, clientID string) error {
+	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{Command: agentapi.CommandDelete, ClientID: clientID})
+	if err != nil {
+		return err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
+	}
+	if !resp.OK {
+		if resp.Error == agentapi.RespNotFound {
+			return nil
+		}
+		if resp.Error == agentapi.RespLocked {
+			return agentapi.ErrAgentLocked
+		}
+		return fmt.Errorf("delete an access token through the agent: %s", resp.Error)
+	}
+	return nil
+}

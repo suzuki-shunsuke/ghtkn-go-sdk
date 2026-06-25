@@ -20,6 +20,17 @@ type InputGet struct {
 	EnableDeviceFlow *bool
 }
 
+// InputRevoke contains the input parameters for revoking access tokens.
+// The tokens to revoke are the tokens stored in the backend for each app in
+// AppNames. When AppNames is empty, it falls back to the app selected by
+// GHTKN_APP (or the default app).
+type InputRevoke struct {
+	// AppNames are the names of the apps whose stored tokens should be revoked.
+	AppNames []string
+	// ConfigFilePath is the path to the configuration file (auto-detected if empty).
+	ConfigFilePath string
+}
+
 // ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
 // but the device flow is disabled (GHTKN_ENABLE_DEVICE_FLOW=false). The device flow
 // is interactive (it waits for a one-time code), so it can't be completed by a

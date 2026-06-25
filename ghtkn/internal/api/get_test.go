@@ -32,8 +32,10 @@ func newMockInput() *Input {
 }
 
 type mockKeyring struct {
-	token *pubapi.AccessToken
-	err   error
+	token   *pubapi.AccessToken
+	err     error
+	delErr  error
+	deleted []string
 }
 
 func (m *mockKeyring) Get(_ context.Context, _ string) (*pubapi.AccessToken, error) {
@@ -42,6 +44,14 @@ func (m *mockKeyring) Get(_ context.Context, _ string) (*pubapi.AccessToken, err
 
 func (m *mockKeyring) Set(_ context.Context, _ string, _ *pubapi.AccessToken) error {
 	return m.err
+}
+
+func (m *mockKeyring) Delete(_ context.Context, clientID string) error {
+	if m.delErr != nil {
+		return m.delErr
+	}
+	m.deleted = append(m.deleted, clientID)
+	return nil
 }
 
 type mockConfigReader struct {

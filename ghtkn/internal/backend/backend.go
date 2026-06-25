@@ -24,9 +24,11 @@ type Backend struct {
 
 // backend is the interface implemented by concrete storage backends (keyring, text, ...).
 // Get returns (nil, nil) when no token is stored for the given client ID.
+// Delete removes the token stored for the client ID and is a no-op when none is stored.
 type backend interface {
 	Get(context.Context, string) ([]byte, error)
 	Set(context.Context, string, string) error
+	Delete(context.Context, string) error
 }
 
 // New creates a Backend based on the GHTKN_BACKEND environment variable.
@@ -80,6 +82,14 @@ func (b *Backend) Get(ctx context.Context, clientID string) (*api.AccessToken, e
 		return nil, fmt.Errorf("the token in the backend is invalid: %w", err)
 	}
 	return token, nil
+}
+
+// Delete removes the token stored for clientID. It is a no-op when no token is stored.
+func (b *Backend) Delete(ctx context.Context, clientID string) error {
+	if err := b.backend.Delete(ctx, clientID); err != nil {
+		return fmt.Errorf("delete a token from the backend: %w", err)
+	}
+	return nil
 }
 
 // Set marshals token to JSON and stores it for clientID.

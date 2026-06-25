@@ -13,6 +13,7 @@ import (
 type Backend struct {
 	get     func(service, key string) (string, error)
 	set     func(service, key, token string) error
+	del     func(service, key string) error
 	service string
 }
 
@@ -22,6 +23,7 @@ func New(input *Input) *Backend {
 	return &Backend{
 		get:     keyring.Get,
 		set:     keyring.Set,
+		del:     keyring.Delete,
 		service: input.ServiceKey,
 	}
 }
@@ -47,6 +49,18 @@ func (b *Backend) Get(_ context.Context, clientID string) ([]byte, error) {
 func (b *Backend) Set(_ context.Context, clientID string, token string) error {
 	if err := b.set(b.service, clientID, token); err != nil {
 		return fmt.Errorf("set a secret to the keyring: %w", err)
+	}
+	return nil
+}
+
+// Delete removes the token stored for clientID from the keyring.
+// It is a no-op when no token is stored.
+func (b *Backend) Delete(_ context.Context, clientID string) error {
+	if err := b.del(b.service, clientID); err != nil {
+		if errors.Is(err, keyring.ErrNotFound) {
+			return nil
+		}
+		return fmt.Errorf("delete a secret from the keyring: %w", err)
 	}
 	return nil
 }

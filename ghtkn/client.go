@@ -29,6 +29,7 @@ type (
 	InputShow          = deviceflow.InputShow
 	DefaultBrowser     = browser.Browser
 	InputGet           = api.InputGet
+	InputRevoke        = api.InputRevoke
 )
 
 // ErrDisableDeviceFlow is returned by Get when the device flow is disabled
@@ -59,6 +60,14 @@ func New() (*Client, error) {
 // It returns the access token and the resolved app configuration.
 func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*AccessToken, *AppConfig, error) {
 	return c.tm.Get(ctx, logger, input)
+}
+
+// Revoke revokes GitHub credentials and removes the revoked tokens from the backend.
+// The tokens to revoke are the tokens stored for input.AppNames. When AppNames is
+// empty, it falls back to the app selected by GHTKN_APP (or the default app). It is
+// a no-op when there is nothing to revoke.
+func (c *Client) Revoke(ctx context.Context, logger *slog.Logger, input *InputRevoke) error {
+	return c.tm.Revoke(ctx, logger, input)
 }
 
 // TokenSource returns an oauth2.TokenSource that retrieves and caches access tokens

@@ -54,17 +54,11 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	}
 	cfg := &pubconfig.Config{}
 
-	// Get a config file path
-	configPath := input.ConfigFilePath
-	if configPath == "" {
-		p, err := config.GetPath(tm.input.Getenv, tm.input.GOOS)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get config path: %w", err)
-		}
-		configPath = p
+	// Get a config file path and read the config file
+	configPath, err := tm.resolveConfigPath(input.ConfigFilePath)
+	if err != nil {
+		return nil, nil, err
 	}
-
-	// Read the config file
 	if err := tm.readConfig(cfg, configPath); err != nil {
 		return nil, nil, err
 	}
