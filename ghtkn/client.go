@@ -63,10 +63,9 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 }
 
 // Revoke revokes GitHub credentials and removes the revoked tokens from the backend.
-// The tokens to revoke are the union of the tokens stored for input.AppNames and
-// the raw tokens in input.Tokens. When neither is given, it falls back to the app
-// selected by GHTKN_APP (or the default app). It is a no-op when there is nothing
-// to revoke.
+// The tokens to revoke are the tokens stored for input.AppNames. When AppNames is
+// empty, it falls back to the app selected by GHTKN_APP (or the default app). It is
+// a no-op when there is nothing to revoke.
 func (c *Client) Revoke(ctx context.Context, logger *slog.Logger, input *InputRevoke) error {
 	return c.tm.Revoke(ctx, logger, input)
 }

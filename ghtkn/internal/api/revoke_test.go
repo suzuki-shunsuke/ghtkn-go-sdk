@@ -42,13 +42,6 @@ func TestTokenManager_Revoke(t *testing.T) {
 		wantDeleted []string
 	}{
 		{
-			name:        "raw token only revokes and does not touch the backend",
-			backend:     &mockKeyring{token: storedToken()},
-			input:       &pubapi.InputRevoke{Tokens: []string{"ghu_raw"}},
-			wantRevoked: [][]string{{"ghu_raw"}},
-			wantDeleted: nil,
-		},
-		{
 			name:        "app name revokes the stored token and deletes it from the backend",
 			backend:     &mockKeyring{token: storedToken()},
 			input:       &pubapi.InputRevoke{AppNames: []string{"test-app"}},
@@ -75,20 +68,6 @@ func TestTokenManager_Revoke(t *testing.T) {
 			getenv:      func(k string) string { return map[string]string{"GHTKN_APP": "test-app"}[k] },
 			input:       &pubapi.InputRevoke{},
 			wantRevoked: [][]string{{"stored-tok"}},
-			wantDeleted: []string{"xxx"},
-		},
-		{
-			name:        "app and raw token are both revoked, only the app token is deleted",
-			backend:     &mockKeyring{token: storedToken()},
-			input:       &pubapi.InputRevoke{AppNames: []string{"test-app"}, Tokens: []string{"ghu_raw"}},
-			wantRevoked: [][]string{{"stored-tok", "ghu_raw"}},
-			wantDeleted: []string{"xxx"},
-		},
-		{
-			name:        "duplicate tokens are revoked once",
-			backend:     &mockKeyring{token: &pubapi.AccessToken{AccessToken: "dup", ExpirationDate: pastTime}},
-			input:       &pubapi.InputRevoke{AppNames: []string{"test-app"}, Tokens: []string{"dup"}},
-			wantRevoked: [][]string{{"dup"}},
 			wantDeleted: []string{"xxx"},
 		},
 		{
@@ -146,8 +125,12 @@ func TestTokenManager_Revoke(t *testing.T) {
 func TestTokenManager_Revoke_revokerError(t *testing.T) {
 	t.Parallel()
 
+	storedToken := &pubapi.AccessToken{
+		AccessToken:    "stored-tok",
+		ExpirationDate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
 	input := &Input{
-		Backend:      &mockKeyring{},
+		Backend:      &mockKeyring{token: storedToken},
 		Revoker:      &mockRevoker{err: errors.New("boom")},
 		Logger:       log.NewLogger(),
 		ConfigReader: &mockConfigReader{},
@@ -156,7 +139,7 @@ func TestTokenManager_Revoke_revokerError(t *testing.T) {
 	tm := New(input)
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-	err := tm.Revoke(t.Context(), logger, &pubapi.InputRevoke{Tokens: []string{"ghu_raw"}})
+	err := tm.Revoke(t.Context(), logger, &pubapi.InputRevoke{AppNames: []string{"test-app"}, ConfigFilePath: "/path/to/config.yaml"})
 	if err == nil {
 		t.Fatal("expected an error but got nil")
 	}

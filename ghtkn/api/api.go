@@ -21,14 +21,12 @@ type InputGet struct {
 }
 
 // InputRevoke contains the input parameters for revoking access tokens.
-// Tokens to revoke come from two sources, which are combined: the tokens stored
-// in the backend for each app in AppNames, and the raw tokens in Tokens.
+// The tokens to revoke are the tokens stored in the backend for each app in
+// AppNames. When AppNames is empty, it falls back to the app selected by
+// GHTKN_APP (or the default app).
 type InputRevoke struct {
 	// AppNames are the names of the apps whose stored tokens should be revoked.
 	AppNames []string
-	// Tokens are raw access tokens to revoke directly (e.g. a leaked token passed
-	// on the command line). They are not looked up in or deleted from any backend.
-	Tokens []string
 	// ConfigFilePath is the path to the configuration file (auto-detected if empty).
 	ConfigFilePath string
 	// AppOwner optionally selects an app by its GitHub App Owner.
