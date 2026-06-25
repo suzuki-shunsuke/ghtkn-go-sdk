@@ -20,6 +20,21 @@ type InputGet struct {
 	EnableDeviceFlow *bool
 }
 
+// InputRevoke contains the input parameters for revoking access tokens.
+// Tokens to revoke come from two sources, which are combined: the tokens stored
+// in the backend for each app in AppNames, and the raw tokens in Tokens.
+type InputRevoke struct {
+	// AppNames are the names of the apps whose stored tokens should be revoked.
+	AppNames []string
+	// Tokens are raw access tokens to revoke directly (e.g. a leaked token passed
+	// on the command line). They are not looked up in or deleted from any backend.
+	Tokens []string
+	// ConfigFilePath is the path to the configuration file (auto-detected if empty).
+	ConfigFilePath string
+	// AppOwner optionally selects an app by its GitHub App Owner.
+	AppOwner string
+}
+
 // ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
 // but the device flow is disabled (GHTKN_ENABLE_DEVICE_FLOW=false). The device flow
 // is interactive (it waits for a one-time code), so it can't be completed by a

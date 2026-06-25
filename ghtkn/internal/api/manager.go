@@ -16,6 +16,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/revoke"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
@@ -38,6 +39,7 @@ func New(input *Input) *TokenManager {
 type Input struct {
 	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
 	Backend      Backend          // Keyring for token storage
+	Revoker      revoker          // Client for revoking credentials
 	Now          func() time.Time // Current time provider for testing
 	Logger       *publog.Logger
 	ConfigReader configReader
@@ -55,6 +57,7 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 	return &Input{
 		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
 		Backend:      b,
+		Revoker:      revoke.New(nil),
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(afero.NewOsFs()),
@@ -81,6 +84,12 @@ type deviceFlow interface {
 type Backend interface {
 	Get(ctx context.Context, clientID string) (*api.AccessToken, error)
 	Set(ctx context.Context, clientID string, token *api.AccessToken) error
+	Delete(ctx context.Context, clientID string) error
+}
+
+// revoker defines the interface for revoking GitHub credentials.
+type revoker interface {
+	Revoke(ctx context.Context, tokens []string) error
 }
 
 // configReader defines the interface for reading configuration files.

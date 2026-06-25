@@ -16,6 +16,7 @@ type mockInner struct {
 	data []byte
 	err  error
 	set  func(clientID, token string) error
+	del  func(clientID string) error
 }
 
 func (m *mockInner) Get(_ context.Context, _ string) ([]byte, error) {
@@ -25,6 +26,13 @@ func (m *mockInner) Get(_ context.Context, _ string) ([]byte, error) {
 func (m *mockInner) Set(_ context.Context, clientID, token string) error {
 	if m.set != nil {
 		return m.set(clientID, token)
+	}
+	return nil
+}
+
+func (m *mockInner) Delete(_ context.Context, clientID string) error {
+	if m.del != nil {
+		return m.del(clientID)
 	}
 	return nil
 }
@@ -130,6 +138,37 @@ func TestBackend_Set(t *testing.T) {
 		}}}
 		if err := b.Set(t.Context(), "client-id", &api.AccessToken{}); err == nil {
 			t.Error("Set() expected an error, got nil")
+		}
+	})
+}
+
+func TestBackend_Delete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("delegates to the inner backend", func(t *testing.T) {
+		t.Parallel()
+
+		var gotClientID string
+		b := &Backend{backend: &mockInner{del: func(clientID string) error {
+			gotClientID = clientID
+			return nil
+		}}}
+		if err := b.Delete(t.Context(), "client-id"); err != nil {
+			t.Fatalf("Delete() error = %v", err)
+		}
+		if gotClientID != "client-id" {
+			t.Errorf("Delete() client id = %q, want %q", gotClientID, "client-id")
+		}
+	})
+
+	t.Run("propagates inner errors", func(t *testing.T) {
+		t.Parallel()
+
+		b := &Backend{backend: &mockInner{del: func(string) error {
+			return errors.New("boom")
+		}}}
+		if err := b.Delete(t.Context(), "client-id"); err == nil {
+			t.Error("Delete() expected an error, got nil")
 		}
 	})
 }

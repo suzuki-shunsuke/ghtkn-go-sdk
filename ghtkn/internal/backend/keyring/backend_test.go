@@ -89,6 +89,42 @@ func TestBackend_Set(t *testing.T) {
 	})
 }
 
+func TestBackend_Delete(t *testing.T) {
+	t.Parallel()
+
+	errBoom := errors.New("boom")
+	tests := []struct {
+		name    string
+		del     func(service, key string) error
+		wantErr bool
+	}{
+		{
+			name: "deletes the secret",
+			del:  func(_, _ string) error { return nil },
+		},
+		{
+			name: "not found is a no-op",
+			del:  func(_, _ string) error { return keyring.ErrNotFound },
+		},
+		{
+			name:    "other error is propagated",
+			del:     func(_, _ string) error { return errBoom },
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			b := &Backend{del: tt.del, service: DefaultServiceKey}
+			err := b.Delete(t.Context(), "client-id")
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
