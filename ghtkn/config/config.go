@@ -13,6 +13,11 @@ import (
 // It contains settings a list of GitHub Apps.
 type Config struct {
 	Apps []*App `json:"apps"`
+	// SkipAccountPicker skips the GitHub Device Flow account picker by appending
+	// GitHub's unofficial skip_account_picker query parameter to the verification
+	// URL. nil means "not specified" and defaults to true (the picker is skipped);
+	// set it to false to show the account picker.
+	SkipAccountPicker *bool `json:"skip_account_picker,omitempty" yaml:"skip_account_picker"`
 }
 
 // Validate checks if the Config is valid.

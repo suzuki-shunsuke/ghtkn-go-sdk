@@ -29,6 +29,9 @@
             "$ref": "#/$defs/App"
           },
           "type": "array"
+        },
+        "skip_account_picker": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

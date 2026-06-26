@@ -87,9 +87,10 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	)
 
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
-		MinExpiration:    input.MinExpiration,
-		App:              app,
-		EnableDeviceFlow: enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
+		MinExpiration:     input.MinExpiration,
+		App:               app,
+		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
+		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -116,9 +117,10 @@ var errStoreToken = errors.New("could not store the token in keyring")
 // It encapsulates the app configuration and expiration requirements
 // used internally by the getOrCreateToken function.
 type inputGetOrCreateToken struct {
-	App              *pubconfig.App // App configuration containing client ID and other settings
-	MinExpiration    time.Duration  // Minimum time before expiration to consider token valid
-	EnableDeviceFlow bool           // Whether the device flow may run to create a new token
+	App               *pubconfig.App // App configuration containing client ID and other settings
+	MinExpiration     time.Duration  // Minimum time before expiration to consider token valid
+	EnableDeviceFlow  bool           // Whether the device flow may run to create a new token
+	SkipAccountPicker bool           // Whether the GitHub account picker should be skipped
 }
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
@@ -129,6 +131,16 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 		return *override
 	}
 	return getEnv("GHTKN_ENABLE_DEVICE_FLOW") != "false"
+}
+
+// skipAccountPicker resolves whether the GitHub Device Flow account picker is
+// skipped from the config value. nil means "not specified" and defaults to true
+// (the picker is skipped); set it to false to show the account picker.
+func skipAccountPicker(cfg *bool) bool {
+	if cfg != nil {
+		return *cfg
+	}
+	return true
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.
@@ -146,8 +158,9 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 	}
 	// Create access token
 	token, err = tm.createToken(ctx, logger, &deviceflow.InputCreate{
-		ClientID: input.App.ClientID,
-		AppName:  input.App.Name,
+		ClientID:          input.App.ClientID,
+		AppName:           input.App.Name,
+		SkipAccountPicker: input.SkipAccountPicker,
 	}, input.EnableDeviceFlow)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)

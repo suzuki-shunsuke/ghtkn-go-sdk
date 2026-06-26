@@ -18,10 +18,12 @@ import (
 // availabilityChecker interface, so the device flow treats it as "available".
 type recordingBrowser struct {
 	opened bool
+	url    string
 }
 
-func (b *recordingBrowser) Open(_ context.Context, _ *slog.Logger, _ string) error {
+func (b *recordingBrowser) Open(_ context.Context, _ *slog.Logger, rawURL string) error {
 	b.opened = true
+	b.url = rawURL
 	return nil
 }
 
@@ -59,22 +61,37 @@ func TestClient_Create_browser(t *testing.T) {
 	const manualMsg = "Open the following URL in your browser"
 
 	tests := []struct {
-		name       string
-		setup      func() (pubdeviceflow.Browser, *bool) // browser and a pointer to its "opened" flag
-		wantOpened bool
-		wantManual bool // stderr shows the manual-open instruction
+		name              string
+		setup             func() (pubdeviceflow.Browser, *bool, *string) // browser, pointer to opened flag, pointer to recorded URL
+		skipAccountPicker bool
+		wantOpened        bool
+		wantManual        bool   // stderr shows the manual-open instruction
+		wantBrowserURL    string // if non-empty, browser must have opened this exact URL
+		wantStderrURL     string // if non-empty, stderr must contain this URL
 	}{
 		{
-			name:       "available browser is opened",
-			setup:      func() (pubdeviceflow.Browser, *bool) { b := &recordingBrowser{}; return b, &b.opened },
-			wantOpened: true,
-			wantManual: false,
+			name:           "available browser is opened",
+			setup:          func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			wantOpened:     true,
+			wantManual:     false,
+			wantBrowserURL: "https://github.com/login/device",
 		},
 		{
-			name:       "unavailable browser asks the user to open the URL",
-			setup:      func() (pubdeviceflow.Browser, *bool) { b := &unavailableBrowser{}; return b, &b.opened },
+			name: "unavailable browser asks the user to open the URL",
+			setup: func() (pubdeviceflow.Browser, *bool, *string) {
+				b := &unavailableBrowser{}
+				return b, &b.opened, &b.url
+			},
 			wantOpened: false,
 			wantManual: true,
+		},
+		{
+			name:              "skip_account_picker appended to verification URL",
+			setup:             func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			skipAccountPicker: true,
+			wantOpened:        true,
+			wantBrowserURL:    "https://github.com/login/device?skip_account_picker=true",
+			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
 		},
 	}
 
@@ -85,7 +102,7 @@ func TestClient_Create_browser(t *testing.T) {
 			server := httptest.NewServer(successHandler())
 			defer server.Close()
 
-			br, opened := tt.setup()
+			br, opened, browserURL := tt.setup()
 			var stderr strings.Builder
 			input := &Input{
 				HTTPClient:    &http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
@@ -97,7 +114,10 @@ func TestClient_Create_browser(t *testing.T) {
 				OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
 			}
 
-			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{ClientID: "test-client-id"})
+			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+				ClientID:          "test-client-id",
+				SkipAccountPicker: tt.skipAccountPicker,
+			})
 			if err != nil {
 				t.Fatalf("Create() error = %v", err)
 			}
@@ -109,6 +129,12 @@ func TestClient_Create_browser(t *testing.T) {
 			}
 			if got := strings.Contains(stderr.String(), manualMsg); got != tt.wantManual {
 				t.Errorf("manual-open instruction shown = %v, want %v\nstderr:\n%s", got, tt.wantManual, stderr.String())
+			}
+			if tt.wantBrowserURL != "" && *browserURL != tt.wantBrowserURL {
+				t.Errorf("browser URL = %q, want %q", *browserURL, tt.wantBrowserURL)
+			}
+			if tt.wantStderrURL != "" && !strings.Contains(stderr.String(), tt.wantStderrURL) {
+				t.Errorf("prompt does not contain %q:\n%s", tt.wantStderrURL, stderr.String())
 			}
 		})
 	}

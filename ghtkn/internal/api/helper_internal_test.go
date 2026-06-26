@@ -209,3 +209,25 @@ func TestEnableDeviceFlow(t *testing.T) {
 		})
 	}
 }
+
+func TestSkipAccountPicker(t *testing.T) {
+	t.Parallel()
+	ptr := func(b bool) *bool { return &b }
+	data := []struct {
+		name string
+		cfg  *bool
+		want bool
+	}{
+		{name: "default skipped when unset", cfg: nil, want: true},
+		{name: "explicit true skips", cfg: ptr(true), want: true},
+		{name: "explicit false shows picker", cfg: ptr(false), want: false},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			if got := skipAccountPicker(d.cfg); got != d.want {
+				t.Errorf("skipAccountPicker = %v, want %v", got, d.want)
+			}
+		})
+	}
+}

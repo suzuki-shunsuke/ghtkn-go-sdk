@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
@@ -31,6 +32,9 @@ type InputCreate struct {
 	// AppName is the GitHub App name shown in the one-time code prompt. Optional;
 	// when empty, the App Name line is omitted from the message.
 	AppName string
+	// SkipAccountPicker appends GitHub's unofficial skip_account_picker query
+	// parameter to the verification URL.
+	SkipAccountPicker bool
 }
 
 // Create initiates the OAuth device flow and returns an access token.
@@ -44,6 +48,13 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 	deviceCode, err := c.getDeviceCode(ctx, input.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("get device code: %w", err)
+	}
+	if input.SkipAccountPicker {
+		verificationURI, err := appendSkipAccountPickerParam(deviceCode.VerificationURI)
+		if err != nil {
+			return nil, fmt.Errorf("add skip_account_picker to the verification URL: %w", err)
+		}
+		deviceCode.VerificationURI = verificationURI
 	}
 
 	// Decide up front whether the browser will actually be opened, so the UI can
@@ -80,6 +91,17 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 		AccessToken:    token.AccessToken,
 		ExpirationDate: now.Add(time.Duration(token.ExpiresIn) * time.Second),
 	}, nil
+}
+
+func appendSkipAccountPickerParam(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("parse verification URL: %w", err)
+	}
+	query := u.Query()
+	query.Set("skip_account_picker", "true")
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }
 
 // getDeviceCode requests a device code from GitHub's OAuth device endpoint.
