@@ -90,7 +90,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		MinExpiration:     input.MinExpiration,
 		App:               app,
 		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
-		SkipAccountPicker: skipAccountPicker(input.SkipAccountPicker, tm.input.Getenv),
+		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -134,13 +134,13 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 }
 
 // skipAccountPicker resolves whether the GitHub Device Flow account picker is
-// skipped. An explicit override takes precedence; otherwise the
-// GHTKN_SKIP_ACCOUNT_PICKER environment variable enables it when set to "true".
-func skipAccountPicker(override *bool, getEnv func(string) string) bool {
-	if override != nil {
-		return *override
+// skipped from the config value. nil means "not specified" and defaults to true
+// (the picker is skipped); set it to false to show the account picker.
+func skipAccountPicker(cfg *bool) bool {
+	if cfg != nil {
+		return *cfg
 	}
-	return getEnv("GHTKN_SKIP_ACCOUNT_PICKER") == "true"
+	return true
 }
 
 // getOrCreateToken retrieves an existing token from the keyring or creates a new one.

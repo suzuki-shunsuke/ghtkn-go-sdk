@@ -18,10 +18,6 @@ type InputGet struct {
 	// new token. nil means "not specified", in which case the GHTKN_ENABLE_DEVICE_FLOW
 	// environment variable decides (default enabled; set it to "false" to disable).
 	EnableDeviceFlow *bool
-	// SkipAccountPicker overrides whether the GitHub Device Flow account picker is
-	// skipped. nil means "not specified", in which case GHTKN_SKIP_ACCOUNT_PICKER
-	// decides (default disabled; set it to "true" to enable).
-	SkipAccountPicker *bool
 }
 
 // InputRevoke contains the input parameters for revoking access tokens.

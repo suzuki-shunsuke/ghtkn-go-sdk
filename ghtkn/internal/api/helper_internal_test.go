@@ -214,27 +214,18 @@ func TestSkipAccountPicker(t *testing.T) {
 	t.Parallel()
 	ptr := func(b bool) *bool { return &b }
 	data := []struct {
-		name     string
-		override *bool
-		env      string
-		want     bool
+		name string
+		cfg  *bool
+		want bool
 	}{
-		{name: "default disabled when unset", override: nil, env: "", want: false},
-		{name: "env true enables", override: nil, env: "true", want: true},
-		{name: "env false disables", override: nil, env: "false", want: false},
-		{name: "override true beats env false", override: ptr(true), env: "false", want: true},
-		{name: "override false beats env true", override: ptr(false), env: "true", want: false},
+		{name: "default skipped when unset", cfg: nil, want: true},
+		{name: "explicit true skips", cfg: ptr(true), want: true},
+		{name: "explicit false shows picker", cfg: ptr(false), want: false},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			getEnv := func(k string) string {
-				if k == "GHTKN_SKIP_ACCOUNT_PICKER" {
-					return d.env
-				}
-				return ""
-			}
-			if got := skipAccountPicker(d.override, getEnv); got != d.want {
+			if got := skipAccountPicker(d.cfg); got != d.want {
 				t.Errorf("skipAccountPicker = %v, want %v", got, d.want)
 			}
 		})
