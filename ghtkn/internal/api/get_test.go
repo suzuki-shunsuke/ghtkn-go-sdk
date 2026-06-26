@@ -200,3 +200,32 @@ func TestTokenManager_Get(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenBrowser(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		env  string
+		want bool
+	}{
+		{name: "unset defaults to open", env: "", want: true},
+		{name: "false disables opening", env: "false", want: false},
+		{name: "true keeps opening", env: "true", want: true},
+		{name: "FALSE is case-sensitive and keeps opening", env: "FALSE", want: true},
+		{name: "any other value keeps opening", env: "0", want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			getEnv := func(key string) string {
+				if key == "GHTKN_OPEN_BROWSER" {
+					return tt.env
+				}
+				return ""
+			}
+			if got := openBrowser(getEnv); got != tt.want {
+				t.Errorf("openBrowser() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

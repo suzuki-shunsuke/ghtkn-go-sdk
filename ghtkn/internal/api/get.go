@@ -91,6 +91,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		App:               app,
 		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
+		OpenBrowser:       openBrowser(tm.input.Getenv),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -121,6 +122,7 @@ type inputGetOrCreateToken struct {
 	MinExpiration     time.Duration  // Minimum time before expiration to consider token valid
 	EnableDeviceFlow  bool           // Whether the device flow may run to create a new token
 	SkipAccountPicker bool           // Whether the GitHub account picker should be skipped
+	OpenBrowser       bool           // Whether the device flow may open a browser automatically
 }
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
@@ -131,6 +133,14 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 		return *override
 	}
 	return getEnv("GHTKN_ENABLE_DEVICE_FLOW") != "false"
+}
+
+// openBrowser resolves whether the device flow may open a browser automatically.
+// It defaults to enabled unless GHTKN_OPEN_BROWSER is set to "false", which lets
+// users in WSL, containers, and headless environments suppress the unreliable
+// browser launch (and its noisy errors) and open the URL manually instead.
+func openBrowser(getEnv func(string) string) bool {
+	return getEnv("GHTKN_OPEN_BROWSER") != "false"
 }
 
 // skipAccountPicker resolves whether the GitHub Device Flow account picker is
@@ -161,6 +171,7 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		ClientID:          input.App.ClientID,
 		AppName:           input.App.Name,
 		SkipAccountPicker: input.SkipAccountPicker,
+		OpenBrowser:       input.OpenBrowser,
 	}, input.EnableDeviceFlow)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
