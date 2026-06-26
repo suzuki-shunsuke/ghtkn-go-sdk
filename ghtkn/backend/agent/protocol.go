@@ -12,6 +12,7 @@ import "encoding/json"
 const (
 	CommandGet    = "GET"
 	CommandSet    = "SET"
+	CommandDelete = "DELETE"
 	CommandStatus = "STATUS"
 	CommandStop   = "STOP"
 	CommandUnlock = "UNLOCK"
@@ -27,10 +28,10 @@ const (
 // Request is a single request sent to the agent.
 // The wire format is one JSON object per line (newline-delimited JSON).
 type Request struct {
-	// Command is one of CommandGet, CommandSet, CommandStatus, CommandStop, or
-	// CommandUnlock.
+	// Command is one of CommandGet, CommandSet, CommandDelete, CommandStatus,
+	// CommandStop, or CommandUnlock.
 	Command string `json:"command"`
-	// ClientID identifies the GitHub App (used by GET and SET).
+	// ClientID identifies the GitHub App (used by GET, SET, and DELETE).
 	ClientID string `json:"client_id,omitempty"`
 	// Token is the opaque access token payload (used by SET).
 	Token json.RawMessage `json:"token,omitempty"`

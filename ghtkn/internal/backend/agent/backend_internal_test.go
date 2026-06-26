@@ -146,6 +146,45 @@ func TestBackend_locked(t *testing.T) {
 	}
 }
 
+func TestBackend_deleteOK(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response { return &agentapi.Response{OK: true} })
+	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.x"); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.requests) != 1 || f.requests[0].Command != agentapi.CommandDelete || f.requests[0].ClientID != "Iv1.x" {
+		t.Fatalf("unexpected request: %+v", f.requests)
+	}
+}
+
+func TestBackend_deleteMiss(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespNotFound}
+	})
+	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.absent"); err != nil {
+		t.Fatalf("Delete() on miss must return nil, got %v", err)
+	}
+}
+
+func TestBackend_deleteLocked(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespLocked}
+	})
+	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.x"); !agentapi.IsLocked(err) {
+		t.Fatalf("Delete err = %v, want ErrAgentLocked", err)
+	}
+}
+
+func TestBackend_deleteNotRunning(t *testing.T) {
+	t.Parallel()
+	socket := filepath.Join(t.TempDir(), "absent.sock")
+	if err := (&Backend{socket: socket}).Delete(context.Background(), "Iv1.x"); !agentapi.IsNotRunning(err) {
+		t.Fatalf("Delete err = %v, want ErrAgentNotRunning", err)
+	}
+}
+
 // TestBackend_setRequestShape guards the wire contract: the request the client
 // emits must match the agent server's Request fields.
 func TestBackend_setRequestShape(t *testing.T) {

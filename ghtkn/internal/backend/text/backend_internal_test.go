@@ -58,6 +58,33 @@ func TestBackend_GetSet(t *testing.T) {
 	}
 }
 
+func TestBackend_Delete(t *testing.T) {
+	t.Parallel()
+
+	b := &Backend{dir: filepath.Join(t.TempDir(), "ghtkn", "tokens")}
+	ctx := t.Context()
+
+	// Delete before Set is a no-op (no file exists yet).
+	if err := b.Delete(ctx, "client-id"); err != nil {
+		t.Fatalf("Delete() before Set error = %v", err)
+	}
+
+	// After Set, Delete removes the file so a subsequent Get returns (nil, nil).
+	if err := b.Set(ctx, "client-id", "token"); err != nil {
+		t.Fatalf("Set() error = %v", err)
+	}
+	if err := b.Delete(ctx, "client-id"); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	got, err := b.Get(ctx, "client-id")
+	if err != nil {
+		t.Fatalf("Get() after Delete error = %v", err)
+	}
+	if got != nil {
+		t.Errorf("Get() after Delete = %q, want nil", got)
+	}
+}
+
 func Test_cacheDir(t *testing.T) {
 	t.Parallel()
 

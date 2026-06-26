@@ -118,3 +118,14 @@ func (b *Backend) Set(_ context.Context, clientID, token string) error {
 	}
 	return nil
 }
+
+// Delete removes the token file for clientID. It is a no-op when no file exists.
+func (b *Backend) Delete(_ context.Context, clientID string) error {
+	if err := os.Remove(filepath.Join(b.dir, clientID)); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("remove a token file: %w", err)
+	}
+	return nil
+}
