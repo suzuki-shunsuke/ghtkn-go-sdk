@@ -77,8 +77,11 @@ func TestClient_Create_browser(t *testing.T) {
 			wantBrowserURL: "https://github.com/login/device",
 		},
 		{
-			name:       "unavailable browser asks the user to open the URL",
-			setup:      func() (pubdeviceflow.Browser, *bool, *string) { b := &unavailableBrowser{}; return b, &b.opened, &b.url },
+			name: "unavailable browser asks the user to open the URL",
+			setup: func() (pubdeviceflow.Browser, *bool, *string) {
+				b := &unavailableBrowser{}
+				return b, &b.opened, &b.url
+			},
 			wantOpened: false,
 			wantManual: true,
 		},
