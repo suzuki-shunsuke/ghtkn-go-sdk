@@ -18,6 +18,16 @@ type Config struct {
 	// URL. nil means "not specified" and defaults to true (the picker is skipped);
 	// set it to false to show the account picker.
 	SkipAccountPicker *bool `json:"skip_account_picker,omitempty" yaml:"skip_account_picker"`
+	// OpenBrowser controls whether the device flow opens a browser automatically.
+	OpenBrowser *OpenBrowser `json:"open_browser,omitempty" yaml:"open_browser"`
+}
+
+// OpenBrowser configures automatic browser opening for the device flow.
+type OpenBrowser struct {
+	// Enable toggles automatic browser opening. nil means "not specified" and
+	// defaults to true. The GHTKN_OPEN_BROWSER environment variable, when set,
+	// takes precedence over this value.
+	Enable *bool `json:"enable,omitempty" yaml:"enable"`
 }
 
 // Validate checks if the Config is valid.

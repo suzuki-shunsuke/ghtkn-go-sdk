@@ -91,7 +91,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		App:               app,
 		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
-		OpenBrowser:       openBrowser(tm.input.Getenv),
+		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -136,11 +136,19 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 }
 
 // openBrowser resolves whether the device flow may open a browser automatically.
-// It defaults to enabled unless GHTKN_OPEN_BROWSER is set to "false", which lets
-// users in WSL, containers, and headless environments suppress the unreliable
-// browser launch (and its noisy errors) and open the URL manually instead.
-func openBrowser(getEnv func(string) string) bool {
-	return getEnv("GHTKN_OPEN_BROWSER") != "false"
+// The GHTKN_OPEN_BROWSER environment variable, when set, takes precedence and
+// only "false" disables the open. Otherwise the config's open_browser.enable
+// decides, defaulting to enabled. This lets users in WSL, containers, and
+// headless environments suppress the unreliable browser launch (and its noisy
+// errors) and open the URL manually instead.
+func openBrowser(cfg *pubconfig.OpenBrowser, getEnv func(string) string) bool {
+	if v := getEnv("GHTKN_OPEN_BROWSER"); v != "" {
+		return v != "false"
+	}
+	if cfg != nil && cfg.Enable != nil {
+		return *cfg.Enable
+	}
+	return true
 }
 
 // skipAccountPicker resolves whether the GitHub Device Flow account picker is

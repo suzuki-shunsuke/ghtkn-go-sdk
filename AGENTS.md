@@ -167,6 +167,15 @@ The project includes GitHub Actions for:
 
 ## Configuration
 
+Disable automatic browser opening for the device flow:
+
+```yaml
+open_browser:
+  enable: false
+```
+
+This is equivalent to `GHTKN_OPEN_BROWSER=false`; the environment variable takes precedence when set.
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -174,7 +183,7 @@ The project includes GitHub Actions for:
 | `GHTKN_GITHUB_TOKEN` | - | If set, this token is returned as is instead of running the device flow. |
 | `GHTKN_BACKEND` | - | Selects the token storage backend (e.g. `text`). |
 | `GHTKN_ENABLE_DEVICE_FLOW` | enabled | Set to `false` to disable running the device flow to create a new token. |
-| `GHTKN_OPEN_BROWSER` | enabled | Set to `false` to stop the device flow from opening a browser automatically. The verification URL is shown for the user to open manually. This is useful in WSL, containers, and headless Linux environments where `xdg-open` exists on `PATH` but has no usable browser handler, which otherwise produces noisy errors. |
+| `GHTKN_OPEN_BROWSER` | enabled | Set to `false` to stop the device flow from opening a browser automatically. The verification URL is shown for the user to open manually. This is useful in WSL, containers, and headless Linux environments where `xdg-open` exists on `PATH` but has no usable browser handler, which otherwise produces noisy errors. The config field `open_browser.enable` does the same; when this environment variable is set it takes precedence over the config. |
 | `GHTKN_LOG_LEVEL` | `info` | Log level (e.g. `debug`). |
 
 ## Debugging

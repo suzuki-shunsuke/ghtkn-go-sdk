@@ -32,6 +32,9 @@
         },
         "skip_account_picker": {
           "type": "boolean"
+        },
+        "open_browser": {
+          "$ref": "#/$defs/OpenBrowser"
         }
       },
       "additionalProperties": false,
@@ -39,6 +42,15 @@
       "required": [
         "apps"
       ]
+    },
+    "OpenBrowser": {
+      "properties": {
+        "enable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     }
   }
 }
