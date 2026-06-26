@@ -35,6 +35,10 @@ type InputCreate struct {
 	// SkipAccountPicker appends GitHub's unofficial skip_account_picker query
 	// parameter to the verification URL.
 	SkipAccountPicker bool
+	// OpenBrowser controls whether the verification URL is opened in a browser
+	// automatically. When false, the URL is only shown for the user to open
+	// manually. Even when true, the browser is opened only if one is available.
+	OpenBrowser bool
 }
 
 // Create initiates the OAuth device flow and returns an access token.
@@ -59,10 +63,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 
 	// Decide up front whether the browser will actually be opened, so the UI can
 	// show the right instruction and we only attempt an open that can succeed.
-	willOpen := true
-	if ac, ok := c.input.Browser.(availabilityChecker); ok {
-		willOpen = ac.Available()
-	}
+	willOpen := c.isOpenBrowser(input)
 
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
 	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate, &pubdeviceflow.InputShow{
@@ -91,6 +92,16 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 		AccessToken:    token.AccessToken,
 		ExpirationDate: now.Add(time.Duration(token.ExpiresIn) * time.Second),
 	}, nil
+}
+
+func (c *Client) isOpenBrowser(input *InputCreate) bool {
+	if !input.OpenBrowser {
+		return false
+	}
+	if ac, ok := c.input.Browser.(availabilityChecker); ok {
+		return ac.Available()
+	}
+	return true
 }
 
 func appendSkipAccountPickerParam(rawURL string) (string, error) {

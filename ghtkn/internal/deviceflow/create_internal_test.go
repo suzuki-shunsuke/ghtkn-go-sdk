@@ -63,6 +63,7 @@ func TestClient_Create_browser(t *testing.T) {
 	tests := []struct {
 		name              string
 		setup             func() (pubdeviceflow.Browser, *bool, *string) // browser, pointer to opened flag, pointer to recorded URL
+		openBrowser       bool
 		skipAccountPicker bool
 		wantOpened        bool
 		wantManual        bool   // stderr shows the manual-open instruction
@@ -72,6 +73,7 @@ func TestClient_Create_browser(t *testing.T) {
 		{
 			name:           "available browser is opened",
 			setup:          func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			openBrowser:    true,
 			wantOpened:     true,
 			wantManual:     false,
 			wantBrowserURL: "https://github.com/login/device",
@@ -82,16 +84,25 @@ func TestClient_Create_browser(t *testing.T) {
 				b := &unavailableBrowser{}
 				return b, &b.opened, &b.url
 			},
-			wantOpened: false,
-			wantManual: true,
+			openBrowser: true,
+			wantOpened:  false,
+			wantManual:  true,
 		},
 		{
 			name:              "skip_account_picker appended to verification URL",
 			setup:             func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			openBrowser:       true,
 			skipAccountPicker: true,
 			wantOpened:        true,
 			wantBrowserURL:    "https://github.com/login/device?skip_account_picker=true",
 			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
+		},
+		{
+			name:        "open browser disabled asks the user to open the URL",
+			setup:       func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			openBrowser: false,
+			wantOpened:  false,
+			wantManual:  true,
 		},
 	}
 
@@ -117,6 +128,7 @@ func TestClient_Create_browser(t *testing.T) {
 			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
 				ClientID:          "test-client-id",
 				SkipAccountPicker: tt.skipAccountPicker,
+				OpenBrowser:       tt.openBrowser,
 			})
 			if err != nil {
 				t.Fatalf("Create() error = %v", err)

@@ -200,3 +200,38 @@ func TestTokenManager_Get(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenBrowser(t *testing.T) {
+	t.Parallel()
+	boolPtr := func(b bool) *bool { return &b }
+	tests := []struct {
+		name string
+		env  string
+		cfg  *pubconfig.OpenBrowser
+		want bool
+	}{
+		{name: "env unset and config unset defaults to open", env: "", cfg: nil, want: true},
+		{name: "env unset and config disables", env: "", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(false)}, want: false},
+		{name: "env unset and config enables", env: "", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(true)}, want: true},
+		{name: "env unset and config present but unspecified defaults to open", env: "", cfg: &pubconfig.OpenBrowser{}, want: true},
+		{name: "env false disables with config unset", env: "false", cfg: nil, want: false},
+		{name: "env false overrides config enable", env: "false", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(true)}, want: false},
+		{name: "env true overrides config disable", env: "true", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(false)}, want: true},
+		{name: "env FALSE is case-sensitive and keeps opening", env: "FALSE", cfg: nil, want: true},
+		{name: "env any other value keeps opening", env: "0", cfg: nil, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			getEnv := func(key string) string {
+				if key == "GHTKN_OPEN_BROWSER" {
+					return tt.env
+				}
+				return ""
+			}
+			if got := openBrowser(tt.cfg, getEnv); got != tt.want {
+				t.Errorf("openBrowser() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
