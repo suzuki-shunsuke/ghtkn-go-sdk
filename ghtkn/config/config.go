@@ -28,6 +28,8 @@ type Config struct {
 	MinExpiration string `json:"min_expiration,omitempty" yaml:"min_expiration"`
 	// DeviceFlow configures whether the OAuth device flow may run to create a new token.
 	DeviceFlow *DeviceFlow `json:"device_flow,omitempty" yaml:"device_flow"`
+	// Backend selects the storage backend for access tokens.
+	Backend *Backend `json:"backend,omitempty" yaml:"backend"`
 }
 
 // OpenBrowser configures automatic browser opening for the device flow.
@@ -45,6 +47,14 @@ type DeviceFlow struct {
 	// defaults to true. The -device-flow flag and the GHTKN_ENABLE_DEVICE_FLOW
 	// environment variable take precedence over this value.
 	Enable *bool `json:"enable,omitempty" yaml:"enable"`
+}
+
+// Backend selects the storage backend for access tokens.
+type Backend struct {
+	// Type is the backend type: "keyring" (the default), "text", or "agent". Empty
+	// means "not specified". The GHTKN_BACKEND environment variable takes precedence
+	// over this value.
+	Type string `json:"type,omitempty" yaml:"type"`
 }
 
 // Validate checks if the Config is valid.

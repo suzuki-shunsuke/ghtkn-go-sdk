@@ -85,6 +85,11 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		return nil, nil, fmt.Errorf("resolve the min expiration: %w", attrs.With(err))
 	}
 
+	b, err := tm.resolveBackend(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve the backend: %w", attrs.With(err))
+	}
+
 	// Debug Log
 	logger.Debug(
 		"getting or creating a GitHub App User Access Token",
@@ -94,6 +99,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		MinExpiration:     minExpiration,
 		App:               app,
+		Backend:           b,
 		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, cfg.DeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
@@ -103,8 +109,8 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	}
 
 	if changed {
-		// Store the token in keyring
-		if err := tm.input.Backend.Set(ctx, app.ClientID, &pubapi.AccessToken{
+		// Store the token in the backend
+		if err := b.Set(ctx, app.ClientID, &pubapi.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 		}); err != nil {
@@ -124,6 +130,7 @@ var errStoreToken = errors.New("could not store the token in keyring")
 // used internally by the getOrCreateToken function.
 type inputGetOrCreateToken struct {
 	App               *pubconfig.App // App configuration containing client ID and other settings
+	Backend           Backend        // Resolved storage backend for reading and writing the token
 	MinExpiration     time.Duration  // Minimum time before expiration to consider token valid
 	EnableDeviceFlow  bool           // Whether the device flow may run to create a new token
 	SkipAccountPicker bool           // Whether the GitHub account picker should be skipped
@@ -145,6 +152,19 @@ func enableDeviceFlow(override *bool, cfg *pubconfig.DeviceFlow, getEnv func(str
 		return *cfg.Enable
 	}
 	return true
+}
+
+// resolveBackendType resolves the storage backend type. The GHTKN_BACKEND
+// environment variable takes precedence, then the config's backend.type. An empty
+// result selects the default (the OS keyring); backend.New maps it accordingly.
+func resolveBackendType(cfg *pubconfig.Backend, getEnv func(string) string) string {
+	if v := getEnv("GHTKN_BACKEND"); v != "" {
+		return v
+	}
+	if cfg != nil && cfg.Type != "" {
+		return cfg.Type
+	}
+	return ""
 }
 
 // resolveMinExpiration resolves the minimum time before token expiration that
@@ -245,8 +265,8 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, in
 // getAccessTokenFromBackend retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
 func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, error) {
-	// Get an access token from keyring
-	tk, err := tm.input.Backend.Get(ctx, input.App.ClientID)
+	// Get an access token from the backend
+	tk, err := input.Backend.Get(ctx, input.App.ClientID)
 	if err != nil {
 		return nil, err
 	}
