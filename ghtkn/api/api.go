@@ -29,7 +29,28 @@ type InputRevoke struct {
 	AppNames []string
 	// ConfigFilePath is the path to the configuration file (auto-detected if empty).
 	ConfigFilePath string
+	// All revokes the stored tokens of every app in the config. When true,
+	// AppNames and the GHTKN_APP / default-app fallback are ignored. This is meant
+	// for incident response: when the environment running ghtkn is compromised, all
+	// stored tokens can be revoked at once.
+	All bool
 }
+
+// Revoke errors are wrapped with one of the following sentinels so callers can
+// tell, via errors.Is, whether a credential might still be live.
+var (
+	// ErrRevoke marks a failure where a token may NOT have been revoked: the
+	// revocation API call failed, or the token could not be read from the backend
+	// to revoke it in the first place. The credential should be treated as still
+	// live and the failure needs attention.
+	ErrRevoke = errors.New("revoke a credential")
+	// ErrBackendCleanup marks a failure to delete an already-revoked token from the
+	// backend. The credential IS revoked (dead); only the backend still holds a
+	// stale copy, so ghtkn may return a revoked token until it is cleaned up. This
+	// is a UX issue, not a security one. errors.Is(err, ErrRevoke) is false for
+	// these, so callers can distinguish them from live-credential failures.
+	ErrBackendCleanup = errors.New("delete a revoked token from the backend")
+)
 
 // ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
 // but the device flow is disabled (GHTKN_ENABLE_DEVICE_FLOW=false). The device flow
