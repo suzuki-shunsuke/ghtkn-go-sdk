@@ -32,8 +32,9 @@ type (
 	InputRevoke        = api.InputRevoke
 )
 
-// ErrDisableDeviceFlow is returned by Get when the device flow is disabled
-// (GHTKN_ENABLE_DEVICE_FLOW=false, or InputGet.EnableDeviceFlow set to false).
+// ErrDisableDeviceFlow is returned by Get when a new token is needed but the
+// device flow is disabled. It is disabled by default; enable it explicitly with
+// GHTKN_ENABLE_DEVICE_FLOW=true or InputGet.EnableDeviceFlow set to true.
 // Detect it with errors.Is.
 var ErrDisableDeviceFlow = api.ErrDisableDeviceFlow
 
