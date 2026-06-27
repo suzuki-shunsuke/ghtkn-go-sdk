@@ -5,7 +5,6 @@ go 1.26.4
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/go-exec v0.0.1
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/zalando/go-keyring v0.2.8
