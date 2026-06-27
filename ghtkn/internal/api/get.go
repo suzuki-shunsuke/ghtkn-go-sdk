@@ -100,7 +100,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		MinExpiration:     minExpiration,
 		App:               app,
 		Backend:           b,
-		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, cfg.DeviceFlow, tm.input.Getenv),
+		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
 	})
@@ -139,17 +139,13 @@ type inputGetOrCreateToken struct {
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
 // (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides (only "false" disables it), then the config's
-// device_flow.enable, defaulting to enabled.
-func enableDeviceFlow(override *bool, cfg *pubconfig.DeviceFlow, getEnv func(string) string) bool {
+// environment variable decides (only "false" disables it), defaulting to enabled.
+func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 	if override != nil {
 		return *override
 	}
 	if v := getEnv("GHTKN_ENABLE_DEVICE_FLOW"); v != "" {
 		return v != "false"
-	}
-	if cfg != nil && cfg.Enable != nil {
-		return *cfg.Enable
 	}
 	return true
 }

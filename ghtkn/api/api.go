@@ -21,8 +21,8 @@ type InputGet struct {
 	MinExpiration *time.Duration
 	// EnableDeviceFlow overrides whether the OAuth device flow may run to create a
 	// new token. nil means "not specified", in which case the GHTKN_ENABLE_DEVICE_FLOW
-	// environment variable and then the config's device_flow.enable decide (default
-	// enabled; set the environment variable to "false" to disable).
+	// environment variable decides (default enabled; set the environment variable to
+	// "false" to disable).
 	EnableDeviceFlow *bool
 }
 
