@@ -61,10 +61,12 @@ var (
 // ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
 // but the device flow is disabled. The device flow is disabled by default so it
 // is never started automatically; it must be enabled explicitly (by running
-// `ghtkn auth`, or via GHTKN_ENABLE_DEVICE_FLOW=true). The device flow is
+// `ghtkn auth`, or via GHTKN_ENABLE_DEVICE_FLOW=true). GHTKN_ENABLE_DEVICE_FLOW
+// is a temporary opt-in and is planned to be removed in the future; see
+// https://github.com/suzuki-shunsuke/ghtkn/issues/474. The device flow is
 // interactive (it waits for a one-time code), so it can't be completed by a
 // background or non-interactive process such as a coding agent. Rather than
 // blocking, the operation fails immediately. The message instructs a coding
 // agent NOT to run `ghtkn get` itself (it would fail the same way) but to ask
 // the user to run `ghtkn auth` in their own interactive terminal.
-var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because the Device Flow is disabled. It is disabled by default and is never started automatically; it must be enabled explicitly by running `ghtkn auth` or by setting GHTKN_ENABLE_DEVICE_FLOW=true. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own interactive terminal to authenticate")
+var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because the Device Flow is disabled. It is disabled by default and is never started automatically; it must be enabled explicitly by running `ghtkn auth` or by setting GHTKN_ENABLE_DEVICE_FLOW=true. Note that GHTKN_ENABLE_DEVICE_FLOW is a temporary opt-in and is planned to be removed in the future; see https://github.com/suzuki-shunsuke/ghtkn/issues/474 . The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own interactive terminal to authenticate")
