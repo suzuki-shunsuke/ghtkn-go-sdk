@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os/exec"
 
-	"github.com/suzuki-shunsuke/go-exec/goexec"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -52,7 +51,7 @@ func runCmd(ctx context.Context, url string) error {
 		if _, err := exec.LookPath(cmd); err != nil {
 			continue
 		}
-		if err := goexec.Command(ctx, cmd, url).Run(); err != nil {
+		if err := command(ctx, cmd, url).Run(); err != nil {
 			return fmt.Errorf("open the browser: %w", slogerr.With(err, "command_to_open_browser", cmd))
 		}
 		return nil
