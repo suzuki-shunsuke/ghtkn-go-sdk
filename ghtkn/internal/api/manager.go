@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
@@ -59,7 +58,7 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 		Revoker:      revoke.New(nil),
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
-		ConfigReader: config.NewReader(afero.NewOsFs()),
+		ConfigReader: config.NewReader(),
 		Getenv:       getEnv,
 		GOOS:         runtime.GOOS,
 	}, nil

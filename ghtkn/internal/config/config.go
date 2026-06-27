@@ -5,20 +5,18 @@ package config
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/spf13/afero"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"gopkg.in/yaml.v3"
 )
 
 // Reader handles reading configuration files from the filesystem.
-type Reader struct {
-	fs afero.Fs
-}
+type Reader struct{}
 
-// NewReader creates a new configuration Reader with the given filesystem.
-func NewReader(fs afero.Fs) *Reader {
-	return &Reader{fs: fs}
+// NewReader creates a new configuration Reader.
+func NewReader() *Reader {
+	return &Reader{}
 }
 
 // Read reads and parses a configuration file from the given path.
@@ -28,7 +26,7 @@ func (r *Reader) Read(cfg *pubconfig.Config, configFilePath string) error {
 	if configFilePath == "" {
 		return nil
 	}
-	f, err := r.fs.Open(configFilePath)
+	f, err := os.Open(configFilePath)
 	if err != nil {
 		return fmt.Errorf("open a configuration file: %w", err)
 	}

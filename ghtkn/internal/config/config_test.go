@@ -1,9 +1,10 @@
 package config_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/spf13/afero"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
@@ -11,8 +12,7 @@ import (
 func TestNewReader(t *testing.T) {
 	t.Parallel()
 
-	fs := afero.NewMemMapFs()
-	reader := config.NewReader(fs)
+	reader := config.NewReader()
 
 	if reader == nil {
 		t.Error("NewReader() returned nil")
@@ -40,7 +40,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:       "valid config file",
-			configPath: "/test/config.yaml",
+			configPath: "config.yaml",
 			configContent: `apps:
   - name: test-app
     client_id: xxx`,
@@ -57,7 +57,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:       "multiple apps config",
-			configPath: "/test/config.yaml",
+			configPath: "config.yaml",
 			configContent: `apps:
   - name: app1
     client_id: xxx
@@ -80,13 +80,13 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:       "file does not exist",
-			configPath: "/test/nonexistent.yaml",
+			configPath: "nonexistent.yaml",
 			fileExists: false,
 			wantErr:    true,
 		},
 		{
 			name:       "invalid YAML",
-			configPath: "/test/config.yaml",
+			configPath: "config.yaml",
 			configContent: `invalid yaml:
   - name: test-app
     client_id: xxx
@@ -96,7 +96,7 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:          "empty config file",
-			configPath:    "/test/config.yaml",
+			configPath:    "config.yaml",
 			configContent: `apps: []`,
 			fileExists:    true,
 			expectedConfig: &pubconfig.Config{
@@ -110,18 +110,20 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fs := afero.NewMemMapFs()
+			configPath := tt.configPath
+			if tt.configPath != "" {
+				configPath = filepath.Join(t.TempDir(), tt.configPath)
+			}
 			if tt.fileExists {
-				err := afero.WriteFile(fs, tt.configPath, []byte(tt.configContent), 0o644)
-				if err != nil {
+				if err := os.WriteFile(configPath, []byte(tt.configContent), 0o600); err != nil {
 					t.Fatalf("Failed to create test file: %v", err)
 				}
 			}
 
-			reader := config.NewReader(fs)
+			reader := config.NewReader()
 			cfg := &pubconfig.Config{}
 
-			err := reader.Read(cfg, tt.configPath)
+			err := reader.Read(cfg, configPath)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Reader.Read() error = %v, wantErr %v", err, tt.wantErr)
 				return
