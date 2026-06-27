@@ -10,13 +10,19 @@ import (
 // It provides configuration options for specifying which app to use,
 // where to find configuration, and token expiration requirements.
 type InputGet struct {
-	AppName        string        // Name of the app to use (defaults to GHTKN_APP environment variable)
-	ConfigFilePath string        // Path to configuration file (auto-detected if empty)
-	AppOwner       string        // GitHub App Owner
-	MinExpiration  time.Duration // Minimum time before token expiration to trigger renewal
+	AppName        string // Name of the app to use (defaults to GHTKN_APP environment variable)
+	ConfigFilePath string // Path to configuration file (auto-detected if empty)
+	AppOwner       string // GitHub App Owner
+	// MinExpiration overrides the minimum time before token expiration that triggers
+	// renewal. nil means "not specified", in which case the GHTKN_MIN_EXPIRATION
+	// environment variable and then the config's min_expiration decide (default zero:
+	// renew only once the token has actually expired). A non-nil value, including a
+	// pointer to zero, takes precedence.
+	MinExpiration *time.Duration
 	// EnableDeviceFlow overrides whether the OAuth device flow may run to create a
 	// new token. nil means "not specified", in which case the GHTKN_ENABLE_DEVICE_FLOW
-	// environment variable decides (default enabled; set it to "false" to disable).
+	// environment variable and then the config's device_flow.enable decide (default
+	// enabled; set the environment variable to "false" to disable).
 	EnableDeviceFlow *bool
 }
 

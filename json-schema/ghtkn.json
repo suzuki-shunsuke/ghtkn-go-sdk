@@ -35,6 +35,12 @@
         },
         "open_browser": {
           "$ref": "#/$defs/OpenBrowser"
+        },
+        "min_expiration": {
+          "type": "string"
+        },
+        "device_flow": {
+          "$ref": "#/$defs/DeviceFlow"
         }
       },
       "additionalProperties": false,
@@ -42,6 +48,15 @@
       "required": [
         "apps"
       ]
+    },
+    "DeviceFlow": {
+      "properties": {
+        "enable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "OpenBrowser": {
       "properties": {

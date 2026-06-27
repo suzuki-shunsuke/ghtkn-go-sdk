@@ -80,16 +80,21 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	attrs := slogerr.NewAttrs(1)
 	logger = attrs.Add(logger, "app_name", app.Name)
 
+	minExpiration, err := resolveMinExpiration(input.MinExpiration, cfg.MinExpiration, tm.input.Getenv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve the min expiration: %w", attrs.With(err))
+	}
+
 	// Debug Log
 	logger.Debug(
 		"getting or creating a GitHub App User Access Token",
-		"min_expiration", input.MinExpiration,
+		"min_expiration", minExpiration,
 	)
 
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
-		MinExpiration:     input.MinExpiration,
+		MinExpiration:     minExpiration,
 		App:               app,
-		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
+		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, cfg.DeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
 	})
@@ -126,13 +131,47 @@ type inputGetOrCreateToken struct {
 }
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
-// (e.g. a CLI flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides, defaulting to enabled unless it is set to "false".
-func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
+// (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
+// environment variable decides (only "false" disables it), then the config's
+// device_flow.enable, defaulting to enabled.
+func enableDeviceFlow(override *bool, cfg *pubconfig.DeviceFlow, getEnv func(string) string) bool {
 	if override != nil {
 		return *override
 	}
-	return getEnv("GHTKN_ENABLE_DEVICE_FLOW") != "false"
+	if v := getEnv("GHTKN_ENABLE_DEVICE_FLOW"); v != "" {
+		return v != "false"
+	}
+	if cfg != nil && cfg.Enable != nil {
+		return *cfg.Enable
+	}
+	return true
+}
+
+// resolveMinExpiration resolves the minimum time before token expiration that
+// triggers renewal. An explicit override (the -min-expiration flag) takes
+// precedence, including an explicit zero; otherwise the GHTKN_MIN_EXPIRATION
+// environment variable decides, then the config's min_expiration. It defaults to
+// zero (renew only once the token has actually expired). The environment variable
+// and config values are Go duration strings such as "1h" or "30m".
+func resolveMinExpiration(override *time.Duration, cfg string, getEnv func(string) string) (time.Duration, error) {
+	if override != nil {
+		return *override, nil
+	}
+	if v := getEnv("GHTKN_MIN_EXPIRATION"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return 0, fmt.Errorf("parse GHTKN_MIN_EXPIRATION as a duration: %w", slogerr.With(err, "min_expiration", v))
+		}
+		return d, nil
+	}
+	if cfg != "" {
+		d, err := time.ParseDuration(cfg)
+		if err != nil {
+			return 0, fmt.Errorf("parse min_expiration in the config as a duration: %w", slogerr.With(err, "min_expiration", cfg))
+		}
+		return d, nil
+	}
+	return 0, nil
 }
 
 // openBrowser resolves whether the device flow may open a browser automatically.

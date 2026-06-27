@@ -20,6 +20,14 @@ type Config struct {
 	SkipAccountPicker *bool `json:"skip_account_picker,omitempty" yaml:"skip_account_picker"`
 	// OpenBrowser controls whether the device flow opens a browser automatically.
 	OpenBrowser *OpenBrowser `json:"open_browser,omitempty" yaml:"open_browser"`
+	// MinExpiration is the minimum time before token expiration that triggers
+	// renewal, as a Go duration string (e.g. "1h", "30m"). Empty means "not
+	// specified" and defaults to zero (renew only once the token has actually
+	// expired). The -min-expiration flag and the GHTKN_MIN_EXPIRATION environment
+	// variable take precedence over this value.
+	MinExpiration string `json:"min_expiration,omitempty" yaml:"min_expiration"`
+	// DeviceFlow configures whether the OAuth device flow may run to create a new token.
+	DeviceFlow *DeviceFlow `json:"device_flow,omitempty" yaml:"device_flow"`
 }
 
 // OpenBrowser configures automatic browser opening for the device flow.
@@ -27,6 +35,15 @@ type OpenBrowser struct {
 	// Enable toggles automatic browser opening. nil means "not specified" and
 	// defaults to true. The GHTKN_OPEN_BROWSER environment variable, when set,
 	// takes precedence over this value.
+	Enable *bool `json:"enable,omitempty" yaml:"enable"`
+}
+
+// DeviceFlow configures whether the OAuth device flow may run to create a new
+// access token.
+type DeviceFlow struct {
+	// Enable toggles whether the device flow may run. nil means "not specified" and
+	// defaults to true. The -device-flow flag and the GHTKN_ENABLE_DEVICE_FLOW
+	// environment variable take precedence over this value.
 	Enable *bool `json:"enable,omitempty" yaml:"enable"`
 }
 
