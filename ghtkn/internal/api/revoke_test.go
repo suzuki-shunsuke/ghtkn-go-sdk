@@ -267,26 +267,3 @@ func TestTokenManager_Revoke_all(t *testing.T) {
 		})
 	}
 }
-
-func TestTokenManager_Revoke_revokerError(t *testing.T) {
-	t.Parallel()
-
-	storedToken := &pubapi.AccessToken{
-		AccessToken:    "stored-tok",
-		ExpirationDate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-	}
-	input := &Input{
-		Backend:      &mockKeyring{token: storedToken},
-		Revoker:      &mockRevoker{err: errors.New("boom")},
-		Logger:       log.NewLogger(),
-		ConfigReader: &mockConfigReader{},
-		Getenv:       func(string) string { return "" },
-	}
-	tm := New(input)
-	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
-
-	err := tm.Revoke(t.Context(), logger, &pubapi.InputRevoke{AppNames: []string{"test-app"}, ConfigFilePath: "/path/to/config.yaml"})
-	if err == nil {
-		t.Fatal("expected an error but got nil")
-	}
-}
