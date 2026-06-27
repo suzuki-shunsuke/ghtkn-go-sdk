@@ -30,6 +30,9 @@ type Config struct {
 	DeviceFlow *DeviceFlow `json:"device_flow,omitempty" yaml:"device_flow"`
 	// Backend selects the storage backend for access tokens.
 	Backend *Backend `json:"backend,omitempty" yaml:"backend"`
+	// Clipboard configures whether the device flow copies the one-time code to the
+	// system clipboard.
+	Clipboard *Clipboard `json:"clipboard,omitempty" yaml:"clipboard"`
 }
 
 // OpenBrowser configures automatic browser opening for the device flow.
@@ -45,6 +48,15 @@ type OpenBrowser struct {
 type DeviceFlow struct {
 	// Enable toggles whether the device flow may run. nil means "not specified" and
 	// defaults to true. The -device-flow flag and the GHTKN_ENABLE_DEVICE_FLOW
+	// environment variable take precedence over this value.
+	Enable *bool `json:"enable,omitempty" yaml:"enable"`
+}
+
+// Clipboard configures whether the device flow copies the one-time code to the
+// system clipboard.
+type Clipboard struct {
+	// Enable toggles copying the one-time code to the clipboard. nil means "not
+	// specified" and defaults to false. The -clipboard flag and the GHTKN_CLIPBOARD
 	// environment variable take precedence over this value.
 	Enable *bool `json:"enable,omitempty" yaml:"enable"`
 }

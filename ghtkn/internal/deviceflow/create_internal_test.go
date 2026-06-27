@@ -3,6 +3,7 @@ package deviceflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -52,6 +53,101 @@ func successHandler() http.HandlerFunc {
 				ExpiresIn:   28800,
 			})
 		}
+	}
+}
+
+func TestClient_Create_clipboard(t *testing.T) {
+	t.Parallel()
+
+	const copiedMsg = "copied to your clipboard"
+
+	tests := []struct {
+		name       string
+		enabled    bool // InputCreate.Clipboard
+		inject     bool // whether a copy function is injected
+		copyErr    bool // the injected copy function returns an error
+		wantCalled bool // the copy function is invoked
+		wantCopied bool // stderr shows the "copied" line
+	}{
+		{
+			name:    "disabled with a function injected does not copy",
+			enabled: false,
+			inject:  true,
+		},
+		{
+			name:    "enabled without a function injected does not show the copied line",
+			enabled: true,
+			inject:  false,
+		},
+		{
+			name:       "enabled with a successful copy shows the copied line",
+			enabled:    true,
+			inject:     true,
+			wantCalled: true,
+			wantCopied: true,
+		},
+		{
+			name:       "enabled but copy fails does not abort and does not show the copied line",
+			enabled:    true,
+			inject:     true,
+			copyErr:    true,
+			wantCalled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(successHandler())
+			defer server.Close()
+
+			var gotCode string
+			var copyFn pubdeviceflow.CopyTextToClipboard
+			if tt.inject {
+				copyFn = func(_ context.Context, code string) error {
+					gotCode = code
+					if tt.copyErr {
+						return errors.New("clipboard unavailable")
+					}
+					return nil
+				}
+			}
+
+			var stderr strings.Builder
+			input := &Input{
+				HTTPClient:                 &http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
+				Now:                        time.Now,
+				Stderr:                     &stderr,
+				Browser:                    &recordingBrowser{},
+				NewTicker:                  func(_ time.Duration) *time.Ticker { return time.NewTicker(time.Millisecond) },
+				Logger:                     log.NewLogger(),
+				OnetimeCodeUI:              newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
+				CopyOnetimeCodeToClipboard: copyFn,
+			}
+
+			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+				ClientID:    "test-client-id",
+				OpenBrowser: true,
+				Clipboard:   tt.enabled,
+			})
+			if err != nil {
+				t.Fatalf("Create() error = %v", err)
+			}
+			if tk.AccessToken != "gho_testtoken123" {
+				t.Fatalf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
+			}
+			called := gotCode != ""
+			if called != tt.wantCalled {
+				t.Errorf("copy function called = %v, want %v", called, tt.wantCalled)
+			}
+			if tt.wantCalled && gotCode != "USER-CODE" {
+				t.Errorf("copied code = %q, want USER-CODE", gotCode)
+			}
+			if got := strings.Contains(stderr.String(), copiedMsg); got != tt.wantCopied {
+				t.Errorf("copied line shown = %v, want %v\nstderr:\n%s", got, tt.wantCopied, stderr.String())
+			}
+		})
 	}
 }
 

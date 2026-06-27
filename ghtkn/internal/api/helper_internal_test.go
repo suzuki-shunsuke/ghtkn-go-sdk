@@ -34,6 +34,8 @@ func (m *testDeviceFlow) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
 
 func (m *testDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 
+func (m *testDeviceFlow) SetCopyOnetimeCodeToClipboard(_ pubdeviceflow.CopyTextToClipboard) {}
+
 func TestTokenManager_checkExpired(t *testing.T) {
 	t.Parallel()
 

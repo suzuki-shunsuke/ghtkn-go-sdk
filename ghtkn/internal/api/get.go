@@ -37,6 +37,12 @@ func (tm *TokenManager) SetBrowser(ui pubdeviceflow.Browser) {
 	tm.input.DeviceFlow.SetBrowser(ui)
 }
 
+// SetCopyOnetimeCodeToClipboard updates the clipboard implementation used to copy the one-time code.
+// This allows customization of how the one-time code is copied to the user's clipboard.
+func (tm *TokenManager) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard) {
+	tm.input.DeviceFlow.SetCopyOnetimeCodeToClipboard(f)
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens and creates new tokens if needed.
 //
@@ -103,6 +109,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, cfg.DeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
+		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard, tm.input.Getenv),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -135,6 +142,7 @@ type inputGetOrCreateToken struct {
 	EnableDeviceFlow  bool           // Whether the device flow may run to create a new token
 	SkipAccountPicker bool           // Whether the GitHub account picker should be skipped
 	OpenBrowser       bool           // Whether the device flow may open a browser automatically
+	Clipboard         bool           // Whether the device flow copies the one-time code to the clipboard
 }
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
@@ -210,6 +218,24 @@ func openBrowser(cfg *pubconfig.OpenBrowser, getEnv func(string) string) bool {
 	return true
 }
 
+// clipboard resolves whether the device flow copies the one-time code to the
+// system clipboard. An explicit override (the -clipboard flag) takes precedence;
+// otherwise the GHTKN_CLIPBOARD environment variable decides (only "true" enables
+// it), then the config's clipboard.enable, defaulting to disabled. Copying also
+// requires the consumer to inject an implementation via SetCopyOnetimeCodeToClipboard.
+func clipboard(override *bool, cfg *pubconfig.Clipboard, getEnv func(string) string) bool {
+	if override != nil {
+		return *override
+	}
+	if v := getEnv("GHTKN_CLIPBOARD"); v != "" {
+		return v == "true"
+	}
+	if cfg != nil && cfg.Enable != nil {
+		return *cfg.Enable
+	}
+	return false
+}
+
 // skipAccountPicker resolves whether the GitHub Device Flow account picker is
 // skipped from the config value. nil means "not specified" and defaults to true
 // (the picker is skipped); set it to false to show the account picker.
@@ -239,6 +265,7 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		AppName:           input.App.Name,
 		SkipAccountPicker: input.SkipAccountPicker,
 		OpenBrowser:       input.OpenBrowser,
+		Clipboard:         input.Clipboard,
 	}, input.EnableDeviceFlow)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)

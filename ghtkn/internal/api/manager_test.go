@@ -23,6 +23,8 @@ func (m *mockDeviceFlow) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
 
 func (m *mockDeviceFlow) SetBrowser(_ pubdeviceflow.Browser) {}
 
+func (m *mockDeviceFlow) SetCopyOnetimeCodeToClipboard(_ pubdeviceflow.CopyTextToClipboard) {}
+
 func (m *mockDeviceFlow) Create(_ context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
