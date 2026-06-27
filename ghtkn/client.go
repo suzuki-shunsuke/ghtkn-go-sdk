@@ -91,6 +91,11 @@ func (c *Client) SetBrowser(b Browser) {
 	c.tm.SetBrowser(b)
 }
 
+// SetCopyOnetimeCodeToClipboard sets the implementation used to copy the one-time code to the clipboard.
+func (c *Client) SetCopyOnetimeCodeToClipboard(f deviceflow.CopyTextToClipboard) {
+	c.tm.SetCopyOnetimeCodeToClipboard(f)
+}
+
 // GetConfigPath returns the default configuration file path for ghtkn.
 func GetConfigPath() (string, error) {
 	return intconfig.GetPath(os.Getenv, runtime.GOOS)

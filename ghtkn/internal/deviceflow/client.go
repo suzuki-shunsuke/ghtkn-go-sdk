@@ -37,3 +37,9 @@ func (c *Client) SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI) {
 func (c *Client) SetBrowser(b pubdeviceflow.Browser) {
 	c.input.Browser = b
 }
+
+// SetCopyOnetimeCodeToClipboard updates the clipboard implementation used to copy the one-time code.
+// This allows customization of how the one-time code is copied to the user's clipboard.
+func (c *Client) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard) {
+	c.input.CopyOnetimeCodeToClipboard = f
+}

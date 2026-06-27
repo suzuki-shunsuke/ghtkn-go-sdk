@@ -37,6 +37,12 @@ func (tm *TokenManager) SetBrowser(ui pubdeviceflow.Browser) {
 	tm.input.DeviceFlow.SetBrowser(ui)
 }
 
+// SetCopyOnetimeCodeToClipboard updates the clipboard implementation used to copy the one-time code.
+// This allows customization of how the one-time code is copied to the user's clipboard.
+func (tm *TokenManager) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard) {
+	tm.input.DeviceFlow.SetCopyOnetimeCodeToClipboard(f)
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens and creates new tokens if needed.
 //

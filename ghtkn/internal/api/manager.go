@@ -88,6 +88,7 @@ type deviceFlow interface {
 	SetLogger(logger *publog.Logger)
 	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
 	SetBrowser(browser pubdeviceflow.Browser)
+	SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard)
 }
 
 // Backend defines the interface for storing and retrieving tokens from the system keyring.
