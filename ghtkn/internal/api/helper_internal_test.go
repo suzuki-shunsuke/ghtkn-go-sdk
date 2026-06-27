@@ -265,6 +265,39 @@ func TestResolveMinExpiration(t *testing.T) {
 	}
 }
 
+func TestResolveBackendType(t *testing.T) {
+	t.Parallel()
+	data := []struct {
+		name string
+		env  string
+		cfg  string // backend.type in the config file
+		want string
+	}{
+		{name: "default empty when all unset", want: ""},
+		{name: "env wins", env: "agent", cfg: "text", want: "agent"},
+		{name: "config when env unset", env: "", cfg: "text", want: "text"},
+		{name: "env beats config", env: "keyring", cfg: "text", want: "keyring"},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			getEnv := func(k string) string {
+				if k == "GHTKN_BACKEND" {
+					return d.env
+				}
+				return ""
+			}
+			var cfg *pubconfig.Backend
+			if d.cfg != "" {
+				cfg = &pubconfig.Backend{Type: d.cfg}
+			}
+			if got := resolveBackendType(cfg, getEnv); got != d.want {
+				t.Errorf("resolveBackendType = %q, want %q", got, d.want)
+			}
+		})
+	}
+}
+
 func TestSkipAccountPicker(t *testing.T) {
 	t.Parallel()
 	ptr := func(b bool) *bool { return &b }

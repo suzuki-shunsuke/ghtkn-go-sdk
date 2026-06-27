@@ -56,8 +56,10 @@ func TestNewInput(t *testing.T) {
 		t.Error("NewInput().AppTokenClient is nil")
 	}
 
-	if input.Backend == nil {
-		t.Error("NewInput().Backend is nil")
+	// Backend is built lazily (its type can come from the config file), so NewInput
+	// leaves it nil and resolveBackend builds it on demand in Get/Revoke.
+	if input.Backend != nil {
+		t.Error("NewInput().Backend should be nil; it is resolved lazily")
 	}
 
 	if input.Now == nil {

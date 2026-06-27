@@ -22,6 +22,15 @@
         "client_id"
       ]
     },
+    "Backend": {
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "Config": {
       "properties": {
         "apps": {
@@ -41,6 +50,9 @@
         },
         "device_flow": {
           "$ref": "#/$defs/DeviceFlow"
+        },
+        "backend": {
+          "$ref": "#/$defs/Backend"
         }
       },
       "additionalProperties": false,

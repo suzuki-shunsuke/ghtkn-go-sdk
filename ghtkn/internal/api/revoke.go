@@ -83,6 +83,11 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 		return err
 	}
 
+	b, err := tm.resolveBackend(cfg)
+	if err != nil {
+		return fmt.Errorf("resolve the backend: %w", err)
+	}
+
 	tokens := make([]string, 0, len(appNames))
 	// clientIDs of tokens read from the backend, to delete after revocation.
 	var clientIDs []string
@@ -95,7 +100,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 			errs = append(errs, fmt.Errorf("app is not found in the config: %s: %w", name, pubapi.ErrRevoke))
 			continue
 		}
-		tk, err := tm.input.Backend.Get(ctx, app.ClientID)
+		tk, err := b.Get(ctx, app.ClientID)
 		if err != nil {
 			// The token couldn't be read, so it can't be revoked: it may still be live.
 			errs = append(errs, fmt.Errorf("get a stored token from the backend: app_name=%s: %w: %w", app.Name, err, pubapi.ErrRevoke))
@@ -124,7 +129,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	// Remove the revoked tokens from the backend (best-effort). These tokens are
 	// already revoked, so a failure here is a cleanup/UX issue, not a security one.
 	for _, clientID := range clientIDs {
-		if err := tm.input.Backend.Delete(ctx, clientID); err != nil {
+		if err := b.Delete(ctx, clientID); err != nil {
 			errs = append(errs, fmt.Errorf("delete a revoked token from the backend: client_id=%s: %w: %w", clientID, err, pubapi.ErrBackendCleanup))
 		}
 	}

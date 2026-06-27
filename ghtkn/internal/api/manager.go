@@ -49,14 +49,13 @@ type Input struct {
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
+//
+// The storage backend is not built here: its type can come from the config file
+// (backend.type), which isn't read until Get/Revoke, so the backend is resolved
+// lazily then. Backend is left nil and built on demand by resolveBackend.
 func NewInput(getEnv func(string) string) (*Input, error) {
-	b, err := backend.New(getEnv("GHTKN_BACKEND"), getEnv)
-	if err != nil {
-		return nil, err
-	}
 	return &Input{
 		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
-		Backend:      b,
 		Revoker:      revoke.New(nil),
 		Now:          time.Now,
 		Logger:       log.NewLogger(),
@@ -64,6 +63,18 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 		Getenv:       getEnv,
 		GOOS:         runtime.GOOS,
 	}, nil
+}
+
+// resolveBackend returns the storage backend to use. An injected backend
+// (Input.Backend, e.g. set by a test or an SDK consumer) is honored as is.
+// Otherwise the backend is built from the resolved backend type: the
+// GHTKN_BACKEND environment variable takes precedence, then the config's
+// backend.type, defaulting to the OS keyring.
+func (tm *TokenManager) resolveBackend(cfg *pubconfig.Config) (Backend, error) {
+	if tm.input.Backend != nil {
+		return tm.input.Backend, nil
+	}
+	return backend.New(resolveBackendType(cfg.Backend, tm.input.Getenv), tm.input.Getenv)
 }
 
 // Validate checks if the Input configuration is valid.
