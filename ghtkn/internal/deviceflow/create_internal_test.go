@@ -63,24 +63,35 @@ func TestClient_Create_clipboard(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		copy       pubdeviceflow.CopyTextToClipboard // nil means no injection
-		wantCode   string                            // code passed to the copy func, if called
-		wantCopied bool                              // stderr shows the "copied" line
+		enabled    bool // InputCreate.Clipboard
+		inject     bool // whether a copy function is injected
+		copyErr    bool // the injected copy function returns an error
+		wantCalled bool // the copy function is invoked
+		wantCopied bool // stderr shows the "copied" line
 	}{
 		{
-			name:       "no clipboard function does not show the copied line",
-			copy:       nil,
-			wantCopied: false,
+			name:    "disabled with a function injected does not copy",
+			enabled: false,
+			inject:  true,
 		},
 		{
-			name:       "successful copy shows the copied line",
-			wantCode:   "USER-CODE",
+			name:    "enabled without a function injected does not show the copied line",
+			enabled: true,
+			inject:  false,
+		},
+		{
+			name:       "enabled with a successful copy shows the copied line",
+			enabled:    true,
+			inject:     true,
+			wantCalled: true,
 			wantCopied: true,
 		},
 		{
-			name:       "copy failure does not abort and does not show the copied line",
-			wantCode:   "USER-CODE",
-			wantCopied: false,
+			name:       "enabled but copy fails does not abort and does not show the copied line",
+			enabled:    true,
+			inject:     true,
+			copyErr:    true,
+			wantCalled: true,
 		},
 	}
 
@@ -93,16 +104,13 @@ func TestClient_Create_clipboard(t *testing.T) {
 
 			var gotCode string
 			var copyFn pubdeviceflow.CopyTextToClipboard
-			switch tt.name {
-			case "successful copy shows the copied line":
+			if tt.inject {
 				copyFn = func(_ context.Context, code string) error {
 					gotCode = code
+					if tt.copyErr {
+						return errors.New("clipboard unavailable")
+					}
 					return nil
-				}
-			case "copy failure does not abort and does not show the copied line":
-				copyFn = func(_ context.Context, code string) error {
-					gotCode = code
-					return errors.New("clipboard unavailable")
 				}
 			}
 
@@ -121,6 +129,7 @@ func TestClient_Create_clipboard(t *testing.T) {
 			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
 				ClientID:    "test-client-id",
 				OpenBrowser: true,
+				Clipboard:   tt.enabled,
 			})
 			if err != nil {
 				t.Fatalf("Create() error = %v", err)
@@ -128,8 +137,12 @@ func TestClient_Create_clipboard(t *testing.T) {
 			if tk.AccessToken != "gho_testtoken123" {
 				t.Fatalf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
 			}
-			if tt.wantCode != "" && gotCode != tt.wantCode {
-				t.Errorf("copied code = %q, want %q", gotCode, tt.wantCode)
+			called := gotCode != ""
+			if called != tt.wantCalled {
+				t.Errorf("copy function called = %v, want %v", called, tt.wantCalled)
+			}
+			if tt.wantCalled && gotCode != "USER-CODE" {
+				t.Errorf("copied code = %q, want USER-CODE", gotCode)
 			}
 			if got := strings.Contains(stderr.String(), copiedMsg); got != tt.wantCopied {
 				t.Errorf("copied line shown = %v, want %v\nstderr:\n%s", got, tt.wantCopied, stderr.String())

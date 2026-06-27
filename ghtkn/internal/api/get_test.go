@@ -235,3 +235,41 @@ func TestOpenBrowser(t *testing.T) {
 		})
 	}
 }
+
+func TestClipboard(t *testing.T) {
+	t.Parallel()
+	boolPtr := func(b bool) *bool { return &b }
+	tests := []struct {
+		name     string
+		override *bool
+		env      string
+		cfg      *pubconfig.Clipboard
+		want     bool
+	}{
+		{name: "all unset defaults to disabled", want: false},
+		{name: "config enables", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: true},
+		{name: "config disables", cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: false},
+		{name: "config present but unspecified defaults to disabled", cfg: &pubconfig.Clipboard{}, want: false},
+		{name: "env true enables with config unset", env: "true", want: true},
+		{name: "env true overrides config disable", env: "true", cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: true},
+		{name: "env false overrides config enable", env: "false", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: false},
+		{name: "env TRUE is case-sensitive and stays disabled", env: "TRUE", want: false},
+		{name: "env any other value stays disabled", env: "1", want: false},
+		{name: "override true beats env false", override: boolPtr(true), env: "false", want: true},
+		{name: "override false beats env true and config enable", override: boolPtr(false), env: "true", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			getEnv := func(key string) string {
+				if key == "GHTKN_CLIPBOARD" {
+					return tt.env
+				}
+				return ""
+			}
+			if got := clipboard(tt.override, tt.cfg, getEnv); got != tt.want {
+				t.Errorf("clipboard() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

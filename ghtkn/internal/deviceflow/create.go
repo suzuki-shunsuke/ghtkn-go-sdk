@@ -39,6 +39,10 @@ type InputCreate struct {
 	// automatically. When false, the URL is only shown for the user to open
 	// manually. Even when true, the browser is opened only if one is available.
 	OpenBrowser bool
+	// Clipboard controls whether the one-time code is copied to the system
+	// clipboard. The copy also requires a clipboard implementation to have been
+	// injected via Client.SetCopyOnetimeCodeToClipboard.
+	Clipboard bool
 }
 
 // Create initiates the OAuth device flow and returns an access token.
@@ -69,7 +73,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 	// the user it is already on their clipboard. A copy failure must not abort the
 	// device flow: warn and continue so the user can still copy the code manually.
 	copied := false
-	if c.input.CopyOnetimeCodeToClipboard != nil {
+	if input.Clipboard && c.input.CopyOnetimeCodeToClipboard != nil {
 		if err := c.input.CopyOnetimeCodeToClipboard(ctx, deviceCode.UserCode); err != nil {
 			slogerr.WithError(logger, err).Warn("copy the one-time code to the clipboard")
 		} else {
