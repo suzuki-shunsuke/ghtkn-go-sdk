@@ -139,15 +139,17 @@ type inputGetOrCreateToken struct {
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
 // (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides (only "false" disables it), defaulting to enabled.
+// environment variable decides (only "true" enables it). The device flow is
+// disabled by default so it is never started automatically; it must be enabled
+// explicitly (e.g. by `ghtkn auth`).
 func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 	if override != nil {
 		return *override
 	}
 	if v := getEnv("GHTKN_ENABLE_DEVICE_FLOW"); v != "" {
-		return v != "false"
+		return v == "true"
 	}
-	return true
+	return false
 }
 
 // resolveBackendType resolves the storage backend type. The GHTKN_BACKEND

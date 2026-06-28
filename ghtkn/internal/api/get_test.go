@@ -80,6 +80,7 @@ func TestTokenManager_Get(t *testing.T) {
 		name       string
 		setupInput func() *Input
 		wantErr    bool
+		wantErrIs  error
 		wantToken  *pubapi.AccessToken
 		input      *pubapi.InputGet
 	}{
@@ -150,7 +151,7 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml", EnableDeviceFlow: new(true)},
 			wantErr: false,
 			wantToken: &pubapi.AccessToken{
 				AccessToken:    "new-token",
@@ -170,8 +171,27 @@ func TestTokenManager_Get(t *testing.T) {
 				}
 				return input
 			},
-			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml", EnableDeviceFlow: new(true)},
 			wantErr: true,
+		},
+		{
+			name: "device flow is disabled by default",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.Backend = &mockKeyring{
+					token: &pubapi.AccessToken{
+						AccessToken:    "expired-token",
+						ExpirationDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					},
+				}
+				input.Now = func() time.Time {
+					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+				}
+				return input
+			},
+			input:     &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			wantErr:   true,
+			wantErrIs: pubapi.ErrDisableDeviceFlow,
 		},
 	}
 
@@ -187,6 +207,9 @@ func TestTokenManager_Get(t *testing.T) {
 			if err != nil {
 				if !tt.wantErr {
 					t.Error(err)
+				}
+				if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
+					t.Errorf("error = %v, want it to wrap %v", err, tt.wantErrIs)
 				}
 				return
 			}
