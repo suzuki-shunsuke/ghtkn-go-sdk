@@ -75,7 +75,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 	copied := false
 	if input.Clipboard && c.input.CopyOnetimeCodeToClipboard != nil {
 		if err := c.input.CopyOnetimeCodeToClipboard(ctx, deviceCode.UserCode); err != nil {
-			slogerr.WithError(logger, err).Warn("copy the one-time code to the clipboard")
+			c.input.Logger.FailedToCopyOnetimeCodeToClipboard(logger, c.input.Stderr, err)
 		} else {
 			copied = true
 		}

@@ -3,6 +3,8 @@
 package log
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -19,6 +21,10 @@ func NewLogger() *publog.Logger {
 		},
 		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
+		},
+		FailedToCopyOnetimeCodeToClipboard: func(logger *slog.Logger, stderr io.Writer, err error) {
+			fmt.Fprintln(stderr, err) //nolint:errcheck
+			logger.Warn("Failed to copy the one-time code to the clipboard automatically. Please copy it manually")
 		},
 		OpenedBrowser: func(logger *slog.Logger, url string) {
 			logger.Info("opened the browser", "url", url)
@@ -39,6 +45,9 @@ func InitLogger(l *publog.Logger) {
 	}
 	if l.FailedToOpenBrowser == nil {
 		l.FailedToOpenBrowser = defaultLogger.FailedToOpenBrowser
+	}
+	if l.FailedToCopyOnetimeCodeToClipboard == nil {
+		l.FailedToCopyOnetimeCodeToClipboard = defaultLogger.FailedToCopyOnetimeCodeToClipboard
 	}
 	if l.OpenedBrowser == nil {
 		l.OpenedBrowser = defaultLogger.OpenedBrowser

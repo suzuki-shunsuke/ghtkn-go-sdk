@@ -3,6 +3,7 @@
 package log
 
 import (
+	"io"
 	"log/slog"
 	"time"
 )
@@ -14,6 +15,8 @@ type Logger struct {
 	Expire func(logger *slog.Logger, exDate time.Time)
 	// FailedToOpenBrowser logs when the browser cannot be opened for authentication.
 	FailedToOpenBrowser func(logger *slog.Logger, err error)
+	// FailedToCopyOnetimeCodeToClipboard logs when the one-time code cannot be copied to the clipboard.
+	FailedToCopyOnetimeCodeToClipboard func(logger *slog.Logger, stderr io.Writer, err error)
 	// OpenedBrowser logs when the browser has been opened for authentication.
 	OpenedBrowser func(logger *slog.Logger, url string)
 	// AccessTokenIsNotFoundInBackend logs when no access token is found in the backend.
