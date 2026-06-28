@@ -21,8 +21,8 @@ type InputGet struct {
 	MinExpiration *time.Duration
 	// EnableDeviceFlow overrides whether the OAuth device flow may run to create a
 	// new token. nil means "not specified", in which case the GHTKN_ENABLE_DEVICE_FLOW
-	// environment variable and then the config's device_flow.enable decide (default
-	// enabled; set the environment variable to "false" to disable).
+	// environment variable decides (default disabled; set the environment variable to
+	// "true" to enable).
 	EnableDeviceFlow *bool
 	// Clipboard overrides whether the device flow copies the one-time code to the
 	// system clipboard. nil means "not specified", in which case the GHTKN_CLIPBOARD
@@ -66,10 +66,14 @@ var (
 )
 
 // ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
-// but the device flow is disabled (GHTKN_ENABLE_DEVICE_FLOW=false). The device flow
-// is interactive (it waits for a one-time code), so it can't be completed by a
+// but the device flow is disabled. The device flow is disabled by default so it
+// is never started automatically; it must be enabled explicitly (by running
+// `ghtkn auth`, or via GHTKN_ENABLE_DEVICE_FLOW=true). GHTKN_ENABLE_DEVICE_FLOW
+// is a temporary opt-in and is planned to be removed in the future; see
+// https://github.com/suzuki-shunsuke/ghtkn/issues/474. The device flow is
+// interactive (it waits for a one-time code), so it can't be completed by a
 // background or non-interactive process such as a coding agent. Rather than
 // blocking, the operation fails immediately. The message instructs a coding
 // agent NOT to run `ghtkn get` itself (it would fail the same way) but to ask
 // the user to run `ghtkn auth` in their own interactive terminal.
-var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because it's disabled by GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own interactive terminal to authenticate")
+var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because the Device Flow is disabled. It is disabled by default and is never started automatically; it must be enabled explicitly by running `ghtkn auth` or by setting GHTKN_ENABLE_DEVICE_FLOW=true. Note that GHTKN_ENABLE_DEVICE_FLOW is a temporary opt-in and is planned to be removed in the future; see https://github.com/suzuki-shunsuke/ghtkn/issues/474 . The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own interactive terminal to authenticate")

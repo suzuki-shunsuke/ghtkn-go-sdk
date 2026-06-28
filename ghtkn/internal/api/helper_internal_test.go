@@ -184,23 +184,18 @@ func TestController_createToken_disableDeviceFlow(t *testing.T) {
 
 func TestEnableDeviceFlow(t *testing.T) {
 	t.Parallel()
-	ptr := func(b bool) *bool { return &b }
 	data := []struct {
 		name     string
 		override *bool
 		env      string
-		cfg      *bool // device_flow.enable in the config file
 		want     bool
 	}{
-		{name: "default enabled when all unset", override: nil, env: "", cfg: nil, want: true},
-		{name: "env false disables", override: nil, env: "false", want: false},
+		{name: "default disabled when all unset", override: nil, env: "", want: false},
 		{name: "env true enables", override: nil, env: "true", want: true},
-		{name: "override true beats env false", override: ptr(true), env: "false", want: true},
-		{name: "override false beats env true", override: ptr(false), env: "true", want: false},
-		{name: "config false disables when override and env unset", override: nil, env: "", cfg: ptr(false), want: false},
-		{name: "config true enables when override and env unset", override: nil, env: "", cfg: ptr(true), want: true},
-		{name: "env beats config", override: nil, env: "false", cfg: ptr(true), want: false},
-		{name: "override beats config", override: ptr(false), env: "", cfg: ptr(true), want: false},
+		{name: "env false disables", override: nil, env: "false", want: false},
+		{name: "env other value disables", override: nil, env: "1", want: false},
+		{name: "override true beats env false", override: new(true), env: "false", want: true},
+		{name: "override false beats env true", override: new(false), env: "true", want: false},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
@@ -211,11 +206,7 @@ func TestEnableDeviceFlow(t *testing.T) {
 				}
 				return ""
 			}
-			var cfg *pubconfig.DeviceFlow
-			if d.cfg != nil {
-				cfg = &pubconfig.DeviceFlow{Enable: d.cfg}
-			}
-			if got := enableDeviceFlow(d.override, cfg, getEnv); got != d.want {
+			if got := enableDeviceFlow(d.override, getEnv); got != d.want {
 				t.Errorf("enableDeviceFlow = %v, want %v", got, d.want)
 			}
 		})

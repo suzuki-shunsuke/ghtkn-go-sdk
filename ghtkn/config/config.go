@@ -26,8 +26,6 @@ type Config struct {
 	// expired). The -min-expiration flag and the GHTKN_MIN_EXPIRATION environment
 	// variable take precedence over this value.
 	MinExpiration string `json:"min_expiration,omitempty" yaml:"min_expiration"`
-	// DeviceFlow configures whether the OAuth device flow may run to create a new token.
-	DeviceFlow *DeviceFlow `json:"device_flow,omitempty" yaml:"device_flow"`
 	// Backend selects the storage backend for access tokens.
 	Backend *Backend `json:"backend,omitempty" yaml:"backend"`
 	// Clipboard configures whether the device flow copies the one-time code to the
@@ -40,15 +38,6 @@ type OpenBrowser struct {
 	// Enable toggles automatic browser opening. nil means "not specified" and
 	// defaults to true. The GHTKN_OPEN_BROWSER environment variable, when set,
 	// takes precedence over this value.
-	Enable *bool `json:"enable,omitempty" yaml:"enable"`
-}
-
-// DeviceFlow configures whether the OAuth device flow may run to create a new
-// access token.
-type DeviceFlow struct {
-	// Enable toggles whether the device flow may run. nil means "not specified" and
-	// defaults to true. The -device-flow flag and the GHTKN_ENABLE_DEVICE_FLOW
-	// environment variable take precedence over this value.
 	Enable *bool `json:"enable,omitempty" yaml:"enable"`
 }
 

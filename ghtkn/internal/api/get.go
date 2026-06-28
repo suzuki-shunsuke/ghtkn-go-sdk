@@ -106,7 +106,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		MinExpiration:     minExpiration,
 		App:               app,
 		Backend:           b,
-		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, cfg.DeviceFlow, tm.input.Getenv),
+		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
 		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard, tm.input.Getenv),
@@ -147,19 +147,17 @@ type inputGetOrCreateToken struct {
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
 // (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides (only "false" disables it), then the config's
-// device_flow.enable, defaulting to enabled.
-func enableDeviceFlow(override *bool, cfg *pubconfig.DeviceFlow, getEnv func(string) string) bool {
+// environment variable decides (only "true" enables it). The device flow is
+// disabled by default so it is never started automatically; it must be enabled
+// explicitly (e.g. by `ghtkn auth`).
+func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 	if override != nil {
 		return *override
 	}
 	if v := getEnv("GHTKN_ENABLE_DEVICE_FLOW"); v != "" {
-		return v != "false"
+		return v == "true"
 	}
-	if cfg != nil && cfg.Enable != nil {
-		return *cfg.Enable
-	}
-	return true
+	return false
 }
 
 // resolveBackendType resolves the storage backend type. The GHTKN_BACKEND
