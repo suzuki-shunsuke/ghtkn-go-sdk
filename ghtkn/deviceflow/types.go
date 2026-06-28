@@ -25,7 +25,18 @@ type InputShow struct {
 	// AppName is the GitHub App name shown alongside the one-time code. It is
 	// optional; when empty, the UI omits the App Name line from the message.
 	AppName string
+	// CopiedToClipboard reports whether the one-time code was successfully copied
+	// to the system clipboard. When true, the UI shows a line telling the user the
+	// code is already on their clipboard.
+	CopiedToClipboard bool
 }
+
+// CopyTextToClipboard copies the given text (the device flow one-time code) to the
+// system clipboard. The SDK does not provide an implementation: consumers inject one
+// via Client.SetCopyOnetimeCodeToClipboard so the clipboard dependency stays out of
+// the SDK module. It returns an error if the copy fails; the caller logs a warning
+// and continues so authentication still succeeds.
+type CopyTextToClipboard func(ctx context.Context, code string) error
 
 // Browser provides an interface for opening URLs in a web browser.
 // This is used to open the GitHub verification URL during device flow authentication.

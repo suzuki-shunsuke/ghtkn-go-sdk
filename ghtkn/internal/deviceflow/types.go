@@ -20,13 +20,14 @@ import (
 // It allows for dependency injection and makes testing easier by providing
 // customizable implementations of external dependencies.
 type Input struct {
-	HTTPClient    *http.Client                       // HTTP client for API requests
-	Now           func() time.Time                   // Function to get current time (for testing)
-	Stderr        io.Writer                          // Writer for error output
-	Browser       pubdeviceflow.Browser              // Interface for opening URLs in browser
-	NewTicker     func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
-	Logger        *publog.Logger                     // Logger for debugging and info messages
-	OnetimeCodeUI pubdeviceflow.OnetimeCodeUI        // UI for displaying the one-time code (user code)
+	HTTPClient                 *http.Client                       // HTTP client for API requests
+	Now                        func() time.Time                   // Function to get current time (for testing)
+	Stderr                     io.Writer                          // Writer for error output
+	Browser                    pubdeviceflow.Browser              // Interface for opening URLs in browser
+	NewTicker                  func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
+	Logger                     *publog.Logger                     // Logger for debugging and info messages
+	OnetimeCodeUI              pubdeviceflow.OnetimeCodeUI        // UI for displaying the one-time code (user code)
+	CopyOnetimeCodeToClipboard pubdeviceflow.CopyTextToClipboard  // Function to copy one-time code to clipboard
 }
 
 // NewInput creates a new Input instance with default dependencies.

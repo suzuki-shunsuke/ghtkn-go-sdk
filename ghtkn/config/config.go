@@ -28,6 +28,9 @@ type Config struct {
 	MinExpiration string `json:"min_expiration,omitempty" yaml:"min_expiration"`
 	// Backend selects the storage backend for access tokens.
 	Backend *Backend `json:"backend,omitempty" yaml:"backend"`
+	// Clipboard configures whether the device flow copies the one-time code to the
+	// system clipboard.
+	Clipboard *Clipboard `json:"clipboard,omitempty" yaml:"clipboard"`
 }
 
 // OpenBrowser configures automatic browser opening for the device flow.
@@ -35,6 +38,15 @@ type OpenBrowser struct {
 	// Enable toggles automatic browser opening. nil means "not specified" and
 	// defaults to true. The GHTKN_OPEN_BROWSER environment variable, when set,
 	// takes precedence over this value.
+	Enable *bool `json:"enable,omitempty" yaml:"enable"`
+}
+
+// Clipboard configures whether the device flow copies the one-time code to the
+// system clipboard.
+type Clipboard struct {
+	// Enable toggles copying the one-time code to the clipboard. nil means "not
+	// specified" and defaults to false. The -clipboard flag and the GHTKN_CLIPBOARD
+	// environment variable take precedence over this value.
 	Enable *bool `json:"enable,omitempty" yaml:"enable"`
 }
 

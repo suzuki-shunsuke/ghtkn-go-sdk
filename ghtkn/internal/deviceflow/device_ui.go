@@ -43,12 +43,17 @@ func (d *simpleOnetimeCodeUI) Show(ctx context.Context, _ *slog.Logger, deviceCo
 	msgHeader := `The application uses the device flow to generate your GitHub User Access Token.
 Copy your one-time code: %s
 `
+	if input.CopiedToClipboard {
+		msgHeader += `(The one-time code has been copied to your clipboard.)
+`
+	}
 	if input.AppName != "" {
 		msgHeader += `App Name: %s
 `
 	}
 	msgHeader += `This code is valid until %s
 `
+
 	// Build the format arguments to match the verbs in msgHeader. The App Name
 	// line (and its verb) is only present when AppName is set, so AppName must be
 	// omitted from the arguments otherwise to keep verbs and arguments aligned.

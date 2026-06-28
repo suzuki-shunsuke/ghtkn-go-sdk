@@ -39,6 +39,10 @@ type InputCreate struct {
 	// automatically. When false, the URL is only shown for the user to open
 	// manually. Even when true, the browser is opened only if one is available.
 	OpenBrowser bool
+	// Clipboard controls whether the one-time code is copied to the system
+	// clipboard. The copy also requires a clipboard implementation to have been
+	// injected via Client.SetCopyOnetimeCodeToClipboard.
+	Clipboard bool
 }
 
 // Create initiates the OAuth device flow and returns an access token.
@@ -65,10 +69,23 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 	// show the right instruction and we only attempt an open that can succeed.
 	willOpen := c.isOpenBrowser(input)
 
+	// Copy the one-time code to the clipboard before showing it, so the UI can tell
+	// the user it is already on their clipboard. A copy failure must not abort the
+	// device flow: warn and continue so the user can still copy the code manually.
+	copied := false
+	if input.Clipboard && c.input.CopyOnetimeCodeToClipboard != nil {
+		if err := c.input.CopyOnetimeCodeToClipboard(ctx, deviceCode.UserCode); err != nil {
+			c.input.Logger.FailedToCopyOnetimeCodeToClipboard(logger, c.input.Stderr, err)
+		} else {
+			copied = true
+		}
+	}
+
 	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
 	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate, &pubdeviceflow.InputShow{
-		OpenBrowser: willOpen,
-		AppName:     input.AppName,
+		OpenBrowser:       willOpen,
+		AppName:           input.AppName,
+		CopiedToClipboard: copied,
 	}); err != nil {
 		return nil, fmt.Errorf("show device code: %w", err)
 	}
