@@ -13,6 +13,7 @@ import (
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 )
 
 // recordingBrowser records whether Open was called. It does not implement the
@@ -40,7 +41,7 @@ func successHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/login/device/code":
-			json.NewEncoder(w).Encode(pubdeviceflow.DeviceCodeResponse{ //nolint:errcheck
+			json.NewEncoder(w).Encode(deviceflow.DeviceCodeResponse{ //nolint:errcheck
 				DeviceCode:      "device123",
 				UserCode:        "USER-CODE",
 				VerificationURI: "https://github.com/login/device",
@@ -48,7 +49,7 @@ func successHandler() http.HandlerFunc {
 				Interval:        1,
 			})
 		case "/login/oauth/access_token":
-			json.NewEncoder(w).Encode(accessTokenResponse{ //nolint:errcheck
+			json.NewEncoder(w).Encode(deviceflow.AccessToken{ //nolint:errcheck
 				AccessToken: "gho_testtoken123",
 				ExpiresIn:   28800,
 			})
@@ -116,14 +117,13 @@ func TestClient_Create_clipboard(t *testing.T) {
 
 			var stderr strings.Builder
 			input := &Input{
-				HTTPClient:                 &http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
 				Now:                        time.Now,
 				Stderr:                     &stderr,
 				Browser:                    &recordingBrowser{},
-				NewTicker:                  func(_ time.Duration) *time.Ticker { return time.NewTicker(time.Millisecond) },
 				Logger:                     log.NewLogger(),
 				OnetimeCodeUI:              newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
 				CopyOnetimeCodeToClipboard: copyFn,
+				Client:                     newTestDeviceFlow(server, time.Now),
 			}
 
 			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
@@ -212,13 +212,12 @@ func TestClient_Create_browser(t *testing.T) {
 			br, opened, browserURL := tt.setup()
 			var stderr strings.Builder
 			input := &Input{
-				HTTPClient:    &http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
 				Now:           time.Now,
 				Stderr:        &stderr,
 				Browser:       br,
-				NewTicker:     func(_ time.Duration) *time.Ticker { return time.NewTicker(time.Millisecond) },
 				Logger:        log.NewLogger(),
 				OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
+				Client:        newTestDeviceFlow(server, time.Now),
 			}
 
 			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{

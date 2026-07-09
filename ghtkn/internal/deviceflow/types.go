@@ -5,7 +5,9 @@
 package deviceflow
 
 import (
+	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -14,20 +16,29 @@ import (
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
+	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 )
 
 // Input contains all dependencies and configuration needed by the Client.
 // It allows for dependency injection and makes testing easier by providing
 // customizable implementations of external dependencies.
 type Input struct {
-	HTTPClient                 *http.Client                       // HTTP client for API requests
-	Now                        func() time.Time                   // Function to get current time (for testing)
-	Stderr                     io.Writer                          // Writer for error output
-	Browser                    pubdeviceflow.Browser              // Interface for opening URLs in browser
-	NewTicker                  func(d time.Duration) *time.Ticker // Function to create tickers (for testing)
-	Logger                     *publog.Logger                     // Logger for debugging and info messages
-	OnetimeCodeUI              pubdeviceflow.OnetimeCodeUI        // UI for displaying the one-time code (user code)
-	CopyOnetimeCodeToClipboard pubdeviceflow.CopyTextToClipboard  // Function to copy one-time code to clipboard
+	Now                        func() time.Time                  // Function to get current time (for testing)
+	Stderr                     io.Writer                         // Writer for error output
+	Browser                    pubdeviceflow.Browser             // Interface for opening URLs in browser
+	Logger                     *publog.Logger                    // Logger for debugging and info messages
+	OnetimeCodeUI              pubdeviceflow.OnetimeCodeUI       // UI for displaying the one-time code (user code)
+	CopyOnetimeCodeToClipboard pubdeviceflow.CopyTextToClipboard // Function to copy one-time code to clipboard
+	Client                     DeviceFlow                        // Device flow API client (wraps the go-github-device-flow library)
+}
+
+// DeviceFlow talks to GitHub's device flow endpoints. GetDeviceCode returns the
+// SDK's own DeviceCodeResponse because it flows out to OnetimeCodeUI in the public
+// API; the access token stays internal, so Poll returns the library type directly.
+// The production implementation is libDeviceFlow; tests inject a fake.
+type DeviceFlow interface {
+	GetDeviceCode(ctx context.Context, clientID string) (*pubdeviceflow.DeviceCodeResponse, error)
+	Poll(ctx context.Context, logger *slog.Logger, clientID string, deviceCode *pubdeviceflow.DeviceCodeResponse) (*deviceflow.AccessToken, error)
 }
 
 // NewInput creates a new Input instance with default dependencies.
@@ -35,23 +46,13 @@ type Input struct {
 // system stderr, real browser integration, and standard time functions.
 func NewInput() *Input {
 	return &Input{
-		HTTPClient:    http.DefaultClient,
 		Now:           time.Now,
 		Stderr:        os.Stderr,
 		Browser:       &browser.Browser{},
-		NewTicker:     time.NewTicker,
 		Logger:        log.NewLogger(),
 		OnetimeCodeUI: newOnetimeCodeUI(os.Stdin, os.Stderr, &simpleWaiter{}),
+		Client:        newLibDeviceFlow(http.DefaultClient, time.Now, time.NewTicker),
 	}
-}
-
-// accessTokenResponse represents the response from GitHub's access token endpoint.
-// It contains either an access token or an error message.
-type accessTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in"`
-
-	Error string `json:"error"`
 }
 
 // AccessToken represents a GitHub App access token with its metadata.

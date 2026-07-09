@@ -27,16 +27,24 @@ func (b *mockBrowser) Open(_ context.Context, _ *slog.Logger, _ string) error {
 
 func newMockInput() *Input {
 	return &Input{
-		HTTPClient: http.DefaultClient,
-		Now:        time.Now,
-		Stderr:     io.Discard,
-		Browser:    newMockBrowser(nil),
-		NewTicker: func(_ time.Duration) *time.Ticker {
-			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
-		},
+		Now:           time.Now,
+		Stderr:        io.Discard,
+		Browser:       newMockBrowser(nil),
 		Logger:        log.NewLogger(),
 		OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), io.Discard, &mockWaiter{}),
 	}
+}
+
+// newTestDeviceFlow builds a real library-backed DeviceFlow whose HTTP requests are
+// redirected to the given test server and whose polling ticks near-instantly, so the
+// device flow can be driven end-to-end in tests without hitting github.com or waiting
+// for the real polling interval.
+func newTestDeviceFlow(server *httptest.Server, now func() time.Time) DeviceFlow {
+	return newLibDeviceFlow(
+		&http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
+		now,
+		func(_ time.Duration) *time.Ticker { return time.NewTicker(time.Millisecond) },
+	)
 }
 
 type mockWaiter struct {
