@@ -2,7 +2,7 @@ module github.com/suzuki-shunsuke/ghtkn-go-sdk
 
 go 1.26.5
 
-replace github.com/suzuki-shunsuke/go-github-device-flow v0.0.1 => ../go-github-device-flow
+// replace github.com/suzuki-shunsuke/go-github-device-flow v0.0.1 => ../go-github-device-flow
 
 require (
 	github.com/google/go-cmp v0.7.0
