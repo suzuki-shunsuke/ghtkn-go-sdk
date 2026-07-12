@@ -166,7 +166,16 @@ func TestClient_Show_browser(t *testing.T) {
 			skipAccountPicker: true,
 			wantOpened:        true,
 			wantBrowserURL:    "https://github.com/login/device?skip_account_picker=true",
-			wantStderrURL:     "https://github.com/login/device",
+			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
+		},
+		{
+			name:              "skip_account_picker shown in the manual-open URL",
+			setup:             func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			openBrowser:       false,
+			skipAccountPicker: true,
+			wantOpened:        false,
+			wantManual:        true,
+			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
 		},
 		{
 			name:        "open browser disabled asks the user to open the URL",

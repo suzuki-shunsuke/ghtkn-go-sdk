@@ -98,13 +98,17 @@ type InputCreate struct {
 }
 
 func (c *Client) Show(ctx context.Context, logger *slog.Logger, input *InputCreate, deviceCode *pubdeviceflow.DeviceCodeResponse) error {
-	vURI := deviceCode.VerificationURI
 	if input.SkipAccountPicker {
 		verificationURI, err := appendSkipAccountPickerParam(deviceCode.VerificationURI)
 		if err != nil {
 			return fmt.Errorf("add skip_account_picker to the verification URL: %w", err)
 		}
-		vURI = verificationURI
+		// Update the verification URL in place so both the displayed prompt (shown
+		// by OnetimeCodeUI.Show) and the browser open below use the skip variant.
+		// Otherwise a user opening the URL manually (browser disabled/unavailable,
+		// e.g. the git credential helper or a headless host) would still hit the
+		// account picker that skip_account_picker is meant to bypass.
+		deviceCode.VerificationURI = verificationURI
 	}
 
 	// Decide up front whether the browser will actually be opened, so the UI can
@@ -132,12 +136,12 @@ func (c *Client) Show(ctx context.Context, logger *slog.Logger, input *InputCrea
 		return fmt.Errorf("show device code: %w", err)
 	}
 	if willOpen {
-		if err := c.input.Browser.Open(ctx, logger, vURI); err != nil {
+		if err := c.input.Browser.Open(ctx, logger, deviceCode.VerificationURI); err != nil {
 			if !errors.Is(err, browser.ErrNoCommandFound) {
 				c.input.Logger.FailedToOpenBrowser(logger, err)
 			}
 		} else {
-			c.input.Logger.OpenedBrowser(logger, vURI)
+			c.input.Logger.OpenedBrowser(logger, deviceCode.VerificationURI)
 		}
 	}
 	return nil
