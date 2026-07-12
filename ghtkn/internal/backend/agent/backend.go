@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"runtime"
 	"time"
 
@@ -21,6 +23,17 @@ import (
 type Backend struct {
 	socket    string
 	newTicker func(time.Duration) *time.Ticker
+	// warn is where security-relevant agent warnings are written. It defaults to
+	// os.Stderr when nil; tests set it to capture the output.
+	warn io.Writer
+}
+
+// warnWriter returns where agent warnings should be written, defaulting to os.Stderr.
+func (b *Backend) warnWriter() io.Writer {
+	if b.warn != nil {
+		return b.warn
+	}
+	return os.Stderr
 }
 
 // New creates an agent backend. It resolves the socket path (GHTKN_AGENT_SOCKET, then
@@ -69,6 +82,14 @@ func (b *Backend) get(ctx context.Context, clientID string, req *agentapi.Reques
 	resp, err := agentapi.Send(ctx, b.socket, req)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
+	}
+	// A security-relevant warning (e.g. a still-valid refresh token that failed to
+	// refresh, suggesting it may have leaked) must reach the human, not just the agent
+	// log which a background agent's operator may never see. Write it straight to
+	// stderr so `ghtkn get` and the git credential helper both surface it.
+	if resp.Warning != "" {
+		// A failed warning write to stderr is not actionable; ignore it.
+		_, _ = fmt.Fprintf(b.warnWriter(), "WARNING: ghtkn agent: %s\n", resp.Warning)
 	}
 	if !resp.OK {
 		if resp.Error == agentapi.RespNotFound {

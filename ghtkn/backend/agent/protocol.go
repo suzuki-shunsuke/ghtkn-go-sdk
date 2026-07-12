@@ -113,6 +113,12 @@ type Request struct {
 	// purpose: the agent distrusts the ambient environment, so this security-relevant
 	// setting is gated by the passphrase rather than an env var or config file.
 	EnableRefreshToken bool `json:"enable_refresh_token,omitempty"`
+	// RefreshTokenTTL is how long a stored token may sit unused before the agent
+	// discards it (used by UNLOCK only, and only when EnableRefreshToken is set). The
+	// agent periodically sweeps token files whose access token expired more than this
+	// long ago, so an infrequently used refresh token does not linger indefinitely. A
+	// zero value leaves the agent's default in place.
+	RefreshTokenTTL time.Duration `json:"refresh_token_ttl,omitempty"`
 }
 
 // Response is a single response returned by the agent for a Request.
@@ -155,4 +161,10 @@ type Response struct {
 	// tokens with stored refresh tokens (returned by UNLOCK and STATUS) so the client
 	// can surface the current state to the user.
 	RefreshTokenEnabled bool `json:"refresh_token_enabled,omitempty"`
+	// Warning carries a non-fatal but security-relevant message the client must show
+	// the user (e.g. on GET). The agent sets it when a still-valid refresh token fails
+	// to refresh, which suggests the refresh token may have been leaked or revoked. It
+	// does not make OK false: the request may still succeed (or fall back to the device
+	// flow) while the warning is surfaced.
+	Warning string `json:"warning,omitempty"`
 }

@@ -2,11 +2,13 @@ package agent
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -114,6 +116,29 @@ func TestBackend_getMiss(t *testing.T) {
 	}
 	if got != nil {
 		t.Fatalf("miss must return nil, got %q", got)
+	}
+}
+
+// TestBackend_getWarning verifies that a security warning on the response is surfaced to
+// the configured writer (stderr in production) so the user sees it, while the token is
+// still returned.
+func TestBackend_getWarning(t *testing.T) {
+	t.Parallel()
+	value := `{"access_token":"abc","expiration_date":"2026-01-01T00:00:00Z"}`
+	const warning = "a still-valid refresh token failed to refresh"
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{OK: true, Token: json.RawMessage(value), Warning: warning}
+	})
+	var buf bytes.Buffer
+	got, err := (&Backend{socket: f.socket, warn: &buf}).Get(context.Background(), "Iv1.x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(value, string(got)); diff != "" {
+		t.Fatalf("token (-want +got):\n%s", diff)
+	}
+	if !strings.Contains(buf.String(), warning) {
+		t.Fatalf("the warning must be surfaced to the user; got %q", buf.String())
 	}
 }
 
