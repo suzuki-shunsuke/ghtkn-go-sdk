@@ -196,8 +196,8 @@ func TestController_createToken_disableDeviceFlow(t *testing.T) {
 // GetActive/BeginDeviceFlow/PollDeviceFlow. It records whether Set was called so
 // tests can assert the token is not re-stored by the caller.
 type agentBackend struct {
-	active     *pubapi.AccessToken            // token returned by GetActive (nil => none active)
-	begun      *pubapi.AccessToken            // token returned by BeginDeviceFlow (nil => a flow starts)
+	active     *pubapi.AccessToken // token returned by GetActive (nil => none active)
+	begun      *pubapi.AccessToken // token returned by BeginDeviceFlow (nil => a flow starts)
 	deviceCode *pubdeviceflow.DeviceCodeResponse
 	polled     *pubapi.AccessToken
 	setCalled  bool
