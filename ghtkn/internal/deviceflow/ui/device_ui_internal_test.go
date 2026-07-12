@@ -1,7 +1,8 @@
-package deviceflow
+package ui
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -9,6 +10,14 @@ import (
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 )
+
+type mockWaiter struct {
+	err error
+}
+
+func (w *mockWaiter) Wait(ctx context.Context, duration time.Duration) error {
+	return w.err
+}
 
 func TestSimpleOnetimeCodeUI_Show(t *testing.T) {
 	t.Parallel()

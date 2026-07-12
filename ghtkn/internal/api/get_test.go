@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
@@ -52,6 +53,27 @@ func (m *mockKeyring) Delete(_ context.Context, clientID string) error {
 	}
 	m.deleted = append(m.deleted, clientID)
 	return nil
+}
+
+// SupportsDeviceFlow reports false: mockKeyring is a keyring-like backend that
+// does not run the device flow itself, so GetActive/BeginDeviceFlow/
+// PollDeviceFlow/RevokeTokens are never called.
+func (m *mockKeyring) SupportsDeviceFlow() bool { return false }
+
+func (m *mockKeyring) GetActive(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	return nil, errors.New("GetActive should not be called")
+}
+
+func (m *mockKeyring) BeginDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, *pubdeviceflow.DeviceCodeResponse, error) {
+	return nil, nil, errors.New("BeginDeviceFlow should not be called")
+}
+
+func (m *mockKeyring) PollDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	return nil, errors.New("PollDeviceFlow should not be called")
+}
+
+func (m *mockKeyring) RevokeTokens(_ context.Context, _ []string) (revokeFailed, cleanupFailed []string, err error) {
+	return nil, nil, errors.New("RevokeTokens should not be called")
 }
 
 type mockConfigReader struct {

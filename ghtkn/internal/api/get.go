@@ -258,7 +258,7 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Create access token
-	token, err = tm.createToken(ctx, logger, &deviceflow.InputCreate{
+	token, changed, err := tm.createToken(ctx, logger, input.Backend, input.MinExpiration, &deviceflow.InputCreate{
 		ClientID:          input.App.ClientID,
 		AppName:           input.App.Name,
 		SkipAccountPicker: input.SkipAccountPicker,
@@ -268,28 +268,66 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
-	return token, true, nil
+	return token, changed, nil
 }
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
-// It returns a keyring.AccessToken with the token details and expiration date.
-func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate, enableDeviceFlow bool) (*pubapi.AccessToken, error) {
+// It returns the token and whether the caller must persist it (changed).
+//
+// When the backend runs the device flow itself (the agent), the flow runs on the
+// server: this asks it to begin and, unless the agent already has a valid token
+// (minted concurrently), displays the one-time code with the shared UI and polls the
+// backend until the server has minted and stored the token. The server already stored
+// it, so changed is false. Otherwise the client-side device flow runs and the caller
+// must store the token, so changed is true.
+func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, backend Backend, minExpiration time.Duration, input *deviceflow.InputCreate, enableDeviceFlow bool) (*pubapi.AccessToken, bool, error) {
 	if !enableDeviceFlow {
-		return nil, pubapi.ErrDisableDeviceFlow
+		return nil, false, pubapi.ErrDisableDeviceFlow
+	}
+	if backend.SupportsDeviceFlow() {
+		token, deviceCode, err := backend.BeginDeviceFlow(ctx, input.ClientID, minExpiration)
+		if err != nil {
+			return nil, false, fmt.Errorf("begin the device flow on the agent: %w", err)
+		}
+		if token != nil {
+			// A valid token became available (e.g. minted concurrently), so no flow
+			// was started and there is nothing to display.
+			return token, false, nil
+		}
+		if err := tm.input.DeviceFlow.Show(ctx, logger, input, deviceCode); err != nil {
+			return nil, false, fmt.Errorf("show the one-time code: %w", err)
+		}
+		token, err = backend.PollDeviceFlow(ctx, input.ClientID, minExpiration)
+		if err != nil {
+			return nil, false, fmt.Errorf("wait for the agent to mint the token: %w", err)
+		}
+		return token, false, nil
 	}
 	tk, err := tm.input.DeviceFlow.Create(ctx, logger, input)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, false, err //nolint:wrapcheck
 	}
 	return &pubapi.AccessToken{
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
-	}, nil
+	}, true, nil
 }
 
-// getAccessTokenFromBackend retrieves a cached access token from the system keyring.
-// It returns nil if the token doesn't exist or has expired based on MinExpiration.
+// getAccessTokenFromBackend retrieves a still-valid cached access token from the
+// backend, or nil when there is none. For a backend that owns the token lifecycle
+// (the agent) the expiration check runs server-side; otherwise it is checked here
+// against MinExpiration.
 func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, error) {
+	if input.Backend.SupportsDeviceFlow() {
+		tk, err := input.Backend.GetActive(ctx, input.App.ClientID, input.MinExpiration)
+		if err != nil {
+			return nil, err
+		}
+		if tk == nil {
+			tm.input.Logger.AccessTokenIsNotFoundInBackend(logger)
+		}
+		return tk, nil
+	}
 	// Get an access token from the backend
 	tk, err := input.Backend.Get(ctx, input.App.ClientID)
 	if err != nil {

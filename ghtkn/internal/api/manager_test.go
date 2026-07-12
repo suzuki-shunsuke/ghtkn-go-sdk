@@ -13,8 +13,15 @@ import (
 )
 
 type mockDeviceFlow struct {
-	token *deviceflow.AccessToken
-	err   error
+	token      *deviceflow.AccessToken
+	err        error
+	showCalled bool
+	showErr    error
+}
+
+func (m *mockDeviceFlow) Show(_ context.Context, _ *slog.Logger, _ *deviceflow.InputCreate, _ *pubdeviceflow.DeviceCodeResponse) error {
+	m.showCalled = true
+	return m.showErr
 }
 
 func (m *mockDeviceFlow) SetLogger(_ *publog.Logger) {}

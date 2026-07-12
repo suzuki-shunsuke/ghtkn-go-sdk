@@ -9,11 +9,10 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/browser"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/ui"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
@@ -23,13 +22,17 @@ import (
 // It allows for dependency injection and makes testing easier by providing
 // customizable implementations of external dependencies.
 type Input struct {
-	Now                        func() time.Time                  // Function to get current time (for testing)
-	Stderr                     io.Writer                         // Writer for error output
-	Browser                    pubdeviceflow.Browser             // Interface for opening URLs in browser
-	Logger                     *publog.Logger                    // Logger for debugging and info messages
-	OnetimeCodeUI              pubdeviceflow.OnetimeCodeUI       // UI for displaying the one-time code (user code)
-	CopyOnetimeCodeToClipboard pubdeviceflow.CopyTextToClipboard // Function to copy one-time code to clipboard
-	Client                     DeviceFlow                        // Device flow API client (wraps the go-github-device-flow library)
+	Stderr        io.Writer      // Writer for error output
+	Logger        *publog.Logger // Logger for debugging and info messages
+	OnetimeCodeUI OnetimeCodeUI  // UI for displaying the one-time code (user code)
+	Client        DeviceFlow     // Device flow API client (wraps the go-github-device-flow library)
+}
+
+type OnetimeCodeUI interface {
+	Show(ctx context.Context, logger *slog.Logger, input *ui.InputCreate, deviceCode *pubdeviceflow.DeviceCodeResponse) error
+	SetBrowser(b pubdeviceflow.Browser)
+	SetOnetimeCodeUI(o pubdeviceflow.OnetimeCodeUI)
+	SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard)
 }
 
 // DeviceFlow talks to GitHub's device flow endpoints. GetDeviceCode returns the
@@ -46,12 +49,9 @@ type DeviceFlow interface {
 // system stderr, real browser integration, and standard time functions.
 func NewInput() *Input {
 	return &Input{
-		Now:           time.Now,
-		Stderr:        os.Stderr,
-		Browser:       &browser.Browser{},
 		Logger:        log.NewLogger(),
-		OnetimeCodeUI: newOnetimeCodeUI(os.Stdin, os.Stderr, &simpleWaiter{}),
-		Client:        newLibDeviceFlow(http.DefaultClient, time.Now, time.NewTicker),
+		OnetimeCodeUI: ui.New(nil),
+		Client:        newLibDeviceFlow(http.DefaultClient),
 	}
 }
 

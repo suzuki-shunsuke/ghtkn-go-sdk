@@ -2,247 +2,218 @@ package deviceflow
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	"io"
 	"log/slog"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/ui"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 )
 
-// recordingBrowser records whether Open was called. It does not implement the
-// availabilityChecker interface, so the device flow treats it as "available".
-type recordingBrowser struct {
-	opened bool
-	url    string
+// mockDeviceFlow is a fake DeviceFlow that records the order of its calls and
+// returns canned responses, so Create's coordination can be tested without HTTP.
+type mockDeviceFlow struct {
+	calls      *[]string
+	deviceCode *pubdeviceflow.DeviceCodeResponse
+	token      *deviceflow.AccessToken
+	getErr     error
+	pollErr    error
 }
 
-func (b *recordingBrowser) Open(_ context.Context, _ *slog.Logger, rawURL string) error {
-	b.opened = true
-	b.url = rawURL
-	return nil
+func (m *mockDeviceFlow) GetDeviceCode(_ context.Context, _ string) (*pubdeviceflow.DeviceCodeResponse, error) {
+	*m.calls = append(*m.calls, "GetDeviceCode")
+	return m.deviceCode, m.getErr
 }
 
-// unavailableBrowser is a recordingBrowser that reports it can't open a browser.
-type unavailableBrowser struct {
-	recordingBrowser
+func (m *mockDeviceFlow) Poll(_ context.Context, _ *slog.Logger, _ string, _ *pubdeviceflow.DeviceCodeResponse) (*deviceflow.AccessToken, error) {
+	*m.calls = append(*m.calls, "Poll")
+	return m.token, m.pollErr
 }
 
-func (b *unavailableBrowser) Available() bool { return false }
+// mockOnetimeCodeUI is a fake OnetimeCodeUI (the package-local interface) that
+// records what Show received and the order of the call.
+type mockOnetimeCodeUI struct {
+	calls         *[]string
+	gotInput      *ui.InputCreate
+	gotDeviceCode *pubdeviceflow.DeviceCodeResponse
+	err           error
+	clipboardFn   pubdeviceflow.CopyTextToClipboard
+}
 
-// successHandler serves a device code then an access token, so Create completes.
-func successHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/login/device/code":
-			json.NewEncoder(w).Encode(deviceflow.DeviceCodeResponse{ //nolint:errcheck
-				DeviceCode:      "device123",
-				UserCode:        "USER-CODE",
-				VerificationURI: "https://github.com/login/device",
-				ExpiresIn:       10,
-				Interval:        1,
-			})
-		case "/login/oauth/access_token":
-			json.NewEncoder(w).Encode(deviceflow.AccessToken{ //nolint:errcheck
-				AccessToken: "gho_testtoken123",
-				ExpiresIn:   28800,
-			})
+func (m *mockOnetimeCodeUI) Show(_ context.Context, _ *slog.Logger, input *ui.InputCreate, deviceCode *pubdeviceflow.DeviceCodeResponse) error {
+	if m.calls != nil {
+		*m.calls = append(*m.calls, "Show")
+	}
+	m.gotInput = input
+	m.gotDeviceCode = deviceCode
+	return m.err
+}
+
+func (m *mockOnetimeCodeUI) SetBrowser(_ pubdeviceflow.Browser)             {}
+func (m *mockOnetimeCodeUI) SetOnetimeCodeUI(_ pubdeviceflow.OnetimeCodeUI) {}
+func (m *mockOnetimeCodeUI) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard) {
+	m.clipboardFn = f
+}
+
+// TestClient_SetCopyOnetimeCodeToClipboard guards that the clipboard function reaches
+// the UI layer that actually copies the code. It used to be stored on the client and
+// never forwarded, so the clipboard step was silently skipped.
+func TestClient_SetCopyOnetimeCodeToClipboard(t *testing.T) {
+	t.Parallel()
+	onetime := &mockOnetimeCodeUI{}
+	c := NewClient(&Input{OnetimeCodeUI: onetime})
+
+	called := false
+	c.SetCopyOnetimeCodeToClipboard(func(context.Context, string) error {
+		called = true
+		return nil
+	})
+	if onetime.clipboardFn == nil {
+		t.Fatal("SetCopyOnetimeCodeToClipboard did not forward the function to the UI")
+	}
+	if err := onetime.clipboardFn(t.Context(), "code"); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("the UI received a different function than the one set")
+	}
+}
+
+// TestClient_Create_coordination verifies Create calls GetDeviceCode, then Show,
+// then Poll, forwards the converted InputCreate and device code to Show, and returns
+// the token with the expiration date computed from Now.
+func TestClient_Create_coordination(t *testing.T) {
+	t.Parallel()
+
+	// synctest runs Create under a fake clock that starts at 2000-01-01 00:00:00 UTC
+	// and only advances when goroutines block on a timer. The mocked path has none, so
+	// create.go's time.Now() is fixed at the epoch and the expiration date is
+	// deterministic without re-introducing a Now seam.
+	synctest.Test(t, func(t *testing.T) {
+		var calls []string
+		deviceCode := &pubdeviceflow.DeviceCodeResponse{
+			UserCode:        "USER-CODE",
+			VerificationURI: "https://github.com/login/device",
+			ExpiresIn:       10,
 		}
+		df := &mockDeviceFlow{
+			calls:      &calls,
+			deviceCode: deviceCode,
+			token:      &deviceflow.AccessToken{AccessToken: "gho_testtoken123", ExpiresIn: 28800},
+		}
+		onetime := &mockOnetimeCodeUI{calls: &calls}
+		fixedTime := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+		input := &Input{
+			Stderr:        io.Discard,
+			Logger:        log.NewLogger(),
+			OnetimeCodeUI: onetime,
+			Client:        df,
+		}
+
+		tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+			ClientID:          "test-client-id",
+			AppName:           "my-app",
+			SkipAccountPicker: true,
+			OpenBrowser:       true,
+			Clipboard:         true,
+		})
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+
+		if diff := cmp.Diff([]string{"GetDeviceCode", "Show", "Poll"}, calls); diff != "" {
+			t.Errorf("call order mismatch (-want +got):\n%s", diff)
+		}
+		if tk.AccessToken != "gho_testtoken123" {
+			t.Errorf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
+		}
+		wantExpiration := fixedTime.Add(28800 * time.Second)
+		if !tk.ExpirationDate.Equal(wantExpiration) {
+			t.Errorf("ExpirationDate = %v, want %v", tk.ExpirationDate, wantExpiration)
+		}
+
+		wantInput := &ui.InputCreate{
+			ClientID:          "test-client-id",
+			AppName:           "my-app",
+			SkipAccountPicker: true,
+			OpenBrowser:       true,
+			Clipboard:         true,
+		}
+		if diff := cmp.Diff(wantInput, onetime.gotInput); diff != "" {
+			t.Errorf("Show input mismatch (-want +got):\n%s", diff)
+		}
+		if onetime.gotDeviceCode != deviceCode {
+			t.Errorf("Show received device code %v, want %v", onetime.gotDeviceCode, deviceCode)
+		}
+	})
+}
+
+// TestClient_Create_emptyClientID verifies Create fails before contacting the device
+// flow when no client ID is given.
+func TestClient_Create_emptyClientID(t *testing.T) {
+	t.Parallel()
+
+	var calls []string
+	df := &mockDeviceFlow{calls: &calls}
+	input := &Input{
+		Stderr:        io.Discard,
+		Logger:        log.NewLogger(),
+		OnetimeCodeUI: &mockOnetimeCodeUI{calls: &calls},
+		Client:        df,
+	}
+
+	_, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{ClientID: ""})
+	if err == nil {
+		t.Fatal("Create() expected an error, got nil")
+	}
+	if len(calls) != 0 {
+		t.Errorf("device flow was contacted before the client ID check: %v", calls)
 	}
 }
 
-func TestClient_Create_clipboard(t *testing.T) {
+// TestClient_Show verifies Show forwards to the injected OnetimeCodeUI with a
+// converted ui.InputCreate and the given device code.
+func TestClient_Show(t *testing.T) {
 	t.Parallel()
 
-	const copiedMsg = "copied to your clipboard"
-
-	tests := []struct {
-		name       string
-		enabled    bool // InputCreate.Clipboard
-		inject     bool // whether a copy function is injected
-		copyErr    bool // the injected copy function returns an error
-		wantCalled bool // the copy function is invoked
-		wantCopied bool // stderr shows the "copied" line
-	}{
-		{
-			name:    "disabled with a function injected does not copy",
-			enabled: false,
-			inject:  true,
-		},
-		{
-			name:    "enabled without a function injected does not show the copied line",
-			enabled: true,
-			inject:  false,
-		},
-		{
-			name:       "enabled with a successful copy shows the copied line",
-			enabled:    true,
-			inject:     true,
-			wantCalled: true,
-			wantCopied: true,
-		},
-		{
-			name:       "enabled but copy fails does not abort and does not show the copied line",
-			enabled:    true,
-			inject:     true,
-			copyErr:    true,
-			wantCalled: true,
-		},
+	onetime := &mockOnetimeCodeUI{}
+	input := &Input{
+		Stderr:        io.Discard,
+		Logger:        log.NewLogger(),
+		OnetimeCodeUI: onetime,
+	}
+	deviceCode := &pubdeviceflow.DeviceCodeResponse{
+		UserCode:        "USER-CODE",
+		VerificationURI: "https://github.com/login/device",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			server := httptest.NewServer(successHandler())
-			defer server.Close()
-
-			var gotCode string
-			var copyFn pubdeviceflow.CopyTextToClipboard
-			if tt.inject {
-				copyFn = func(_ context.Context, code string) error {
-					gotCode = code
-					if tt.copyErr {
-						return errors.New("clipboard unavailable")
-					}
-					return nil
-				}
-			}
-
-			var stderr strings.Builder
-			input := &Input{
-				Now:                        time.Now,
-				Stderr:                     &stderr,
-				Browser:                    &recordingBrowser{},
-				Logger:                     log.NewLogger(),
-				OnetimeCodeUI:              newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
-				CopyOnetimeCodeToClipboard: copyFn,
-				Client:                     newTestDeviceFlow(server, time.Now),
-			}
-
-			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
-				ClientID:    "test-client-id",
-				OpenBrowser: true,
-				Clipboard:   tt.enabled,
-			})
-			if err != nil {
-				t.Fatalf("Create() error = %v", err)
-			}
-			if tk.AccessToken != "gho_testtoken123" {
-				t.Fatalf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
-			}
-			called := gotCode != ""
-			if called != tt.wantCalled {
-				t.Errorf("copy function called = %v, want %v", called, tt.wantCalled)
-			}
-			if tt.wantCalled && gotCode != "USER-CODE" {
-				t.Errorf("copied code = %q, want USER-CODE", gotCode)
-			}
-			if got := strings.Contains(stderr.String(), copiedMsg); got != tt.wantCopied {
-				t.Errorf("copied line shown = %v, want %v\nstderr:\n%s", got, tt.wantCopied, stderr.String())
-			}
-		})
-	}
-}
-
-func TestClient_Create_browser(t *testing.T) {
-	t.Parallel()
-
-	const manualMsg = "Open the following URL in your browser"
-
-	tests := []struct {
-		name              string
-		setup             func() (pubdeviceflow.Browser, *bool, *string) // browser, pointer to opened flag, pointer to recorded URL
-		openBrowser       bool
-		skipAccountPicker bool
-		wantOpened        bool
-		wantManual        bool   // stderr shows the manual-open instruction
-		wantBrowserURL    string // if non-empty, browser must have opened this exact URL
-		wantStderrURL     string // if non-empty, stderr must contain this URL
-	}{
-		{
-			name:           "available browser is opened",
-			setup:          func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
-			openBrowser:    true,
-			wantOpened:     true,
-			wantManual:     false,
-			wantBrowserURL: "https://github.com/login/device",
-		},
-		{
-			name: "unavailable browser asks the user to open the URL",
-			setup: func() (pubdeviceflow.Browser, *bool, *string) {
-				b := &unavailableBrowser{}
-				return b, &b.opened, &b.url
-			},
-			openBrowser: true,
-			wantOpened:  false,
-			wantManual:  true,
-		},
-		{
-			name:              "skip_account_picker appended to verification URL",
-			setup:             func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
-			openBrowser:       true,
-			skipAccountPicker: true,
-			wantOpened:        true,
-			wantBrowserURL:    "https://github.com/login/device?skip_account_picker=true",
-			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
-		},
-		{
-			name:        "open browser disabled asks the user to open the URL",
-			setup:       func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
-			openBrowser: false,
-			wantOpened:  false,
-			wantManual:  true,
-		},
+	if err := NewClient(input).Show(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+		ClientID:          "test-client-id",
+		AppName:           "my-app",
+		SkipAccountPicker: true,
+		OpenBrowser:       true,
+		Clipboard:         true,
+	}, deviceCode); err != nil {
+		t.Fatalf("Show() error = %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			server := httptest.NewServer(successHandler())
-			defer server.Close()
-
-			br, opened, browserURL := tt.setup()
-			var stderr strings.Builder
-			input := &Input{
-				Now:           time.Now,
-				Stderr:        &stderr,
-				Browser:       br,
-				Logger:        log.NewLogger(),
-				OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
-				Client:        newTestDeviceFlow(server, time.Now),
-			}
-
-			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
-				ClientID:          "test-client-id",
-				SkipAccountPicker: tt.skipAccountPicker,
-				OpenBrowser:       tt.openBrowser,
-			})
-			if err != nil {
-				t.Fatalf("Create() error = %v", err)
-			}
-			if tk.AccessToken != "gho_testtoken123" {
-				t.Fatalf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
-			}
-			if *opened != tt.wantOpened {
-				t.Errorf("browser opened = %v, want %v", *opened, tt.wantOpened)
-			}
-			if got := strings.Contains(stderr.String(), manualMsg); got != tt.wantManual {
-				t.Errorf("manual-open instruction shown = %v, want %v\nstderr:\n%s", got, tt.wantManual, stderr.String())
-			}
-			if tt.wantBrowserURL != "" && *browserURL != tt.wantBrowserURL {
-				t.Errorf("browser URL = %q, want %q", *browserURL, tt.wantBrowserURL)
-			}
-			if tt.wantStderrURL != "" && !strings.Contains(stderr.String(), tt.wantStderrURL) {
-				t.Errorf("prompt does not contain %q:\n%s", tt.wantStderrURL, stderr.String())
-			}
-		})
+	wantInput := &ui.InputCreate{
+		ClientID:          "test-client-id",
+		AppName:           "my-app",
+		SkipAccountPicker: true,
+		OpenBrowser:       true,
+		Clipboard:         true,
+	}
+	if diff := cmp.Diff(wantInput, onetime.gotInput); diff != "" {
+		t.Errorf("Show input mismatch (-want +got):\n%s", diff)
+	}
+	if onetime.gotDeviceCode != deviceCode {
+		t.Errorf("Show received device code %v, want %v", onetime.gotDeviceCode, deviceCode)
 	}
 }

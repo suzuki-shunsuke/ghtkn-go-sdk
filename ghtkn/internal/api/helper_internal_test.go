@@ -9,16 +9,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 type testDeviceFlow struct {
-	token *deviceflow.AccessToken
-	err   error
+	token      *deviceflow.AccessToken
+	err        error
+	showCalled bool
+	showErr    error
 }
 
 func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error) {
@@ -26,6 +30,11 @@ func (m *testDeviceFlow) Create(_ context.Context, logger *slog.Logger, input *d
 		return nil, m.err
 	}
 	return m.token, nil
+}
+
+func (m *testDeviceFlow) Show(_ context.Context, _ *slog.Logger, _ *deviceflow.InputCreate, _ *pubdeviceflow.DeviceCodeResponse) error {
+	m.showCalled = true
+	return m.showErr
 }
 
 func (m *testDeviceFlow) SetLogger(_ *publog.Logger) {}
@@ -145,7 +154,7 @@ func TestController_createToken(t *testing.T) {
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := tm.createToken(t.Context(), logger, &deviceflow.InputCreate{ClientID: tt.clientID}, true)
+			got, _, err := tm.createToken(t.Context(), logger, &mockKeyring{}, 0, &deviceflow.InputCreate{ClientID: tt.clientID}, true)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -173,12 +182,225 @@ func TestController_createToken_disableDeviceFlow(t *testing.T) {
 	tm := &TokenManager{input: input}
 	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-	got, err := tm.createToken(t.Context(), logger, &deviceflow.InputCreate{ClientID: "test-client-id"}, false)
+	got, _, err := tm.createToken(t.Context(), logger, &mockKeyring{}, 0, &deviceflow.InputCreate{ClientID: "test-client-id"}, false)
 	if !errors.Is(err, pubapi.ErrDisableDeviceFlow) {
 		t.Errorf("createToken() error = %v, want ErrDisableDeviceFlow", err)
 	}
 	if got != nil {
 		t.Errorf("createToken() = %v, want nil", got)
+	}
+}
+
+// agentBackend is a Backend that runs the device flow itself (like the agent):
+// SupportsDeviceFlow returns true and token creation is driven through
+// GetActive/BeginDeviceFlow/PollDeviceFlow. It records whether Set was called so
+// tests can assert the token is not re-stored by the caller.
+type agentBackend struct {
+	active     *pubapi.AccessToken            // token returned by GetActive (nil => none active)
+	begun      *pubapi.AccessToken            // token returned by BeginDeviceFlow (nil => a flow starts)
+	deviceCode *pubdeviceflow.DeviceCodeResponse
+	polled     *pubapi.AccessToken
+	setCalled  bool
+	// revokeFailed and cleanupFailed are returned by RevokeTokens, and revokeErr is
+	// its transport error. revoked records the client IDs passed to RevokeTokens.
+	revokeFailed  []string
+	cleanupFailed []string
+	revokeErr     error
+	revoked       []string // client IDs passed to RevokeTokens, in order
+}
+
+func (b *agentBackend) Get(_ context.Context, _ string) (*pubapi.AccessToken, error) {
+	return nil, nil
+}
+
+func (b *agentBackend) Set(_ context.Context, _ string, _ *pubapi.AccessToken) error {
+	b.setCalled = true
+	return nil
+}
+
+func (b *agentBackend) Delete(_ context.Context, _ string) error { return nil }
+
+func (b *agentBackend) SupportsDeviceFlow() bool { return true }
+
+func (b *agentBackend) GetActive(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	return b.active, nil
+}
+
+func (b *agentBackend) BeginDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, *pubdeviceflow.DeviceCodeResponse, error) {
+	return b.begun, b.deviceCode, nil
+}
+
+func (b *agentBackend) PollDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	return b.polled, nil
+}
+
+func (b *agentBackend) RevokeTokens(_ context.Context, clientIDs []string) (revokeFailed, cleanupFailed []string, err error) {
+	b.revoked = append(b.revoked, clientIDs...)
+	return b.revokeFailed, b.cleanupFailed, b.revokeErr
+}
+
+// TestTokenManager_getOrCreateToken_agentDeviceFlow verifies that when the
+// backend runs the device flow itself, getOrCreateToken begins the flow on the
+// backend, shows the one-time code, polls the backend for the minted token, and
+// reports changed=false so the caller does not re-store it.
+func TestTokenManager_getOrCreateToken_agentDeviceFlow(t *testing.T) {
+	t.Parallel()
+
+	polled := &pubapi.AccessToken{
+		AccessToken:    "agent-minted-token",
+		ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+	}
+	backend := &agentBackend{
+		deviceCode: &pubdeviceflow.DeviceCodeResponse{UserCode: "ABCD-1234"},
+		polled:     polled,
+	}
+	df := &mockDeviceFlow{}
+	input := &Input{
+		DeviceFlow: df,
+		Backend:    backend,
+		Logger:     log.NewLogger(),
+		Getenv:     func(string) string { return "" },
+	}
+	tm := &TokenManager{input: input}
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+	token, changed, err := tm.getOrCreateToken(t.Context(), logger, &inputGetOrCreateToken{
+		App:              &pubconfig.App{Name: "test-app", ClientID: "cid"},
+		Backend:          backend,
+		EnableDeviceFlow: true,
+	})
+	if err != nil {
+		t.Fatalf("getOrCreateToken() error = %v", err)
+	}
+	if !df.showCalled {
+		t.Error("deviceFlow.Show was not invoked")
+	}
+	if changed {
+		t.Error("changed = true, want false (the agent already stored the token)")
+	}
+	if backend.setCalled {
+		t.Error("backend.Set was called, want it not called")
+	}
+	if diff := cmp.Diff(polled, token); diff != "" {
+		t.Errorf("token mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestTokenManager_getAccessTokenFromBackend_agentActive verifies that for a
+// backend that owns the token lifecycle, getOrCreateToken returns the token from
+// GetActive without re-fetching via Get, and does not run the device flow.
+func TestTokenManager_getAccessTokenFromBackend_agentActive(t *testing.T) {
+	t.Parallel()
+
+	active := &pubapi.AccessToken{
+		AccessToken:    "agent-active-token",
+		ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+	}
+	backend := &agentBackend{active: active}
+	df := &mockDeviceFlow{}
+	input := &Input{
+		DeviceFlow: df,
+		Backend:    backend,
+		Logger:     log.NewLogger(),
+		Getenv:     func(string) string { return "" },
+	}
+	tm := &TokenManager{input: input}
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+	token, changed, err := tm.getOrCreateToken(t.Context(), logger, &inputGetOrCreateToken{
+		App:              &pubconfig.App{Name: "test-app", ClientID: "cid"},
+		Backend:          backend,
+		EnableDeviceFlow: true,
+	})
+	if err != nil {
+		t.Fatalf("getOrCreateToken() error = %v", err)
+	}
+	if changed {
+		t.Error("changed = true, want false (an active token already existed)")
+	}
+	if df.showCalled {
+		t.Error("deviceFlow.Show was invoked, want it not called")
+	}
+	if diff := cmp.Diff(active, token); diff != "" {
+		t.Errorf("token mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestTokenManager_getOrCreateToken_agentNoActive verifies that when GetActive
+// returns nil the flow falls through to createToken (which begins the device
+// flow on the backend).
+func TestTokenManager_getOrCreateToken_agentNoActive(t *testing.T) {
+	t.Parallel()
+
+	polled := &pubapi.AccessToken{
+		AccessToken:    "agent-minted-token",
+		ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+	}
+	backend := &agentBackend{
+		active:     nil,
+		deviceCode: &pubdeviceflow.DeviceCodeResponse{UserCode: "ABCD-1234"},
+		polled:     polled,
+	}
+	df := &mockDeviceFlow{}
+	input := &Input{
+		DeviceFlow: df,
+		Backend:    backend,
+		Logger:     log.NewLogger(),
+		Getenv:     func(string) string { return "" },
+	}
+	tm := &TokenManager{input: input}
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+	token, changed, err := tm.getOrCreateToken(t.Context(), logger, &inputGetOrCreateToken{
+		App:              &pubconfig.App{Name: "test-app", ClientID: "cid"},
+		Backend:          backend,
+		EnableDeviceFlow: true,
+	})
+	if err != nil {
+		t.Fatalf("getOrCreateToken() error = %v", err)
+	}
+	if !df.showCalled {
+		t.Error("deviceFlow.Show was not invoked")
+	}
+	if changed {
+		t.Error("changed = true, want false (the agent already stored the token)")
+	}
+	if diff := cmp.Diff(polled, token); diff != "" {
+		t.Errorf("token mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestTokenManager_createToken_agentBeginReturnsToken verifies the concurrency
+// case: when BeginDeviceFlow returns a token directly, createToken returns it
+// with changed=false and does not show the one-time code or poll.
+func TestTokenManager_createToken_agentBeginReturnsToken(t *testing.T) {
+	t.Parallel()
+
+	begun := &pubapi.AccessToken{
+		AccessToken:    "concurrently-minted-token",
+		ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+	}
+	backend := &agentBackend{begun: begun}
+	df := &mockDeviceFlow{}
+	input := &Input{
+		DeviceFlow: df,
+		Getenv:     func(string) string { return "" },
+	}
+	tm := &TokenManager{input: input}
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+	token, changed, err := tm.createToken(t.Context(), logger, backend, 0, &deviceflow.InputCreate{ClientID: "cid"}, true)
+	if err != nil {
+		t.Fatalf("createToken() error = %v", err)
+	}
+	if changed {
+		t.Error("changed = true, want false")
+	}
+	if df.showCalled {
+		t.Error("deviceFlow.Show was invoked, want it not called")
+	}
+	if diff := cmp.Diff(begun, token); diff != "" {
+		t.Errorf("token mismatch (-want +got):\n%s", diff)
 	}
 }
 

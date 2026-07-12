@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"time"
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
@@ -22,12 +21,10 @@ type libDeviceFlow struct {
 // newLibDeviceFlow builds a libDeviceFlow whose HTTP client, clock, and ticker
 // factory are injected, so production and tests share the same seams the SDK used
 // before the library extraction.
-func newLibDeviceFlow(httpClient *http.Client, now func() time.Time, newTicker func(d time.Duration) *time.Ticker) *libDeviceFlow {
+func newLibDeviceFlow(httpClient *http.Client) *libDeviceFlow {
 	return &libDeviceFlow{
 		client: deviceflow.New(&deviceflow.Input{
 			HTTPClient: httpClient,
-			Now:        now,
-			NewTicker:  newTicker,
 		}),
 	}
 }
@@ -58,5 +55,5 @@ func (l *libDeviceFlow) Poll(ctx context.Context, logger *slog.Logger, clientID 
 		VerificationURI: deviceCode.VerificationURI,
 		ExpiresIn:       deviceCode.ExpiresIn,
 		Interval:        deviceCode.Interval,
-	})
+	}, nil)
 }

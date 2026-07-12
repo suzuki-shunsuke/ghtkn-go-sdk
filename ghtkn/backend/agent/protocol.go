@@ -6,13 +6,27 @@
 // depend on this package so that the wire format and socket path stay in sync.
 package agent
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
+
+// ProtocolVersion is the current version of the agent socket protocol. The client
+// stamps it on every request (see Send); the server requires an exact match and
+// rejects any other version so the two sides never speak past each other. Version
+// history:
+//
+//	0: pre-versioning clients (no protocol_version field). The client minted tokens
+//	   itself and pushed them with the now-removed SET command.
+//	1: the server owns the token lifecycle: it runs the device flow and mints tokens
+//	   itself, checks expiration, and revokes tokens. SET was removed.
+const ProtocolVersion = 1
 
 // Command names and well-known response strings of the agent socket protocol.
 const (
 	CommandGet    = "GET"
-	CommandSet    = "SET"
 	CommandDelete = "DELETE"
+	CommandRevoke = "REVOKE"
 	CommandStatus = "STATUS"
 	CommandStop   = "STOP"
 	CommandUnlock = "UNLOCK"
@@ -20,24 +34,57 @@ const (
 	// RespNotFound is the Response.Error value returned by GET when no token is
 	// cached for the client ID.
 	RespNotFound = "not found"
-	// RespLocked is the Response.Error value returned by GET and SET when the agent
-	// is still locked (its data key has not been loaded with a passphrase yet).
+	// RespLocked is the Response.Error value returned by GET when the agent is still
+	// locked (its data key has not been loaded with a passphrase yet).
 	RespLocked = "locked"
+	// RespObsoleteClient is the Response.Error value returned when the client's
+	// protocol version is older than the version the agent supports. Its value is a
+	// full sentence because a pre-versioning client can only print it verbatim: it
+	// tells the user to upgrade ghtkn (or the tool embedding the SDK).
+	RespObsoleteClient = "the connecting client is too old for this ghtkn agent; upgrade ghtkn (or the tool that embeds the ghtkn SDK) to a version that supports the current agent protocol"
+	// RespObsoleteAgent is the Response.Error value returned when the client's
+	// protocol version is newer than the version the agent supports: the agent is out
+	// of date. It tells the user to upgrade and restart the ghtkn agent.
+	RespObsoleteAgent = "this ghtkn agent is older than the connecting client; upgrade ghtkn and restart the agent ('ghtkn agent') to a version that supports the client's protocol"
 )
 
 // Request is a single request sent to the agent.
 // The wire format is one JSON object per line (newline-delimited JSON).
 type Request struct {
-	// Command is one of CommandGet, CommandSet, CommandDelete, CommandStatus,
+	// ProtocolVersion is the client's protocol version (see ProtocolVersion). Send
+	// stamps it automatically. The server requires it to equal its own version: an
+	// absent field decodes to 0 (a pre-versioning, obsolete client), and any other
+	// mismatch is rejected too.
+	ProtocolVersion int `json:"protocol_version,omitempty"`
+	// Command is one of CommandGet, CommandDelete, CommandRevoke, CommandStatus,
 	// CommandStop, or CommandUnlock.
 	Command string `json:"command"`
-	// ClientID identifies the GitHub App (used by GET, SET, and DELETE).
+	// ClientID identifies the GitHub App (used by GET and DELETE).
 	ClientID string `json:"client_id,omitempty"`
-	// Token is the opaque access token payload (used by SET).
-	Token json.RawMessage `json:"token,omitempty"`
+	// ClientIDs are the GitHub Apps whose stored tokens REVOKE should revoke and
+	// delete in one batch.
+	ClientIDs []string `json:"client_ids,omitempty"`
+	// StartDeviceFlow lets a GET start (or join) the server-side device flow when
+	// no valid token is cached. The client sets it only when its own device-flow gate
+	// is enabled; a plain GET (false) is a pure probe that never starts a flow.
+	StartDeviceFlow bool `json:"start_device_flow,omitempty"`
+	// AwaitDeviceFlow marks a GET as polling for the result of a device flow the
+	// client already started. The server reports Pending while the flow runs and then
+	// returns the freshly minted token as is, WITHOUT the MinExpiration freshness
+	// check, since it is the newest token obtainable even if short-lived.
+	AwaitDeviceFlow bool `json:"await_device_flow,omitempty"`
+	// MinExpiration is how long a cached token must still be valid for GET to return
+	// it. The server treats a token expiring within MinExpiration as a miss, so the
+	// freshness decision is made server-side (the agent owns the token lifecycle).
+	MinExpiration time.Duration `json:"min_expiration,omitempty"`
 	// Passphrase unlocks the agent (used by UNLOCK only). It is sent over the
 	// 0600, same-user Unix socket and is never persisted.
 	Passphrase string `json:"passphrase,omitempty"`
+	// EnableRefreshToken enables refreshing an expiring access token with a stored
+	// refresh token (used by UNLOCK only). It is bound to the passphrase moment on
+	// purpose: the agent distrusts the ambient environment, so this security-relevant
+	// setting is gated by the passphrase rather than an env var or config file.
+	EnableRefreshToken bool `json:"enable_refresh_token,omitempty"`
 }
 
 // Response is a single response returned by the agent for a Request.
@@ -57,4 +104,27 @@ type Response struct {
 	Initialized bool `json:"initialized,omitempty"`
 	// Error describes the failure when OK is false.
 	Error string `json:"error,omitempty"`
+	// Pending reports that the server-side device flow is in progress and no token
+	// is cached yet. The client keeps polling GET while it is true.
+	Pending bool `json:"pending,omitempty"`
+	// UserCode is the device flow one-time code the user enters on GitHub (returned
+	// while Pending, so the client can display it).
+	UserCode string `json:"user_code,omitempty"`
+	// VerificationURI is the GitHub URL where the user enters the one-time code
+	// (returned while Pending).
+	VerificationURI string `json:"verification_uri,omitempty"`
+	// ExpiresIn is the number of seconds until the one-time code expires (returned
+	// while Pending).
+	ExpiresIn int `json:"expires_in,omitempty"`
+	// RevokeFailed lists the client IDs whose credential REVOKE could not revoke, so
+	// the credential may still be live. The client reports these as revoke failures.
+	RevokeFailed []string `json:"revoke_failed,omitempty"`
+	// CleanupFailed lists the client IDs whose credential REVOKE revoked but whose
+	// stored copy it then could not delete. The client reports these as backend
+	// cleanup failures (the credential is already revoked).
+	CleanupFailed []string `json:"cleanup_failed,omitempty"`
+	// RefreshTokenEnabled reports whether the agent will refresh expiring access
+	// tokens with stored refresh tokens (returned by UNLOCK and STATUS) so the client
+	// can surface the current state to the user.
+	RefreshTokenEnabled bool `json:"refresh_token_enabled,omitempty"`
 }

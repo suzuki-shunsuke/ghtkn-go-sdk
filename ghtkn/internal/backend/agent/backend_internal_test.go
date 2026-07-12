@@ -5,11 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 )
 
 // fakeAgent listens on a Unix socket and serves one request per connection using
@@ -17,12 +21,20 @@ import (
 type fakeAgent struct {
 	socket   string
 	listener net.Listener
+	mu       sync.Mutex
 	requests []*agentapi.Request
 }
 
 func startFakeAgent(t *testing.T, handler func(*agentapi.Request) *agentapi.Response) *fakeAgent {
 	t.Helper()
-	socket := filepath.Join(t.TempDir(), "agent.sock")
+	// Keep the socket path well under the platform's sun_path limit (104 bytes on
+	// macOS): the default per-test TempDir embeds the (long) test name and can overflow.
+	dir, err := os.MkdirTemp("", "gh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) }) //nolint:errcheck
+	socket := filepath.Join(dir, "a.sock")
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +63,9 @@ func (f *fakeAgent) serve(conn net.Conn, handler func(*agentapi.Request) *agenta
 	if err := json.Unmarshal(line, req); err != nil {
 		return
 	}
+	f.mu.Lock()
 	f.requests = append(f.requests, req)
+	f.mu.Unlock()
 	b, err := json.Marshal(handler(req))
 	if err != nil {
 		return
@@ -59,38 +73,33 @@ func (f *fakeAgent) serve(conn net.Conn, handler func(*agentapi.Request) *agenta
 	_, _ = conn.Write(append(b, '\n'))
 }
 
-func TestBackend_setGetRoundTrip(t *testing.T) {
-	t.Parallel()
-	// The agent echoes back whatever was SET, keyed by client ID.
-	store := map[string]json.RawMessage{}
-	f := startFakeAgent(t, func(req *agentapi.Request) *agentapi.Response {
-		switch req.Command {
-		case agentapi.CommandSet:
-			store[req.ClientID] = req.Token
-			return &agentapi.Response{OK: true}
-		case agentapi.CommandGet:
-			tok, ok := store[req.ClientID]
-			if !ok {
-				return &agentapi.Response{Error: agentapi.RespNotFound}
-			}
-			return &agentapi.Response{OK: true, Token: tok}
-		default:
-			return &agentapi.Response{Error: "unknown command"}
-		}
-	})
-	b := &Backend{socket: f.socket}
-	ctx := context.Background()
+func (f *fakeAgent) reqs() []*agentapi.Request {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]*agentapi.Request(nil), f.requests...)
+}
 
+// fastTicker returns a ticker factory that ignores the requested duration and ticks
+// almost immediately, so polling loops run quickly in tests.
+func fastTicker(time.Duration) *time.Ticker {
+	return time.NewTicker(time.Millisecond)
+}
+
+func TestBackend_getHit(t *testing.T) {
+	t.Parallel()
 	value := `{"access_token":"abc","expiration_date":"2026-01-01T00:00:00Z"}`
-	if err := b.Set(ctx, "Iv1.x", value); err != nil {
-		t.Fatal(err)
-	}
-	got, err := b.Get(ctx, "Iv1.x")
+	f := startFakeAgent(t, func(req *agentapi.Request) *agentapi.Response {
+		if req.Command != agentapi.CommandGet || req.StartDeviceFlow {
+			return &agentapi.Response{Error: "unexpected request"}
+		}
+		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
+	})
+	got, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(value, string(got)); diff != "" {
-		t.Fatalf("token round-trip (-want +got):\n%s", diff)
+		t.Fatalf("token (-want +got):\n%s", diff)
 	}
 }
 
@@ -108,6 +117,22 @@ func TestBackend_getMiss(t *testing.T) {
 	}
 }
 
+// TestBackend_getProbeShape guards that Get is a pure probe: it must not ask the agent
+// to start a device flow.
+func TestBackend_getProbeShape(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespNotFound}
+	})
+	if _, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x"); err != nil {
+		t.Fatal(err)
+	}
+	reqs := f.reqs()
+	if len(reqs) != 1 || reqs[0].Command != agentapi.CommandGet || reqs[0].StartDeviceFlow {
+		t.Fatalf("unexpected request: %+v", reqs)
+	}
+}
+
 func TestBackend_serverError(t *testing.T) {
 	t.Parallel()
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
@@ -121,13 +146,8 @@ func TestBackend_serverError(t *testing.T) {
 func TestBackend_agentNotRunning(t *testing.T) {
 	t.Parallel()
 	socket := filepath.Join(t.TempDir(), "absent.sock")
-	b := &Backend{socket: socket}
-	ctx := context.Background()
-	if _, err := b.Get(ctx, "Iv1.x"); !agentapi.IsNotRunning(err) {
+	if _, err := (&Backend{socket: socket}).Get(context.Background(), "Iv1.x"); !agentapi.IsNotRunning(err) {
 		t.Fatalf("Get err = %v, want ErrAgentNotRunning", err)
-	}
-	if err := b.Set(ctx, "Iv1.x", "{}"); !agentapi.IsNotRunning(err) {
-		t.Fatalf("Set err = %v, want ErrAgentNotRunning", err)
 	}
 }
 
@@ -136,14 +156,179 @@ func TestBackend_locked(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	})
-	b := &Backend{socket: f.socket}
-	ctx := context.Background()
-	if _, err := b.Get(ctx, "Iv1.x"); !agentapi.IsLocked(err) {
+	if _, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x"); !agentapi.IsLocked(err) {
 		t.Fatalf("Get err = %v, want ErrAgentLocked", err)
 	}
-	if err := b.Set(ctx, "Iv1.x", "{}"); !agentapi.IsLocked(err) {
-		t.Fatalf("Set err = %v, want ErrAgentLocked", err)
+}
+
+// TestBackend_setUnsupported guards that the agent backend rejects a token push: the
+// agent mints and stores tokens itself.
+func TestBackend_setUnsupported(t *testing.T) {
+	t.Parallel()
+	if err := (&Backend{socket: "unused"}).Set(context.Background(), "Iv1.x", "{}"); err == nil {
+		t.Fatal("Set must return an error on the agent backend")
 	}
+}
+
+// TestBackend_beginAndPoll drives the server-side device flow: Begin returns the
+// one-time code and Poll returns the token once the agent reports it minted.
+func TestBackend_beginAndPoll(t *testing.T) {
+	t.Parallel()
+	value := `{"access_token":"minted","expiration_date":"2026-01-01T00:00:00Z"}`
+	var polls int
+	var mu sync.Mutex
+	f := startFakeAgent(t, func(req *agentapi.Request) *agentapi.Response {
+		if req.StartDeviceFlow {
+			return &agentapi.Response{
+				OK:              true,
+				Pending:         true,
+				UserCode:        "ABCD-1234",
+				VerificationURI: "https://github.com/login/device",
+				ExpiresIn:       900,
+			}
+		}
+		// Plain polls: report pending twice, then hand back the token.
+		mu.Lock()
+		polls++
+		n := polls
+		mu.Unlock()
+		if n < 3 {
+			return &agentapi.Response{OK: true, Pending: true}
+		}
+		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
+	})
+	b := &Backend{socket: f.socket, newTicker: fastTicker}
+	ctx := context.Background()
+
+	token, dc, err := b.Begin(ctx, "Iv1.x", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token != nil {
+		t.Fatalf("Begin must not return a token when it starts a flow, got %q", token)
+	}
+	want := &pubdeviceflow.DeviceCodeResponse{UserCode: "ABCD-1234", VerificationURI: "https://github.com/login/device", ExpiresIn: 900}
+	if diff := cmp.Diff(want, dc); diff != "" {
+		t.Fatalf("device code (-want +got):\n%s", diff)
+	}
+
+	got, err := b.Poll(ctx, "Iv1.x", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(value, string(got)); diff != "" {
+		t.Fatalf("polled token (-want +got):\n%s", diff)
+	}
+}
+
+// TestBackend_pollFlowFailed reports an error when the agent's flow ends without a
+// token (a plain GET returns not-found while no flow is in progress).
+func TestBackend_pollFlowFailed(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespNotFound}
+	})
+	b := &Backend{socket: f.socket, newTicker: fastTicker}
+	if _, err := b.Poll(context.Background(), "Iv1.x", 0); err == nil {
+		t.Fatal("Poll must error when the flow ends without a token")
+	}
+}
+
+// TestBackend_getActiveSendsMinExpiration guards that GetActive forwards its freshness
+// requirement to the agent and stays a pure probe (no device flow started).
+func TestBackend_getActiveSendsMinExpiration(t *testing.T) {
+	t.Parallel()
+	value := `{"access_token":"abc","expiration_date":"2026-01-01T00:00:00Z"}`
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
+	})
+	const minExpiration = 30 * time.Minute
+	if _, err := (&Backend{socket: f.socket}).GetActive(context.Background(), "Iv1.x", minExpiration); err != nil {
+		t.Fatal(err)
+	}
+	reqs := f.reqs()
+	if len(reqs) != 1 {
+		t.Fatalf("want 1 request, got %d: %+v", len(reqs), reqs)
+	}
+	if reqs[0].Command != agentapi.CommandGet || reqs[0].StartDeviceFlow {
+		t.Fatalf("GetActive must send a plain GET probe: %+v", reqs[0])
+	}
+	if reqs[0].MinExpiration != minExpiration {
+		t.Fatalf("MinExpiration = %v, want %v", reqs[0].MinExpiration, minExpiration)
+	}
+}
+
+// TestBackend_beginReturnsExistingToken covers the concurrency case: another client
+// already minted a token, so the agent hands it back on the StartDeviceFlow request
+// instead of starting a flow. Begin returns the token and a nil device code.
+func TestBackend_beginReturnsExistingToken(t *testing.T) {
+	t.Parallel()
+	value := `{"access_token":"existing","expiration_date":"2026-01-01T00:00:00Z"}`
+	f := startFakeAgent(t, func(req *agentapi.Request) *agentapi.Response {
+		if !req.StartDeviceFlow {
+			return &agentapi.Response{Error: "unexpected plain GET"}
+		}
+		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
+	})
+	b := &Backend{socket: f.socket, newTicker: fastTicker}
+	token, dc, err := b.Begin(context.Background(), "Iv1.x", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dc != nil {
+		t.Fatalf("device code must be nil when a token already exists, got %+v", dc)
+	}
+	if diff := cmp.Diff(value, string(token)); diff != "" {
+		t.Fatalf("token (-want +got):\n%s", diff)
+	}
+}
+
+// TestBackend_revokeTokens covers the batch revoke command: the request carries all
+// client IDs, and the failure lists come back to the caller; a server error and the
+// locked agent map to an error / agentapi.ErrAgentLocked.
+func TestBackend_revokeTokens(t *testing.T) {
+	t.Parallel()
+	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
+		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+			return &agentapi.Response{OK: true, RevokeFailed: []string{"Iv1.b"}, CleanupFailed: []string{"Iv1.c"}}
+		})
+		revokeFailed, cleanupFailed, err := (&Backend{socket: f.socket}).RevokeTokens(context.Background(), []string{"Iv1.a", "Iv1.b", "Iv1.c"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff([]string{"Iv1.b"}, revokeFailed); diff != "" {
+			t.Fatalf("revokeFailed (-want +got):\n%s", diff)
+		}
+		if diff := cmp.Diff([]string{"Iv1.c"}, cleanupFailed); diff != "" {
+			t.Fatalf("cleanupFailed (-want +got):\n%s", diff)
+		}
+		reqs := f.reqs()
+		if len(reqs) != 1 || reqs[0].Command != agentapi.CommandRevoke {
+			t.Fatalf("unexpected request: %+v", reqs)
+		}
+		if diff := cmp.Diff([]string{"Iv1.a", "Iv1.b", "Iv1.c"}, reqs[0].ClientIDs); diff != "" {
+			t.Fatalf("request client IDs (-want +got):\n%s", diff)
+		}
+	})
+	t.Run("error", func(t *testing.T) {
+		t.Parallel()
+		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+			return &agentapi.Response{Error: "boom"}
+		})
+		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(context.Background(), []string{"Iv1.x"}); err == nil {
+			t.Fatal("a server error response must produce an error")
+		}
+	})
+	t.Run("locked", func(t *testing.T) {
+		t.Parallel()
+		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+			return &agentapi.Response{Error: agentapi.RespLocked}
+		})
+		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(context.Background(), []string{"Iv1.x"}); !agentapi.IsLocked(err) {
+			t.Fatalf("RevokeTokens err = %v, want ErrAgentLocked", err)
+		}
+	})
 }
 
 func TestBackend_deleteOK(t *testing.T) {
@@ -152,8 +337,9 @@ func TestBackend_deleteOK(t *testing.T) {
 	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.x"); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.requests) != 1 || f.requests[0].Command != agentapi.CommandDelete || f.requests[0].ClientID != "Iv1.x" {
-		t.Fatalf("unexpected request: %+v", f.requests)
+	reqs := f.reqs()
+	if len(reqs) != 1 || reqs[0].Command != agentapi.CommandDelete || reqs[0].ClientID != "Iv1.x" {
+		t.Fatalf("unexpected request: %+v", reqs)
 	}
 }
 
@@ -182,26 +368,5 @@ func TestBackend_deleteNotRunning(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "absent.sock")
 	if err := (&Backend{socket: socket}).Delete(context.Background(), "Iv1.x"); !agentapi.IsNotRunning(err) {
 		t.Fatalf("Delete err = %v, want ErrAgentNotRunning", err)
-	}
-}
-
-// TestBackend_setRequestShape guards the wire contract: the request the client
-// emits must match the agent server's Request fields.
-func TestBackend_setRequestShape(t *testing.T) {
-	t.Parallel()
-	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response { return &agentapi.Response{OK: true} })
-	value := `{"access_token":"abc"}`
-	if err := (&Backend{socket: f.socket}).Set(context.Background(), "Iv1.x", value); err != nil {
-		t.Fatal(err)
-	}
-	if len(f.requests) != 1 {
-		t.Fatalf("got %d requests, want 1", len(f.requests))
-	}
-	req := f.requests[0]
-	if req.Command != agentapi.CommandSet || req.ClientID != "Iv1.x" {
-		t.Fatalf("unexpected request: %+v", req)
-	}
-	if diff := cmp.Diff(value, string(req.Token)); diff != "" {
-		t.Fatalf("token sent (-want +got):\n%s", diff)
 	}
 }

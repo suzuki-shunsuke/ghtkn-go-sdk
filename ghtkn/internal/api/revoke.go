@@ -88,6 +88,12 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 		return fmt.Errorf("resolve the backend: %w", err)
 	}
 
+	// The agent owns the token lifecycle, so it revokes and deletes each stored token
+	// itself; the client only tells it which apps to revoke.
+	if b.SupportsDeviceFlow() {
+		return tm.revokeViaBackend(ctx, logger, b, cfg, appNames)
+	}
+
 	tokens := make([]string, 0, len(appNames))
 	// clientIDs of tokens read from the backend, to delete after revocation.
 	var clientIDs []string
@@ -132,6 +138,45 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 		if err := b.Delete(ctx, clientID); err != nil {
 			errs = append(errs, fmt.Errorf("delete a revoked token from the backend: client_id=%s: %w: %w", clientID, err, pubapi.ErrBackendCleanup))
 		}
+	}
+	return errors.Join(errs...)
+}
+
+// revokeViaBackend revokes the apps' stored tokens through a backend that owns the
+// token lifecycle (the agent). It resolves the apps to client IDs and hands them to
+// the backend, which revokes and deletes them in one batch. The backend reports which
+// client IDs it could not revoke (ErrRevoke, the credential may be live) and which it
+// revoked but could not delete (ErrBackendCleanup), which are mapped back to app names.
+func (tm *TokenManager) revokeViaBackend(ctx context.Context, logger *slog.Logger, b Backend, cfg *pubconfig.Config, appNames []string) error {
+	var errs []error
+	clientIDs := make([]string, 0, len(appNames))
+	appByClientID := make(map[string]string, len(appNames))
+	for _, name := range appNames {
+		app := config.SelectApp(cfg, name, "")
+		if app == nil {
+			errs = append(errs, fmt.Errorf("app is not found in the config: %s: %w", name, pubapi.ErrRevoke))
+			continue
+		}
+		clientIDs = append(clientIDs, app.ClientID)
+		appByClientID[app.ClientID] = app.Name
+	}
+	if len(clientIDs) == 0 {
+		return errors.Join(errs...)
+	}
+
+	revokeFailed, cleanupFailed, err := b.RevokeTokens(ctx, clientIDs)
+	if err != nil {
+		// The request itself failed (e.g. the agent is not running or locked), so no
+		// credential was revoked.
+		errs = append(errs, fmt.Errorf("revoke tokens through the backend: %w: %w", err, pubapi.ErrRevoke))
+		return errors.Join(errs...)
+	}
+	logger.Debug("revoked tokens through the agent", "count", len(clientIDs)-len(revokeFailed))
+	for _, clientID := range revokeFailed {
+		errs = append(errs, fmt.Errorf("revoke a token through the backend: app_name=%s: %w", appByClientID[clientID], pubapi.ErrRevoke))
+	}
+	for _, clientID := range cleanupFailed {
+		errs = append(errs, fmt.Errorf("delete a revoked token from the backend: app_name=%s: %w", appByClientID[clientID], pubapi.ErrBackendCleanup))
 	}
 	return errors.Join(errs...)
 }

@@ -85,6 +85,7 @@ func (i *Input) Validate() error {
 // deviceFlow defines the interface for creating GitHub App access tokens.
 type deviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error)
+	Show(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate, deviceCode *pubdeviceflow.DeviceCodeResponse) error
 	SetLogger(logger *publog.Logger)
 	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
 	SetBrowser(browser pubdeviceflow.Browser)
@@ -96,6 +97,15 @@ type Backend interface {
 	Get(ctx context.Context, clientID string) (*api.AccessToken, error)
 	Set(ctx context.Context, clientID string, token *api.AccessToken) error
 	Delete(ctx context.Context, clientID string) error
+	// SupportsDeviceFlow reports whether the backend owns the token lifecycle
+	// server-side (the agent). When true, expiration-aware reads, device-flow token
+	// creation, and revocation are driven through the backend below instead of the
+	// client-side equivalents (GetActive, BeginDeviceFlow/PollDeviceFlow, RevokeToken).
+	SupportsDeviceFlow() bool
+	GetActive(ctx context.Context, clientID string, minExpiration time.Duration) (*api.AccessToken, error)
+	BeginDeviceFlow(ctx context.Context, clientID string, minExpiration time.Duration) (*api.AccessToken, *pubdeviceflow.DeviceCodeResponse, error)
+	PollDeviceFlow(ctx context.Context, clientID string, minExpiration time.Duration) (*api.AccessToken, error)
+	RevokeTokens(ctx context.Context, clientIDs []string) (revokeFailed, cleanupFailed []string, err error)
 }
 
 // revoker defines the interface for revoking GitHub credentials.

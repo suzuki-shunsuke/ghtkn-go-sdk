@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
@@ -159,6 +160,117 @@ func (m *mapKeyring) Delete(_ context.Context, clientID string) error {
 	}
 	m.deleted = append(m.deleted, clientID)
 	return nil
+}
+
+// SupportsDeviceFlow reports false: mapKeyring is a keyring-like backend that
+// does not run the device flow itself.
+func (m *mapKeyring) SupportsDeviceFlow() bool { return false }
+
+func (m *mapKeyring) GetActive(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	return nil, errors.New("GetActive should not be called")
+}
+
+func (m *mapKeyring) BeginDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, *pubdeviceflow.DeviceCodeResponse, error) {
+	return nil, nil, errors.New("BeginDeviceFlow should not be called")
+}
+
+func (m *mapKeyring) PollDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	return nil, errors.New("PollDeviceFlow should not be called")
+}
+
+func (m *mapKeyring) RevokeTokens(_ context.Context, _ []string) (revokeFailed, cleanupFailed []string, err error) {
+	return nil, nil, errors.New("RevokeTokens should not be called")
+}
+
+// TestTokenManager_Revoke_agent verifies that for a backend that owns the token
+// lifecycle, Revoke resolves the apps to client IDs, calls RevokeTokens once with
+// them, and classifies the reported failures: a client ID in revokeFailed wraps
+// ErrRevoke (the credential may be live), one in cleanupFailed wraps
+// ErrBackendCleanup (revoked but a stale copy remains), and a transport error
+// wraps ErrRevoke (nothing was revoked).
+func TestTokenManager_Revoke_agent(t *testing.T) {
+	t.Parallel()
+
+	apps := []*pubconfig.App{
+		{Name: "a", ClientID: "ca"},
+		{Name: "b", ClientID: "cb"},
+	}
+
+	tests := []struct {
+		name          string
+		revokeFailed  []string
+		cleanupFailed []string
+		revokeErr     error
+		wantRevoked   []string
+		wantErr       bool
+		wantLive      bool
+		wantStale     bool
+	}{
+		{
+			name:        "all apps' tokens are revoked through the backend in one call",
+			wantRevoked: []string{"ca", "cb"},
+		},
+		{
+			name:         "a client id in revokeFailed is a live-credential failure",
+			revokeFailed: []string{"ca"},
+			wantRevoked:  []string{"ca", "cb"},
+			wantErr:      true,
+			wantLive:     true,
+		},
+		{
+			name:          "a client id in cleanupFailed is a backend cleanup failure",
+			cleanupFailed: []string{"cb"},
+			wantRevoked:   []string{"ca", "cb"},
+			wantErr:       true,
+			wantStale:     true,
+		},
+		{
+			name:        "a transport error is a live-credential failure",
+			revokeErr:   errors.New("agent not running"),
+			wantRevoked: []string{"ca", "cb"},
+			wantErr:     true,
+			wantLive:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			backend := &agentBackend{
+				revokeFailed:  tt.revokeFailed,
+				cleanupFailed: tt.cleanupFailed,
+				revokeErr:     tt.revokeErr,
+			}
+			input := &Input{
+				Backend:      backend,
+				Revoker:      &mockRevoker{},
+				Logger:       log.NewLogger(),
+				ConfigReader: &multiConfigReader{apps: apps},
+				Getenv:       func(string) string { return "" },
+			}
+			tm := New(input)
+			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+			err := tm.Revoke(t.Context(), logger, &pubapi.InputRevoke{All: true, ConfigFilePath: "/path/to/config.yaml"})
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected an error but got nil")
+				}
+				if got := errors.Is(err, pubapi.ErrRevoke); got != tt.wantLive {
+					t.Errorf("errors.Is(err, ErrRevoke) = %v, want %v (err: %v)", got, tt.wantLive, err)
+				}
+				if got := errors.Is(err, pubapi.ErrBackendCleanup); got != tt.wantStale {
+					t.Errorf("errors.Is(err, ErrBackendCleanup) = %v, want %v (err: %v)", got, tt.wantStale, err)
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.wantRevoked, backend.revoked); diff != "" {
+				t.Errorf("revoked client ids mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
 }
 
 func TestTokenManager_Revoke_all(t *testing.T) {

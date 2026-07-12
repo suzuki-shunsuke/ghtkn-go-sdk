@@ -43,6 +43,10 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 	}
 	defer conn.Close() //nolint:errcheck
 
+	// Stamp the current protocol version so the server can detect and reject
+	// obsolete clients. Pre-versioning clients never set this field, so the server
+	// sees version 0 for them.
+	req.ProtocolVersion = ProtocolVersion
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal the request: %w", err)
