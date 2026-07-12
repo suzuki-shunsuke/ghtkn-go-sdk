@@ -71,6 +71,36 @@ const (
 	RespObsoleteAgent = "this ghtkn agent is older than the connecting client; upgrade ghtkn and restart the agent ('ghtkn agent') to a version that supports the client's protocol"
 )
 
+// SecretBytes holds a secret (the unlock passphrase) as a mutable byte slice rather
+// than an immutable string, so it can be zeroed after use (see Zero) to shorten how
+// long the plaintext lives in memory; a Go string cannot be reliably zeroed. On the
+// wire it is a plain JSON string, so the format is unchanged (including for
+// pre-versioning clients that send a string).
+type SecretBytes []byte
+
+// MarshalJSON encodes the secret as a plain JSON string.
+func (s SecretBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(s)) //nolint:wrapcheck
+}
+
+// UnmarshalJSON decodes a JSON string into the byte slice. JSON decoding materializes
+// a transient string internally, but the retained value is a scrubbable []byte.
+func (s *SecretBytes) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := json.Unmarshal(b, &str); err != nil {
+		return err //nolint:wrapcheck
+	}
+	*s = SecretBytes(str)
+	return nil
+}
+
+// Zero overwrites the secret's bytes with zeros. It is a no-op on a nil slice.
+func (s SecretBytes) Zero() {
+	for i := range s {
+		s[i] = 0
+	}
+}
+
 // Request is a single request sent to the agent.
 // The wire format is one JSON object per line (newline-delimited JSON).
 type Request struct {
@@ -106,8 +136,9 @@ type Request struct {
 	// freshness decision is made server-side (the agent owns the token lifecycle).
 	MinExpiration time.Duration `json:"min_expiration,omitempty"`
 	// Passphrase unlocks the agent (used by UNLOCK only). It is sent over the
-	// 0600, same-user Unix socket and is never persisted.
-	Passphrase string `json:"passphrase,omitempty"`
+	// 0600, same-user Unix socket and is never persisted. It is SecretBytes so the
+	// client and server can zero it after use; on the wire it is a plain JSON string.
+	Passphrase SecretBytes `json:"passphrase,omitempty"`
 	// EnableRefreshToken enables refreshing an expiring access token with a stored
 	// refresh token (used by UNLOCK only). It is bound to the passphrase moment on
 	// purpose: the agent distrusts the ambient environment, so this security-relevant
