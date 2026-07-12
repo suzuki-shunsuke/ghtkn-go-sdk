@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 )
@@ -98,7 +97,6 @@ func TestClient_Show_clipboard(t *testing.T) {
 
 			var stderr strings.Builder
 			client := New(&Input{
-				Now:                        time.Now,
 				Stderr:                     &stderr,
 				Browser:                    &recordingBrowser{},
 				OnetimeCodeUI:              newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
@@ -193,7 +191,6 @@ func TestClient_Show_browser(t *testing.T) {
 			br, opened, browserURL := tt.setup()
 			var stderr strings.Builder
 			client := New(&Input{
-				Now:           time.Now,
 				Stderr:        &stderr,
 				Browser:       br,
 				OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),

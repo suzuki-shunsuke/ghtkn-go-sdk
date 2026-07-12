@@ -70,10 +70,6 @@ func TestNewInput(t *testing.T) {
 	if input.Backend != nil {
 		t.Error("NewInput().Backend should be nil; it is resolved lazily")
 	}
-
-	if input.Now == nil {
-		t.Error("NewInput().Now is nil")
-	}
 }
 
 func TestInput_Validate(t *testing.T) {

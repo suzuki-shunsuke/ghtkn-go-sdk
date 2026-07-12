@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -79,12 +80,6 @@ func (f *fakeAgent) reqs() []*agentapi.Request {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]*agentapi.Request(nil), f.requests...)
-}
-
-// fastTicker returns a ticker factory that ignores the requested duration and ticks
-// almost immediately, so polling loops run quickly in tests.
-func fastTicker(time.Duration) *time.Ticker {
-	return time.NewTicker(time.Millisecond)
 }
 
 func TestBackend_getHit(t *testing.T) {
@@ -222,28 +217,35 @@ func TestBackend_beginAndPoll(t *testing.T) {
 		}
 		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
 	})
-	b := &Backend{socket: f.socket, newTicker: fastTicker}
-	ctx := context.Background()
+	// Run under synctest so Poll's real 5s ticker advances instantly: the single
+	// bubble goroutine alternates a real socket round trip (the fakeAgent runs
+	// outside the bubble and answers at once) with a durable wait on the ticker,
+	// which lets the fake clock jump. The number of polls is driven by the handler
+	// counter above, not by timing, so the assertions are unchanged.
+	synctest.Test(t, func(t *testing.T) {
+		b := &Backend{socket: f.socket}
+		ctx := context.Background()
 
-	token, dc, err := b.Begin(ctx, "Iv1.x", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if token != nil {
-		t.Fatalf("Begin must not return a token when it starts a flow, got %q", token)
-	}
-	want := &pubdeviceflow.DeviceCodeResponse{UserCode: "ABCD-1234", VerificationURI: "https://github.com/login/device", ExpiresIn: 900}
-	if diff := cmp.Diff(want, dc); diff != "" {
-		t.Fatalf("device code (-want +got):\n%s", diff)
-	}
+		token, dc, err := b.Begin(ctx, "Iv1.x", 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != nil {
+			t.Fatalf("Begin must not return a token when it starts a flow, got %q", token)
+		}
+		want := &pubdeviceflow.DeviceCodeResponse{UserCode: "ABCD-1234", VerificationURI: "https://github.com/login/device", ExpiresIn: 900}
+		if diff := cmp.Diff(want, dc); diff != "" {
+			t.Fatalf("device code (-want +got):\n%s", diff)
+		}
 
-	got, err := b.Poll(ctx, "Iv1.x", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(value, string(got)); diff != "" {
-		t.Fatalf("polled token (-want +got):\n%s", diff)
-	}
+		got, err := b.Poll(ctx, "Iv1.x", 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(value, string(got)); diff != "" {
+			t.Fatalf("polled token (-want +got):\n%s", diff)
+		}
+	})
 }
 
 // TestBackend_pollFlowFailed reports an error when the agent's flow ends without a
@@ -253,10 +255,12 @@ func TestBackend_pollFlowFailed(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespNotFound}
 	})
-	b := &Backend{socket: f.socket, newTicker: fastTicker}
-	if _, err := b.Poll(context.Background(), "Iv1.x", 0); err == nil {
-		t.Fatal("Poll must error when the flow ends without a token")
-	}
+	synctest.Test(t, func(t *testing.T) {
+		b := &Backend{socket: f.socket}
+		if _, err := b.Poll(context.Background(), "Iv1.x", 0); err == nil {
+			t.Fatal("Poll must error when the flow ends without a token")
+		}
+	})
 }
 
 // TestBackend_getActiveSendsMinExpiration guards that GetActive forwards its freshness
@@ -295,7 +299,7 @@ func TestBackend_beginReturnsExistingToken(t *testing.T) {
 		}
 		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
 	})
-	b := &Backend{socket: f.socket, newTicker: fastTicker}
+	b := &Backend{socket: f.socket}
 	token, dc, err := b.Begin(context.Background(), "Iv1.x", 0)
 	if err != nil {
 		t.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -48,41 +49,38 @@ func (m *testDeviceFlow) SetCopyOnetimeCodeToClipboard(_ pubdeviceflow.CopyTextT
 func TestTokenManager_checkExpired(t *testing.T) {
 	t.Parallel()
 
-	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-
+	// exOffset is the token's expiration relative to now; checkExpired reads time.Now()
+	// directly, so each case runs in a synctest bubble where time.Now() is fixed and
+	// exDate = time.Now().Add(exOffset) is deterministic (notably the exactly-at-threshold
+	// case, which relies on the two time.Now() reads returning the same instant).
 	tests := []struct {
 		name          string
-		exDate        time.Time
+		exOffset      time.Duration
 		minExpiration time.Duration
-		now           time.Time
 		want          bool
 	}{
 		{
 			name:          "not expired - future date",
-			exDate:        fixedTime.Add(2 * time.Hour),
+			exOffset:      2 * time.Hour,
 			minExpiration: time.Hour,
-			now:           fixedTime,
 			want:          false,
 		},
 		{
 			name:          "expired - within min expiration",
-			exDate:        fixedTime.Add(30 * time.Minute),
+			exOffset:      30 * time.Minute,
 			minExpiration: time.Hour,
-			now:           fixedTime,
 			want:          true,
 		},
 		{
 			name:          "expired - past date",
-			exDate:        fixedTime.Add(-time.Hour),
+			exOffset:      -time.Hour,
 			minExpiration: time.Hour,
-			now:           fixedTime,
 			want:          true,
 		},
 		{
 			name:          "exactly at threshold",
-			exDate:        fixedTime.Add(time.Hour),
+			exOffset:      time.Hour,
 			minExpiration: time.Hour,
-			now:           fixedTime,
 			want:          false,
 		},
 	}
@@ -91,15 +89,14 @@ func TestTokenManager_checkExpired(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := &Input{
-				Now: func() time.Time { return tt.now },
-			}
-			tm := &TokenManager{input: input}
+			synctest.Test(t, func(t *testing.T) {
+				tm := &TokenManager{input: &Input{}}
 
-			got := tm.checkExpired(tt.exDate, tt.minExpiration)
-			if got != tt.want {
-				t.Errorf("checkExpired() = %v, want %v", got, tt.want)
-			}
+				got := tm.checkExpired(time.Now().Add(tt.exOffset), tt.minExpiration)
+				if got != tt.want {
+					t.Errorf("checkExpired() = %v, want %v", got, tt.want)
+				}
+			})
 		})
 	}
 }

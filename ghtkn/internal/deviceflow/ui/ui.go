@@ -32,9 +32,6 @@ func New(input *Input) *Client {
 	if input == nil {
 		input = &Input{}
 	}
-	if input.Now == nil {
-		input.Now = time.Now
-	}
 	if input.Stderr == nil {
 		input.Stderr = os.Stderr
 	}
@@ -51,7 +48,6 @@ func New(input *Input) *Client {
 }
 
 type Input struct {
-	Now                        func() time.Time                  // Function to get current time (for testing)
 	Stderr                     io.Writer                         // Writer for error output
 	Browser                    pubdeviceflow.Browser             // Interface for opening URLs in browser
 	Logger                     *publog.Logger                    // Logger for debugging and info messages
@@ -127,7 +123,7 @@ func (c *Client) Show(ctx context.Context, logger *slog.Logger, input *InputCrea
 		}
 	}
 
-	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
+	deviceCodeExpirationDate := time.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
 	if err := c.input.OnetimeCodeUI.Show(ctx, logger, deviceCode, deviceCodeExpirationDate, &pubdeviceflow.InputShow{
 		OpenBrowser:       willOpen,
 		AppName:           input.AppName,

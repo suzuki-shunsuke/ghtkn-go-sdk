@@ -36,10 +36,9 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
-	Backend      Backend          // Keyring for token storage
-	Revoker      revoker          // Client for revoking credentials
-	Now          func() time.Time // Current time provider for testing
+	DeviceFlow   deviceFlow // Client for creating GitHub App tokens
+	Backend      Backend    // Keyring for token storage
+	Revoker      revoker    // Client for revoking credentials
 	Logger       *publog.Logger
 	ConfigReader configReader
 	Getenv       func(string) string
@@ -56,7 +55,6 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 	return &Input{
 		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
 		Revoker:      revoke.New(nil),
-		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(),
 		Getenv:       getEnv,

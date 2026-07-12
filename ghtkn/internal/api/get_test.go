@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -140,9 +141,6 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: futureTime,
 					},
 				}
-				input.Now = func() time.Time {
-					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
-				}
 				return input
 			},
 			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
@@ -165,11 +163,8 @@ func TestTokenManager_Get(t *testing.T) {
 				input.Backend = &mockKeyring{
 					token: &pubapi.AccessToken{
 						AccessToken:    "expired-token",
-						ExpirationDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+						ExpirationDate: time.Now().Add(-time.Hour),
 					},
-				}
-				input.Now = func() time.Time {
-					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 				}
 				return input
 			},
@@ -188,9 +183,6 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("token creation failed"),
 				}
 				input.Backend = &mockKeyring{}
-				input.Now = func() time.Time {
-					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
-				}
 				return input
 			},
 			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml", EnableDeviceFlow: new(true)},
@@ -203,11 +195,8 @@ func TestTokenManager_Get(t *testing.T) {
 				input.Backend = &mockKeyring{
 					token: &pubapi.AccessToken{
 						AccessToken:    "expired-token",
-						ExpirationDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+						ExpirationDate: time.Now().Add(-time.Hour),
 					},
-				}
-				input.Now = func() time.Time {
-					return time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 				}
 				return input
 			},
@@ -221,27 +210,33 @@ func TestTokenManager_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := tt.setupInput()
-			tm := New(input)
-			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+			// Run under synctest so time.Now() is fixed at the bubble epoch
+			// (2000-01-01 UTC). setupInput runs inside the bubble, so a token dated in
+			// the future (e.g. 2025) reads as still valid and one built with
+			// time.Now().Add(-d) reads as expired, deterministically and without a Now seam.
+			synctest.Test(t, func(t *testing.T) {
+				input := tt.setupInput()
+				tm := New(input)
+				logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			token, _, err := tm.Get(t.Context(), logger, tt.input)
-			if err != nil {
-				if !tt.wantErr {
-					t.Error(err)
+				token, _, err := tm.Get(t.Context(), logger, tt.input)
+				if err != nil {
+					if !tt.wantErr {
+						t.Error(err)
+					}
+					if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
+						t.Errorf("error = %v, want it to wrap %v", err, tt.wantErrIs)
+					}
+					return
 				}
-				if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
-					t.Errorf("error = %v, want it to wrap %v", err, tt.wantErrIs)
+				if tt.wantErr {
+					t.Error("expected error but got nil")
+					return
 				}
-				return
-			}
-			if tt.wantErr {
-				t.Error("expected error but got nil")
-				return
-			}
-			if diff := cmp.Diff(tt.wantToken, token); diff != "" {
-				t.Error(diff)
-			}
+				if diff := cmp.Diff(tt.wantToken, token); diff != "" {
+					t.Error(diff)
+				}
+			})
 		})
 	}
 }

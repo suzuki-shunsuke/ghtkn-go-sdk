@@ -352,7 +352,7 @@ func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *s
 func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Duration) bool {
 	// Expiration Date - Now < Min Expiration
 	// Now + Min Expiration > Expiration Date
-	return tm.input.Now().Add(minExpiration).After(exDate)
+	return time.Now().Add(minExpiration).After(exDate)
 }
 
 // readConfig loads and validates the configuration from the configured file path.

@@ -21,8 +21,7 @@ import (
 // Backend stores and retrieves access tokens through a running ghtkn agent over a
 // Unix domain socket.
 type Backend struct {
-	socket    string
-	newTicker func(time.Duration) *time.Ticker
+	socket string
 	// warn is where security-relevant agent warnings are written. It defaults to
 	// os.Stderr when nil; tests set it to capture the output.
 	warn io.Writer
@@ -45,8 +44,7 @@ func New(getEnv func(string) string) (*Backend, error) {
 		return nil, err //nolint:wrapcheck // SocketPath returns a descriptive error
 	}
 	return &Backend{
-		socket:    socket,
-		newTicker: time.NewTicker,
+		socket: socket,
 	}, nil
 }
 
@@ -138,7 +136,7 @@ func (b *Backend) Poll(ctx context.Context, clientID string, minExpiration time.
 		return token, err
 	}
 
-	ticker := b.newTicker(5 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
