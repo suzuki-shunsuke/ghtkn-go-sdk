@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/ui"
 )
 
 // InputCreate holds the parameters for Create.
@@ -43,13 +41,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 		return nil, fmt.Errorf("get device code: %w", err)
 	}
 
-	if err := c.input.OnetimeCodeUI.Show(ctx, logger, &ui.InputCreate{
-		ClientID:          input.ClientID,
-		AppName:           input.AppName,
-		SkipAccountPicker: input.SkipAccountPicker,
-		OpenBrowser:       input.OpenBrowser,
-		Clipboard:         input.Clipboard,
-	}, deviceCode); err != nil {
+	if err := c.Show(ctx, logger, input, deviceCode); err != nil {
 		return nil, err
 	}
 
