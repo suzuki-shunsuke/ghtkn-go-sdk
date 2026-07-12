@@ -11,16 +11,34 @@ import (
 	"time"
 )
 
-// ProtocolVersion is the current version of the agent socket protocol. The client
-// stamps it on every request (see Send); the server requires an exact match and
-// rejects any other version so the two sides never speak past each other. Version
-// history:
+// ProtocolVersion is the newest version of the agent socket protocol the agent
+// speaks; the client stamps it on every request (see Send). The server accepts any
+// version in the range [MinProtocolVersion, ProtocolVersion] and serves an older but
+// still-supported client with that older version's behavior, so the two sides never
+// speak past each other and old clients keep working after the agent is upgraded.
+// A client newer than ProtocolVersion means the agent itself is out of date.
+// Version history:
 //
-//	0: pre-versioning clients (no protocol_version field). The client minted tokens
-//	   itself and pushed them with the now-removed SET command.
+//	0: pre-versioning clients (no protocol_version field). The client owns the token
+//	   lifecycle: it runs the device flow, mints tokens itself, and pushes them with
+//	   the SET command. The agent never runs the device flow and never refreshes. The
+//	   agent still serves these clients in a legacy compatibility mode (SET is kept).
 //	1: the server owns the token lifecycle: it runs the device flow and mints tokens
-//	   itself, checks expiration, and revokes tokens. SET was removed.
+//	   itself, checks expiration, refreshes with refresh tokens, and revokes tokens.
+//	   A version-1 client never sends SET.
 const ProtocolVersion = 1
+
+// MinProtocolVersion is the oldest protocol version the agent still serves. A client
+// older than this is rejected with RespObsoleteClient. It is currently 0 so that
+// pre-versioning (SET-based) clients keep working; raise it when legacy support for
+// an old version is dropped.
+const MinProtocolVersion = 0
+
+// ProtocolVersionServerLifecycle is the protocol version at which the server took
+// over the token lifecycle (server-side device flow and refresh tokens). A request
+// below this version is a legacy client: the agent must not run the device flow or
+// refresh for it. See ProtocolVersion's version history.
+const ProtocolVersionServerLifecycle = 1
 
 // Command names and well-known response strings of the agent socket protocol.
 const (
@@ -30,6 +48,11 @@ const (
 	CommandStatus = "STATUS"
 	CommandStop   = "STOP"
 	CommandUnlock = "UNLOCK"
+	// CommandSet stores a client-minted token (legacy, protocol version 0 only). The
+	// agent keeps handling it so pre-versioning clients that mint tokens themselves
+	// keep working; a version-1 client never sends it because the server owns the
+	// token lifecycle.
+	CommandSet = "SET"
 
 	// RespNotFound is the Response.Error value returned by GET when no token is
 	// cached for the client ID.
@@ -52,15 +75,20 @@ const (
 // The wire format is one JSON object per line (newline-delimited JSON).
 type Request struct {
 	// ProtocolVersion is the client's protocol version (see ProtocolVersion). Send
-	// stamps it automatically. The server requires it to equal its own version: an
-	// absent field decodes to 0 (a pre-versioning, obsolete client), and any other
-	// mismatch is rejected too.
+	// stamps it automatically. The server serves any version in the range
+	// [MinProtocolVersion, ProtocolVersion]; an absent field decodes to 0 (a
+	// pre-versioning, SET-based client served in legacy mode), a version above
+	// ProtocolVersion means the agent is out of date.
 	ProtocolVersion int `json:"protocol_version,omitempty"`
 	// Command is one of CommandGet, CommandDelete, CommandRevoke, CommandStatus,
-	// CommandStop, or CommandUnlock.
+	// CommandStop, CommandUnlock, or (legacy, version 0 only) CommandSet.
 	Command string `json:"command"`
-	// ClientID identifies the GitHub App (used by GET and DELETE).
+	// ClientID identifies the GitHub App (used by GET, DELETE, and legacy SET).
 	ClientID string `json:"client_id,omitempty"`
+	// Token is the client-minted access token payload to store (legacy CommandSet,
+	// protocol version 0 only). A version-1 client leaves it empty because the server
+	// mints tokens itself.
+	Token json.RawMessage `json:"token,omitempty"`
 	// ClientIDs are the GitHub Apps whose stored tokens REVOKE should revoke and
 	// delete in one batch.
 	ClientIDs []string `json:"client_ids,omitempty"`
