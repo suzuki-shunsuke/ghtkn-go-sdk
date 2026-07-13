@@ -38,8 +38,8 @@ func Enabled(input *InputEnabled) (bool, error) {
 // environment.
 func enabled(getEnv func(string) string, input *InputEnabled) (bool, error) {
 	if input != nil {
-		for _, env := range input.Envs {
-			a := getEnv(env)
+		for _, name := range input.Envs {
+			a := getEnv(name)
 			if a == "" {
 				continue
 			}
