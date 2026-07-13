@@ -438,29 +438,20 @@ func TestResolveMinExpiration(t *testing.T) {
 	data := []struct {
 		name     string
 		override *time.Duration
-		env      string
-		cfg      string // min_expiration in the config file
+		cfg      string // min_expiration in the config (GHTKN_MIN_EXPIRATION already folded in)
 		want     time.Duration
 		wantErr  bool
 	}{
 		{name: "default zero when all unset", want: 0},
-		{name: "override wins", override: ptr(time.Hour), env: "30m", cfg: "10m", want: time.Hour},
-		{name: "override zero beats config", override: ptr(0), env: "", cfg: "1h", want: 0},
-		{name: "env when override unset", env: "30m", cfg: "10m", want: 30 * time.Minute},
-		{name: "config when override and env unset", cfg: "10m", want: 10 * time.Minute},
-		{name: "invalid env errors", env: "nope", wantErr: true},
+		{name: "override wins over config", override: ptr(time.Hour), cfg: "10m", want: time.Hour},
+		{name: "override zero beats config", override: ptr(0), cfg: "1h", want: 0},
+		{name: "config when override unset", cfg: "10m", want: 10 * time.Minute},
 		{name: "invalid config errors", cfg: "nope", wantErr: true},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			getEnv := func(k string) string {
-				if k == "GHTKN_MIN_EXPIRATION" {
-					return d.env
-				}
-				return ""
-			}
-			got, err := resolveMinExpiration(d.override, d.cfg, getEnv)
+			got, err := resolveMinExpiration(d.override, d.cfg)
 			if d.wantErr {
 				if err == nil {
 					t.Fatal("resolveMinExpiration: expected an error, got nil")
@@ -481,29 +472,20 @@ func TestResolveBackendType(t *testing.T) {
 	t.Parallel()
 	data := []struct {
 		name string
-		env  string
-		cfg  string // backend.type in the config file
+		cfg  string // backend.type in the config (GHTKN_BACKEND already folded in)
 		want string
 	}{
-		{name: "default empty when all unset", want: ""},
-		{name: "env wins", env: "agent", cfg: "text", want: "agent"},
-		{name: "config when env unset", env: "", cfg: "text", want: "text"},
-		{name: "env beats config", env: "keyring", cfg: "text", want: "keyring"},
+		{name: "default empty when unset", want: ""},
+		{name: "config value", cfg: "text", want: "text"},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			getEnv := func(k string) string {
-				if k == "GHTKN_BACKEND" {
-					return d.env
-				}
-				return ""
-			}
 			var cfg *pubconfig.Backend
 			if d.cfg != "" {
 				cfg = &pubconfig.Backend{Type: d.cfg}
 			}
-			if got := resolveBackendType(cfg, getEnv); got != d.want {
+			if got := resolveBackendType(cfg); got != d.want {
 				t.Errorf("resolveBackendType = %q, want %q", got, d.want)
 			}
 		})

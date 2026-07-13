@@ -11,6 +11,7 @@ import (
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
@@ -68,6 +69,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	if err := tm.readConfig(cfg, configPath); err != nil {
 		return nil, nil, err
 	}
+	// Fold the environment overrides into the config once, so the resolvers below read
+	// the effective (file plus env) values and the env semantics live in one place.
+	config.ApplyEnvOverrides(cfg, tm.input.Getenv)
 
 	// Get the app name
 	appName := input.AppName
@@ -86,7 +90,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	attrs := slogerr.NewAttrs(1)
 	logger = attrs.Add(logger, "app_name", app.Name)
 
-	minExpiration, err := resolveMinExpiration(input.MinExpiration, cfg.MinExpiration, tm.input.Getenv)
+	minExpiration, err := resolveMinExpiration(input.MinExpiration, cfg.MinExpiration)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve the min expiration: %w", attrs.With(err))
 	}
@@ -108,8 +112,8 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		Backend:           b,
 		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
-		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
-		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard, tm.input.Getenv),
+		OpenBrowser:       openBrowser(cfg.OpenBrowser),
+		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -160,13 +164,11 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 	return false
 }
 
-// resolveBackendType resolves the storage backend type. The GHTKN_BACKEND
-// environment variable takes precedence, then the config's backend.type. An empty
-// result selects the default (the OS keyring); backend.New maps it accordingly.
-func resolveBackendType(cfg *pubconfig.Backend, getEnv func(string) string) string {
-	if v := getEnv(env.Backend); v != "" {
-		return v
-	}
+// resolveBackendType resolves the storage backend type from the (already
+// env-overridden) config's backend.type. An empty result selects the default (the OS
+// keyring); backend.New maps it accordingly. The GHTKN_BACKEND override is applied
+// upstream by config.ApplyEnvOverrides.
+func resolveBackendType(cfg *pubconfig.Backend) string {
 	if cfg != nil && cfg.Type != "" {
 		return cfg.Type
 	}
@@ -174,59 +176,46 @@ func resolveBackendType(cfg *pubconfig.Backend, getEnv func(string) string) stri
 }
 
 // resolveMinExpiration resolves the minimum time before token expiration that
-// triggers renewal. An explicit override (the -min-expiration flag) takes
-// precedence, including an explicit zero; otherwise the GHTKN_MIN_EXPIRATION
-// environment variable decides, then the config's min_expiration. It defaults to
-// zero (renew only once the token has actually expired). The environment variable
-// and config values are Go duration strings such as "1h" or "30m".
-func resolveMinExpiration(override *time.Duration, cfg string, getEnv func(string) string) (time.Duration, error) {
+// triggers renewal. An explicit override (the -min-expiration flag) takes precedence,
+// including an explicit zero; otherwise the config's min_expiration is used (with the
+// GHTKN_MIN_EXPIRATION override already folded in by config.ApplyEnvOverrides). It
+// defaults to zero (renew only once the token has actually expired). The config value
+// is a Go duration string such as "1h" or "30m".
+func resolveMinExpiration(override *time.Duration, cfg string) (time.Duration, error) {
 	if override != nil {
 		return *override, nil
-	}
-	if v := getEnv(env.MinExpiration); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			return 0, fmt.Errorf("parse GHTKN_MIN_EXPIRATION as a duration: %w", slogerr.With(err, "min_expiration", v))
-		}
-		return d, nil
 	}
 	if cfg != "" {
 		d, err := time.ParseDuration(cfg)
 		if err != nil {
-			return 0, fmt.Errorf("parse min_expiration in the config as a duration: %w", slogerr.With(err, "min_expiration", cfg))
+			return 0, fmt.Errorf("parse min_expiration as a duration: %w", slogerr.With(err, "min_expiration", cfg))
 		}
 		return d, nil
 	}
 	return 0, nil
 }
 
-// openBrowser resolves whether the device flow may open a browser automatically.
-// The GHTKN_OPEN_BROWSER environment variable, when set, takes precedence and
-// only "false" disables the open. Otherwise the config's open_browser.enable
-// decides, defaulting to enabled. This lets users in WSL, containers, and
-// headless environments suppress the unreliable browser launch (and its noisy
-// errors) and open the URL manually instead.
-func openBrowser(cfg *pubconfig.OpenBrowser, getEnv func(string) string) bool {
-	if v := getEnv(env.OpenBrowser); v != "" {
-		return v != "false"
-	}
+// openBrowser resolves whether the device flow may open a browser automatically from
+// the (already env-overridden) config's open_browser.enable, defaulting to enabled. The
+// GHTKN_OPEN_BROWSER override (only "false" disables) is applied upstream by
+// config.ApplyEnvOverrides. This lets users in WSL, containers, and headless
+// environments suppress the unreliable browser launch and open the URL manually instead.
+func openBrowser(cfg *pubconfig.OpenBrowser) bool {
 	if cfg != nil && cfg.Enable != nil {
 		return *cfg.Enable
 	}
 	return true
 }
 
-// clipboard resolves whether the device flow copies the one-time code to the
-// system clipboard. An explicit override (the -clipboard flag) takes precedence;
-// otherwise the GHTKN_CLIPBOARD environment variable decides (only "true" enables
-// it), then the config's clipboard.enable, defaulting to disabled. Copying also
-// requires the consumer to inject an implementation via SetCopyOnetimeCodeToClipboard.
-func clipboard(override *bool, cfg *pubconfig.Clipboard, getEnv func(string) string) bool {
+// clipboard resolves whether the device flow copies the one-time code to the system
+// clipboard. An explicit override (the -clipboard flag) takes precedence; otherwise the
+// (already env-overridden) config's clipboard.enable decides, defaulting to disabled.
+// The GHTKN_CLIPBOARD override (only "true" enables) is applied upstream by
+// config.ApplyEnvOverrides. Copying also requires the consumer to inject an
+// implementation via SetCopyOnetimeCodeToClipboard.
+func clipboard(override *bool, cfg *pubconfig.Clipboard) bool {
 	if override != nil {
 		return *override
-	}
-	if v := getEnv(env.Clipboard); v != "" {
-		return v == "true"
 	}
 	if cfg != nil && cfg.Enable != nil {
 		return *cfg.Enable

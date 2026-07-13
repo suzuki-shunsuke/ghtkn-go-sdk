@@ -244,32 +244,22 @@ func TestTokenManager_Get(t *testing.T) {
 func TestOpenBrowser(t *testing.T) {
 	t.Parallel()
 	boolPtr := func(b bool) *bool { return &b }
+	// The GHTKN_OPEN_BROWSER override is folded into the config upstream by
+	// config.ApplyEnvOverrides (tested there); this covers the config/default resolution.
 	tests := []struct {
 		name string
-		env  string
 		cfg  *pubconfig.OpenBrowser
 		want bool
 	}{
-		{name: "env unset and config unset defaults to open", env: "", cfg: nil, want: true},
-		{name: "env unset and config disables", env: "", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(false)}, want: false},
-		{name: "env unset and config enables", env: "", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(true)}, want: true},
-		{name: "env unset and config present but unspecified defaults to open", env: "", cfg: &pubconfig.OpenBrowser{}, want: true},
-		{name: "env false disables with config unset", env: "false", cfg: nil, want: false},
-		{name: "env false overrides config enable", env: "false", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(true)}, want: false},
-		{name: "env true overrides config disable", env: "true", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(false)}, want: true},
-		{name: "env FALSE is case-sensitive and keeps opening", env: "FALSE", cfg: nil, want: true},
-		{name: "env any other value keeps opening", env: "0", cfg: nil, want: true},
+		{name: "config unset defaults to open", cfg: nil, want: true},
+		{name: "config disables", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(false)}, want: false},
+		{name: "config enables", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(true)}, want: true},
+		{name: "config present but unspecified defaults to open", cfg: &pubconfig.OpenBrowser{}, want: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			getEnv := func(key string) string {
-				if key == "GHTKN_OPEN_BROWSER" {
-					return tt.env
-				}
-				return ""
-			}
-			if got := openBrowser(tt.cfg, getEnv); got != tt.want {
+			if got := openBrowser(tt.cfg); got != tt.want {
 				t.Errorf("openBrowser() = %v, want %v", got, tt.want)
 			}
 		})
@@ -279,10 +269,11 @@ func TestOpenBrowser(t *testing.T) {
 func TestClipboard(t *testing.T) {
 	t.Parallel()
 	boolPtr := func(b bool) *bool { return &b }
+	// The GHTKN_CLIPBOARD override is folded into the config upstream by
+	// config.ApplyEnvOverrides (tested there); this covers the flag/config/default resolution.
 	tests := []struct {
 		name     string
 		override *bool
-		env      string
 		cfg      *pubconfig.Clipboard
 		want     bool
 	}{
@@ -290,24 +281,13 @@ func TestClipboard(t *testing.T) {
 		{name: "config enables", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: true},
 		{name: "config disables", cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: false},
 		{name: "config present but unspecified defaults to disabled", cfg: &pubconfig.Clipboard{}, want: false},
-		{name: "env true enables with config unset", env: "true", want: true},
-		{name: "env true overrides config disable", env: "true", cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: true},
-		{name: "env false overrides config enable", env: "false", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: false},
-		{name: "env TRUE is case-sensitive and stays disabled", env: "TRUE", want: false},
-		{name: "env any other value stays disabled", env: "1", want: false},
-		{name: "override true beats env false", override: boolPtr(true), env: "false", want: true},
-		{name: "override false beats env true and config enable", override: boolPtr(false), env: "true", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: false},
+		{name: "override true beats config disable", override: boolPtr(true), cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: true},
+		{name: "override false beats config enable", override: boolPtr(false), cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			getEnv := func(key string) string {
-				if key == "GHTKN_CLIPBOARD" {
-					return tt.env
-				}
-				return ""
-			}
-			if got := clipboard(tt.override, tt.cfg, getEnv); got != tt.want {
+			if got := clipboard(tt.override, tt.cfg); got != tt.want {
 				t.Errorf("clipboard() = %v, want %v", got, tt.want)
 			}
 		})

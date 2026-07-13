@@ -71,7 +71,7 @@ func (tm *TokenManager) resolveBackend(cfg *pubconfig.Config) (Backend, error) {
 	if tm.input.Backend != nil {
 		return tm.input.Backend, nil
 	}
-	return backend.New(resolveBackendType(cfg.Backend, tm.input.Getenv), tm.input.Getenv)
+	return backend.New(resolveBackendType(cfg.Backend), tm.input.Getenv)
 }
 
 // Validate checks if the Input configuration is valid.

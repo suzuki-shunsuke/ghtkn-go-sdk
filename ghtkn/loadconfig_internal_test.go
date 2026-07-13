@@ -35,6 +35,8 @@ open_browser:
 		name            string
 		env             map[string]string
 		writeFile       bool
+		invalidYAML     bool // write a malformed config file to exercise the Read error path
+		wantErr         bool
 		wantBackend     string
 		wantMinExp      string
 		wantOpenBrowser *bool // nil means "not set"
@@ -76,6 +78,11 @@ open_browser:
 			env:         map[string]string{"GHTKN_BACKEND": "agent"},
 			wantBackend: "agent",
 		},
+		{
+			name:        "malformed config file errors",
+			invalidYAML: true,
+			wantErr:     true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -85,14 +92,27 @@ open_browser:
 			for k, v := range tt.env {
 				env[k] = v
 			}
-			if tt.writeFile {
+			switch {
+			case tt.invalidYAML:
+				path := filepath.Join(t.TempDir(), "ghtkn.yaml")
+				if err := os.WriteFile(path, []byte("apps: [ this is not valid yaml"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				env["GHTKN_CONFIG"] = path
+			case tt.writeFile:
 				env["GHTKN_CONFIG"] = writeConfig(t)
-			} else {
+			default:
 				env["GHTKN_CONFIG"] = filepath.Join(t.TempDir(), "absent.yaml")
 			}
 			getEnv := func(k string) string { return env[k] }
 
 			cfg, err := loadConfig(getEnv, "linux")
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("loadConfig() expected an error, got nil")
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("loadConfig() unexpected error: %v", err)
 			}
