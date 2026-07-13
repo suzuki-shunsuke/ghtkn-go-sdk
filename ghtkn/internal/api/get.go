@@ -10,6 +10,7 @@ import (
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
@@ -52,7 +53,7 @@ func (tm *TokenManager) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextTo
 // In this case the returned app config is nil and the access token has no
 // expiration date.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
-	if token := tm.input.Getenv("GHTKN_GITHUB_TOKEN"); token != "" {
+	if token := tm.input.Getenv(env.GitHubToken); token != "" {
 		return &pubapi.AccessToken{AccessToken: token}, nil, nil
 	}
 	if input == nil {
@@ -72,7 +73,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	// Get the app name
 	appName := input.AppName
 	if appName == "" {
-		appName = tm.input.Getenv("GHTKN_APP")
+		appName = tm.input.Getenv(env.App)
 	}
 
 	logger.Debug("selecting app", "app_name", appName, "git_owner", input.AppOwner)
@@ -154,7 +155,7 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 	if override != nil {
 		return *override
 	}
-	if v := getEnv("GHTKN_ENABLE_DEVICE_FLOW"); v != "" {
+	if v := getEnv(env.EnableDeviceFlow); v != "" {
 		return v == "true"
 	}
 	return false
@@ -164,7 +165,7 @@ func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
 // environment variable takes precedence, then the config's backend.type. An empty
 // result selects the default (the OS keyring); backend.New maps it accordingly.
 func resolveBackendType(cfg *pubconfig.Backend, getEnv func(string) string) string {
-	if v := getEnv("GHTKN_BACKEND"); v != "" {
+	if v := getEnv(env.Backend); v != "" {
 		return v
 	}
 	if cfg != nil && cfg.Type != "" {
@@ -183,7 +184,7 @@ func resolveMinExpiration(override *time.Duration, cfg string, getEnv func(strin
 	if override != nil {
 		return *override, nil
 	}
-	if v := getEnv("GHTKN_MIN_EXPIRATION"); v != "" {
+	if v := getEnv(env.MinExpiration); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {
 			return 0, fmt.Errorf("parse GHTKN_MIN_EXPIRATION as a duration: %w", slogerr.With(err, "min_expiration", v))
@@ -207,7 +208,7 @@ func resolveMinExpiration(override *time.Duration, cfg string, getEnv func(strin
 // headless environments suppress the unreliable browser launch (and its noisy
 // errors) and open the URL manually instead.
 func openBrowser(cfg *pubconfig.OpenBrowser, getEnv func(string) string) bool {
-	if v := getEnv("GHTKN_OPEN_BROWSER"); v != "" {
+	if v := getEnv(env.OpenBrowser); v != "" {
 		return v != "false"
 	}
 	if cfg != nil && cfg.Enable != nil {
@@ -225,7 +226,7 @@ func clipboard(override *bool, cfg *pubconfig.Clipboard, getEnv func(string) str
 	if override != nil {
 		return *override
 	}
-	if v := getEnv("GHTKN_CLIPBOARD"); v != "" {
+	if v := getEnv(env.Clipboard); v != "" {
 		return v == "true"
 	}
 	if cfg != nil && cfg.Enable != nil {

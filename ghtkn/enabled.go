@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
@@ -45,7 +46,7 @@ func enabled(getEnv func(string) string, input *InputEnabled) (bool, error) {
 			return checkBoolEnv(a)
 		}
 	}
-	if a := getEnv("GHTKN_ENABLE"); a != "" {
+	if a := getEnv(env.Enable); a != "" {
 		return checkBoolEnv(a)
 	}
 	p, err := config.GetPath(getEnv, runtime.GOOS)

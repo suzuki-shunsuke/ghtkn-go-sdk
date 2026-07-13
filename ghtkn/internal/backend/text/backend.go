@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // The access token is saved in plaintext to ${XDG_CACHE_HOME}/ghtkn/tokens/<client-id>
@@ -44,7 +46,7 @@ func New(getEnv func(string) string) (*Backend, error) {
 // tokenDir resolves the directory that stores token files. GHTKN_TEXT_BACKEND_DIR
 // takes precedence; otherwise it is ${cache dir}/ghtkn/tokens.
 func tokenDir(getEnv func(string) string, goos string) (string, error) {
-	dir := getEnv("GHTKN_TEXT_BACKEND_DIR")
+	dir := getEnv(env.TextBackendDir)
 	if dir != "" {
 		return dir, nil
 	}

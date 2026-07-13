@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	intconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
@@ -48,18 +49,18 @@ func loadConfig(getEnv func(string) string, goos string) (*config.Config, error)
 // openBrowser, and clipboard in internal/api/get.go). SkipAccountPicker has no
 // environment variable, so it is left as read from the file.
 func applyEnvOverrides(cfg *config.Config, getEnv func(string) string) {
-	if v := getEnv("GHTKN_BACKEND"); v != "" {
+	if v := getEnv(env.Backend); v != "" {
 		if cfg.Backend == nil {
 			cfg.Backend = &config.Backend{}
 		}
 		cfg.Backend.Type = v
 	}
 	// A Go duration string (e.g. "1h"); it is parsed at Get time, not here.
-	if v := getEnv("GHTKN_MIN_EXPIRATION"); v != "" {
+	if v := getEnv(env.MinExpiration); v != "" {
 		cfg.MinExpiration = v
 	}
 	// Any value other than "false" enables the browser open.
-	if v := getEnv("GHTKN_OPEN_BROWSER"); v != "" {
+	if v := getEnv(env.OpenBrowser); v != "" {
 		b := v != "false"
 		if cfg.OpenBrowser == nil {
 			cfg.OpenBrowser = &config.OpenBrowser{}
@@ -67,7 +68,7 @@ func applyEnvOverrides(cfg *config.Config, getEnv func(string) string) {
 		cfg.OpenBrowser.Enable = &b
 	}
 	// Only "true" enables copying the one-time code to the clipboard.
-	if v := getEnv("GHTKN_CLIPBOARD"); v != "" {
+	if v := getEnv(env.Clipboard); v != "" {
 		b := v == "true"
 		if cfg.Clipboard == nil {
 			cfg.Clipboard = &config.Clipboard{}

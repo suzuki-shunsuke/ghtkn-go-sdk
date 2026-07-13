@@ -3,6 +3,8 @@ package agent
 import (
 	"errors"
 	"path/filepath"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // goosWindows is the runtime.GOOS value for Windows.
@@ -14,7 +16,7 @@ const goosWindows = "windows"
 // (%LocalAppData%\cache\ghtkn\agent.sock on Windows). Both the agent server and the
 // client resolve the socket through this function so they always agree on the path.
 func SocketPath(getEnv func(string) string, goos string) (string, error) {
-	if s := getEnv("GHTKN_AGENT_SOCKET"); s != "" {
+	if s := getEnv(env.AgentSocket); s != "" {
 		return s, nil
 	}
 	if dir := getEnv("XDG_RUNTIME_DIR"); dir != "" {

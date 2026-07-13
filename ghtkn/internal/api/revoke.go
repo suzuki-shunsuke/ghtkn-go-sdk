@@ -8,6 +8,7 @@ import (
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
@@ -41,7 +42,7 @@ func (tm *TokenManager) revokeAppNames(cfg *pubconfig.Config, input *pubapi.Inpu
 	if len(input.AppNames) > 0 {
 		return input.AppNames, nil
 	}
-	app := config.SelectApp(cfg, tm.input.Getenv("GHTKN_APP"), "")
+	app := config.SelectApp(cfg, tm.input.Getenv(env.App), "")
 	if app == nil {
 		return nil, errors.New("app is not found in the config")
 	}

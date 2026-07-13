@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"path/filepath"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // GetPath returns the configuration file path for ghtkn.
@@ -10,7 +12,7 @@ import (
 // Otherwise it combines the XDG_CONFIG_HOME directory with the ghtkn configuration
 // filename; the typical path is $XDG_CONFIG_HOME/ghtkn/ghtkn.yaml.
 func GetPath(getEnv func(string) string, goos string) (string, error) {
-	if f := getEnv("GHTKN_CONFIG"); f != "" {
+	if f := getEnv(env.Config); f != "" {
 		return f, nil
 	}
 	if goos == "windows" {
