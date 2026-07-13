@@ -19,19 +19,19 @@ func SocketPath(getEnv func(string) string, goos string) (string, error) {
 	if s := getEnv(env.AgentSocket); s != "" {
 		return s, nil
 	}
-	if dir := getEnv("XDG_RUNTIME_DIR"); dir != "" {
+	if dir := getEnv(env.XDGRuntimeDir); dir != "" {
 		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
 	}
-	if dir := getEnv("XDG_CACHE_HOME"); dir != "" {
+	if dir := getEnv(env.XDGCacheHome); dir != "" {
 		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
 	}
 	if goos == goosWindows {
-		if d := getEnv("LocalAppData"); d != "" {
+		if d := getEnv(env.LocalAppData); d != "" {
 			return filepath.Join(d, "cache", "ghtkn", "agent.sock"), nil
 		}
 		return "", errors.New("GHTKN_AGENT_SOCKET or LocalAppData is required to use the agent backend on Windows")
 	}
-	if home := getEnv("HOME"); home != "" {
+	if home := getEnv(env.Home); home != "" {
 		return filepath.Join(home, ".cache", "ghtkn", "agent.sock"), nil
 	}
 	return "", errors.New("GHTKN_AGENT_SOCKET, XDG_RUNTIME_DIR, XDG_CACHE_HOME, or HOME is required to use the agent backend")

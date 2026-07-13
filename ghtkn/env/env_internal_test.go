@@ -5,14 +5,13 @@ import (
 	"go/parser"
 	"go/token"
 	"strconv"
-	"strings"
 	"testing"
 )
 
 // TestAll_matchesConstants parses env.go and asserts that All contains exactly the
-// GHTKN_* string constants declared in this package. Adding a constant without adding
-// it to All (or leaving a stale entry in All) fails this test, so `ghtkn info`, which
-// iterates All, can never silently omit a variable.
+// string constants declared in this package (every one is an environment variable name).
+// Adding a constant without adding it to All (or leaving a stale entry in All) fails this
+// test, so `ghtkn info`, which iterates All, can never silently omit a variable.
 func TestAll_matchesConstants(t *testing.T) {
 	t.Parallel()
 
@@ -38,8 +37,8 @@ func TestAll_matchesConstants(t *testing.T) {
 	}
 }
 
-// declaredConstants parses env.go and returns the set of string constant values that
-// start with "GHTKN_".
+// declaredConstants parses env.go and returns the set of every string constant value
+// declared in it (each is an environment variable name).
 func declaredConstants(t *testing.T) map[string]struct{} {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), "env.go", nil, 0)
@@ -66,9 +65,7 @@ func declaredConstants(t *testing.T) map[string]struct{} {
 				if err != nil {
 					t.Fatalf("unquote %s: %v", lit.Value, err)
 				}
-				if strings.HasPrefix(s, "GHTKN_") {
-					consts[s] = struct{}{}
-				}
+				consts[s] = struct{}{}
 			}
 		}
 	}

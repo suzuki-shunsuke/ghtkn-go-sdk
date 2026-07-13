@@ -16,17 +16,17 @@ func GetPath(getEnv func(string) string, goos string) (string, error) {
 		return f, nil
 	}
 	if goos == "windows" {
-		appData := getEnv("APPDATA")
+		appData := getEnv(env.AppData)
 		if appData != "" {
 			return filepath.Join(appData, "ghtkn", "ghtkn.yaml"), nil
 		}
 		return "", errors.New("APPDATA is required on Windows")
 	}
-	xdgConfigHome := getEnv("XDG_CONFIG_HOME")
+	xdgConfigHome := getEnv(env.XDGConfigHome)
 	if xdgConfigHome != "" {
 		return filepath.Join(xdgConfigHome, "ghtkn", "ghtkn.yaml"), nil
 	}
-	home := getEnv("HOME")
+	home := getEnv(env.Home)
 	if home != "" {
 		return filepath.Join(home, ".config", "ghtkn", "ghtkn.yaml"), nil
 	}
