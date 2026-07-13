@@ -11,7 +11,6 @@ import (
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
@@ -79,7 +78,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	logger.Debug("selecting app", "app_name", appName, "git_owner", input.AppOwner)
 
 	// Get the app config
-	app := config.SelectApp(cfg, appName, input.AppOwner)
+	app := pubconfig.ResolveApp(cfg, appName, input.AppOwner)
 	if app == nil {
 		return nil, nil, errors.New("app is not found in the config")
 	}

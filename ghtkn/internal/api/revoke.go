@@ -42,7 +42,7 @@ func (tm *TokenManager) revokeAppNames(cfg *pubconfig.Config, input *pubapi.Inpu
 	if len(input.AppNames) > 0 {
 		return input.AppNames, nil
 	}
-	app := config.SelectApp(cfg, tm.input.Getenv(env.App), "")
+	app := pubconfig.ResolveApp(cfg, tm.input.Getenv(env.App), "")
 	if app == nil {
 		return nil, errors.New("app is not found in the config")
 	}
@@ -101,7 +101,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	// errs aggregates per-app failures so one bad app doesn't block the rest.
 	var errs []error
 	for _, name := range appNames {
-		app := config.SelectApp(cfg, name, "")
+		app := pubconfig.ResolveApp(cfg, name, "")
 		if app == nil {
 			// The intended token was not revoked: treat as a live-credential failure.
 			errs = append(errs, fmt.Errorf("app is not found in the config: %s: %w", name, pubapi.ErrRevoke))
@@ -153,7 +153,7 @@ func (tm *TokenManager) revokeViaBackend(ctx context.Context, logger *slog.Logge
 	clientIDs := make([]string, 0, len(appNames))
 	appByClientID := make(map[string]string, len(appNames))
 	for _, name := range appNames {
-		app := config.SelectApp(cfg, name, "")
+		app := pubconfig.ResolveApp(cfg, name, "")
 		if app == nil {
 			errs = append(errs, fmt.Errorf("app is not found in the config: %s: %w", name, pubapi.ErrRevoke))
 			continue
