@@ -1,4 +1,4 @@
-package env
+package env_test
 
 import (
 	"go/ast"
@@ -6,6 +6,8 @@ import (
 	"go/token"
 	"strconv"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // TestAll_matchesConstants parses env.go and asserts that All contains exactly the
@@ -18,7 +20,7 @@ func TestAll_matchesConstants(t *testing.T) {
 	consts := declaredConstants(t)
 
 	all := map[string]struct{}{}
-	for _, name := range All {
+	for _, name := range env.All {
 		if _, dup := all[name]; dup {
 			t.Errorf("All contains a duplicate: %s", name)
 		}

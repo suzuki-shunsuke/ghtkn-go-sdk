@@ -1,9 +1,11 @@
-package agent
+package agent_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 // TestSecretBytes_wireFormat verifies SecretBytes marshals to and decodes from a plain
@@ -11,7 +13,7 @@ import (
 // pre-versioning client that sends a plain string stays compatible.
 func TestSecretBytes_wireFormat(t *testing.T) {
 	t.Parallel()
-	b, err := json.Marshal(&Request{Command: CommandUnlock, Passphrase: SecretBytes("s3cret")})
+	b, err := json.Marshal(&agent.Request{Command: agent.CommandUnlock, Passphrase: agent.SecretBytes("s3cret")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +21,7 @@ func TestSecretBytes_wireFormat(t *testing.T) {
 		t.Fatalf("passphrase must be a plain JSON string, got %s", b)
 	}
 
-	var req Request
+	var req agent.Request
 	if err := json.Unmarshal([]byte(`{"command":"UNLOCK","passphrase":"s3cret"}`), &req); err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +33,7 @@ func TestSecretBytes_wireFormat(t *testing.T) {
 // TestSecretBytes_omitempty verifies an empty passphrase is omitted from the wire.
 func TestSecretBytes_omitempty(t *testing.T) {
 	t.Parallel()
-	b, err := json.Marshal(&Request{Command: CommandStatus})
+	b, err := json.Marshal(&agent.Request{Command: agent.CommandStatus})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +45,7 @@ func TestSecretBytes_omitempty(t *testing.T) {
 // TestSecretBytes_zero verifies Zero scrubs the bytes.
 func TestSecretBytes_zero(t *testing.T) {
 	t.Parallel()
-	s := SecretBytes("abc")
+	s := agent.SecretBytes("abc")
 	s.Zero()
 	for i, b := range s {
 		if b != 0 {
