@@ -150,6 +150,12 @@ type Request struct {
 	// long ago, so an infrequently used refresh token does not linger indefinitely. A
 	// zero value leaves the agent's default in place.
 	RefreshTokenTTL time.Duration `json:"refresh_token_ttl,omitempty"`
+	// ConfirmRefreshTokenRemoval confirms that the user accepts dropping the stored
+	// refresh tokens on an UNLOCK without EnableRefreshToken (used by UNLOCK only). The
+	// first such unlock is answered with RefreshTokenRemovalPending when a still-valid
+	// refresh token is stored; the client prompts the user and, on yes, re-sends the same
+	// unlock with this set so the agent proceeds and strips the refresh tokens.
+	ConfirmRefreshTokenRemoval bool `json:"confirm_refresh_token_removal,omitempty"`
 }
 
 // Response is a single response returned by the agent for a Request.
@@ -198,4 +204,9 @@ type Response struct {
 	// does not make OK false: the request may still succeed (or fall back to the device
 	// flow) while the warning is surfaced.
 	Warning string `json:"warning,omitempty"`
+	// RefreshTokenRemovalPending reports that an UNLOCK without EnableRefreshToken was not
+	// applied because a still-valid refresh token is stored and the removal was not yet
+	// confirmed (OK is false and the agent stays locked). The client prompts the user and,
+	// on yes, re-sends the same unlock with ConfirmRefreshTokenRemoval set.
+	RefreshTokenRemovalPending bool `json:"refresh_token_removal_pending,omitempty"`
 }
