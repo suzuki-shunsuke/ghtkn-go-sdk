@@ -80,6 +80,12 @@ open_browser:
 			wantBackend: "agent",
 		},
 		{
+			name:      "unparsable boolean env errors",
+			writeFile: false,
+			env:       map[string]string{"GHTKN_OPEN_BROWSER": "yes"},
+			wantErr:   true,
+		},
+		{
 			name:        "malformed config file errors",
 			invalidYAML: true,
 			wantErr:     true,

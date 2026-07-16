@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
@@ -71,7 +72,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	}
 	// Fold the environment overrides into the config once, so the resolvers below read
 	// the effective (file plus env) values and the env semantics live in one place.
-	config.ApplyEnvOverrides(cfg, tm.input.Getenv)
+	if err := config.ApplyEnvOverrides(cfg, tm.input.Getenv); err != nil {
+		return nil, nil, fmt.Errorf("apply environment overrides: %w", err)
+	}
 
 	// Get the app name
 	appName := input.AppName
@@ -106,11 +109,16 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		"min_expiration", minExpiration,
 	)
 
+	enableDF, err := enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve whether the device flow is enabled: %w", attrs.With(err))
+	}
+
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		MinExpiration:     minExpiration,
 		App:               app,
 		Backend:           b,
-		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
+		EnableDeviceFlow:  enableDF,
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser),
 		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard),
@@ -151,17 +159,21 @@ type inputGetOrCreateToken struct {
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
 // (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides (only "true" enables it). The device flow is
-// disabled by default so it is never started automatically; it must be enabled
-// explicitly (e.g. by `ghtkn auth`).
-func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
+// environment variable decides (a boolean parsed by strconv.ParseBool; an
+// unparsable value is a hard error). The device flow is disabled by default so it
+// is never started automatically; it must be enabled explicitly (e.g. by `ghtkn auth`).
+func enableDeviceFlow(override *bool, getEnv func(string) string) (bool, error) {
 	if override != nil {
-		return *override
+		return *override, nil
 	}
 	if v := getEnv(env.EnableDeviceFlow); v != "" {
-		return v == "true"
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return false, fmt.Errorf("parse %s as a boolean: %w", env.EnableDeviceFlow, err)
+		}
+		return b, nil
 	}
-	return false
+	return false, nil
 }
 
 // resolveBackendType resolves the storage backend type from the (already

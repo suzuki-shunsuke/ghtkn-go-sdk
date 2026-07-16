@@ -13,6 +13,7 @@ func TestApplyEnvOverrides(t *testing.T) {
 		name        string
 		env         map[string]string
 		cfg         *pubconfig.Config
+		wantErr     bool
 		wantBackend string
 		wantMinExp  string
 		wantOpen    *bool
@@ -50,16 +51,22 @@ func TestApplyEnvOverrides(t *testing.T) {
 			wantOpen: new(false),
 		},
 		{
-			name:     "GHTKN_OPEN_BROWSER any non-false enables",
+			name:     "GHTKN_OPEN_BROWSER=0 disables",
 			env:      map[string]string{"GHTKN_OPEN_BROWSER": "0"},
+			cfg:      &pubconfig.Config{},
+			wantOpen: new(false),
+		},
+		{
+			name:     "GHTKN_OPEN_BROWSER=true enables",
+			env:      map[string]string{"GHTKN_OPEN_BROWSER": "true"},
 			cfg:      &pubconfig.Config{},
 			wantOpen: new(true),
 		},
 		{
-			name:     "GHTKN_OPEN_BROWSER is case-sensitive (FALSE enables)",
-			env:      map[string]string{"GHTKN_OPEN_BROWSER": "FALSE"},
-			cfg:      &pubconfig.Config{},
-			wantOpen: new(true),
+			name:    "GHTKN_OPEN_BROWSER unparsable value errors",
+			env:     map[string]string{"GHTKN_OPEN_BROWSER": "FALSE!"},
+			cfg:     &pubconfig.Config{},
+			wantErr: true,
 		},
 		{
 			name:     "GHTKN_CLIPBOARD=true enables",
@@ -68,10 +75,16 @@ func TestApplyEnvOverrides(t *testing.T) {
 			wantClip: new(true),
 		},
 		{
-			name:     "GHTKN_CLIPBOARD any non-true stays disabled",
+			name:     "GHTKN_CLIPBOARD=1 enables",
 			env:      map[string]string{"GHTKN_CLIPBOARD": "1"},
 			cfg:      &pubconfig.Config{},
-			wantClip: new(false),
+			wantClip: new(true),
+		},
+		{
+			name:    "GHTKN_CLIPBOARD unparsable value errors",
+			env:     map[string]string{"GHTKN_CLIPBOARD": "yes"},
+			cfg:     &pubconfig.Config{},
+			wantErr: true,
 		},
 		{
 			name:     "GHTKN_CLIPBOARD overrides the file value",
@@ -83,7 +96,13 @@ func TestApplyEnvOverrides(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			config.ApplyEnvOverrides(tt.cfg, func(k string) string { return tt.env[k] })
+			err := config.ApplyEnvOverrides(tt.cfg, func(k string) string { return tt.env[k] })
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ApplyEnvOverrides error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
 
 			gotBackend := ""
 			if tt.cfg.Backend != nil {

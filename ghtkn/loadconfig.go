@@ -37,6 +37,8 @@ func loadConfig(getEnv func(string) string, goos string) (*config.Config, error)
 	if err := intconfig.NewReader().Read(cfg, path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("read the config file: %w", err)
 	}
-	intconfig.ApplyEnvOverrides(cfg, getEnv)
+	if err := intconfig.ApplyEnvOverrides(cfg, getEnv); err != nil {
+		return nil, fmt.Errorf("apply environment overrides: %w", err)
+	}
 	return cfg, nil
 }
