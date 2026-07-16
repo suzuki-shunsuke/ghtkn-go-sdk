@@ -62,7 +62,10 @@ func (b *Backend) Get(ctx context.Context, clientID string) ([]byte, error) {
 // flow. It returns (nil, nil) on a miss and agentapi.ErrAgentNotRunning when no agent
 // is listening.
 func (b *Backend) GetActive(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, error) {
-	resp, err := b.get(ctx, clientID, &agentapi.Request{MinExpiration: minExpiration})
+	resp, err := b.get(ctx, &agentapi.Request{
+		ClientID:      clientID,
+		MinExpiration: minExpiration,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -72,11 +75,10 @@ func (b *Backend) GetActive(ctx context.Context, clientID string, minExpiration 
 	return nil, nil
 }
 
-// get sends a single GET built from the given request options (StartDeviceFlow,
-// AwaitDeviceFlow, MinExpiration); the command and client ID are filled in here.
-func (b *Backend) get(ctx context.Context, clientID string, req *agentapi.Request) (*agentapi.Response, error) {
+// get sends a single GET built from the given request (ClientID, StartDeviceFlow,
+// AwaitDeviceFlow, MinExpiration); only the command is filled in here.
+func (b *Backend) get(ctx context.Context, req *agentapi.Request) (*agentapi.Response, error) {
 	req.Command = agentapi.CommandGet
-	req.ClientID = clientID
 	resp, err := agentapi.Send(ctx, b.socket, req)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
@@ -108,7 +110,11 @@ func (b *Backend) get(ctx context.Context, clientID string, req *agentapi.Reques
 // started flow, which the client displays before polling with Poll. Exactly one of
 // the returned token and device code is non-nil.
 func (b *Backend) Begin(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, *pubdeviceflow.DeviceCodeResponse, error) {
-	resp, err := b.get(ctx, clientID, &agentapi.Request{StartDeviceFlow: true, MinExpiration: minExpiration})
+	resp, err := b.get(ctx, &agentapi.Request{
+		ClientID:        clientID,
+		StartDeviceFlow: true,
+		MinExpiration:   minExpiration,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -155,7 +161,11 @@ func (b *Backend) Poll(ctx context.Context, clientID string, minExpiration time.
 // finish. It returns the token bytes when ready, (nil, nil) while the flow is still
 // pending, and an error when the agent reports the flow ended without a token.
 func (b *Backend) pollOnce(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, error) {
-	resp, err := b.get(ctx, clientID, &agentapi.Request{AwaitDeviceFlow: true, MinExpiration: minExpiration})
+	resp, err := b.get(ctx, &agentapi.Request{
+		ClientID:        clientID,
+		AwaitDeviceFlow: true,
+		MinExpiration:   minExpiration,
+	})
 	if err != nil {
 		return nil, err
 	}
