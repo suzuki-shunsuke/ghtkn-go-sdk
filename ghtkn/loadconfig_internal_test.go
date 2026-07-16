@@ -1,6 +1,7 @@
 package ghtkn
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -89,9 +90,7 @@ open_browser:
 			t.Parallel()
 
 			env := map[string]string{}
-			for k, v := range tt.env {
-				env[k] = v
-			}
+			maps.Copy(env, tt.env)
 			switch {
 			case tt.invalidYAML:
 				path := filepath.Join(t.TempDir(), "ghtkn.yaml")
