@@ -434,7 +434,6 @@ func TestEnableDeviceFlow(t *testing.T) {
 
 func TestResolveMinExpiration(t *testing.T) {
 	t.Parallel()
-	ptr := func(d time.Duration) *time.Duration { return &d }
 	data := []struct {
 		name     string
 		override *time.Duration
@@ -443,8 +442,8 @@ func TestResolveMinExpiration(t *testing.T) {
 		wantErr  bool
 	}{
 		{name: "default zero when all unset", want: 0},
-		{name: "override wins over config", override: ptr(time.Hour), cfg: "10m", want: time.Hour},
-		{name: "override zero beats config", override: ptr(0), cfg: "1h", want: 0},
+		{name: "override wins over config", override: new(time.Hour), cfg: "10m", want: time.Hour},
+		{name: "override zero beats config", override: new(time.Duration(0)), cfg: "1h", want: 0},
 		{name: "config when override unset", cfg: "10m", want: 10 * time.Minute},
 		{name: "invalid config errors", cfg: "nope", wantErr: true},
 	}
@@ -494,15 +493,14 @@ func TestResolveBackendType(t *testing.T) {
 
 func TestSkipAccountPicker(t *testing.T) {
 	t.Parallel()
-	ptr := func(b bool) *bool { return &b }
 	data := []struct {
 		name string
 		cfg  *bool
 		want bool
 	}{
 		{name: "default skipped when unset", cfg: nil, want: true},
-		{name: "explicit true skips", cfg: ptr(true), want: true},
-		{name: "explicit false shows picker", cfg: ptr(false), want: false},
+		{name: "explicit true skips", cfg: new(true), want: true},
+		{name: "explicit false shows picker", cfg: new(false), want: false},
 	}
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {

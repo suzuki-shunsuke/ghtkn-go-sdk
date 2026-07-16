@@ -9,7 +9,6 @@ import (
 
 func TestApplyEnvOverrides(t *testing.T) {
 	t.Parallel()
-	bp := func(b bool) *bool { return &b }
 	tests := []struct {
 		name        string
 		env         map[string]string
@@ -48,37 +47,37 @@ func TestApplyEnvOverrides(t *testing.T) {
 			name:     "GHTKN_OPEN_BROWSER=false disables",
 			env:      map[string]string{"GHTKN_OPEN_BROWSER": "false"},
 			cfg:      &pubconfig.Config{},
-			wantOpen: bp(false),
+			wantOpen: new(false),
 		},
 		{
 			name:     "GHTKN_OPEN_BROWSER any non-false enables",
 			env:      map[string]string{"GHTKN_OPEN_BROWSER": "0"},
 			cfg:      &pubconfig.Config{},
-			wantOpen: bp(true),
+			wantOpen: new(true),
 		},
 		{
 			name:     "GHTKN_OPEN_BROWSER is case-sensitive (FALSE enables)",
 			env:      map[string]string{"GHTKN_OPEN_BROWSER": "FALSE"},
 			cfg:      &pubconfig.Config{},
-			wantOpen: bp(true),
+			wantOpen: new(true),
 		},
 		{
 			name:     "GHTKN_CLIPBOARD=true enables",
 			env:      map[string]string{"GHTKN_CLIPBOARD": "true"},
 			cfg:      &pubconfig.Config{},
-			wantClip: bp(true),
+			wantClip: new(true),
 		},
 		{
 			name:     "GHTKN_CLIPBOARD any non-true stays disabled",
 			env:      map[string]string{"GHTKN_CLIPBOARD": "1"},
 			cfg:      &pubconfig.Config{},
-			wantClip: bp(false),
+			wantClip: new(false),
 		},
 		{
 			name:     "GHTKN_CLIPBOARD overrides the file value",
 			env:      map[string]string{"GHTKN_CLIPBOARD": "false"},
-			cfg:      &pubconfig.Config{Clipboard: &pubconfig.Clipboard{Enable: bp(true)}},
-			wantClip: bp(false),
+			cfg:      &pubconfig.Config{Clipboard: &pubconfig.Clipboard{Enable: new(true)}},
+			wantClip: new(false),
 		},
 	}
 	for _, tt := range tests {

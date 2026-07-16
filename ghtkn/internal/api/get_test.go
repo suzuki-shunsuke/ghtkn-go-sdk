@@ -243,7 +243,6 @@ func TestTokenManager_Get(t *testing.T) {
 
 func TestOpenBrowser(t *testing.T) {
 	t.Parallel()
-	boolPtr := func(b bool) *bool { return &b }
 	// The GHTKN_OPEN_BROWSER override is folded into the config upstream by
 	// config.ApplyEnvOverrides (tested there); this covers the config/default resolution.
 	tests := []struct {
@@ -252,8 +251,8 @@ func TestOpenBrowser(t *testing.T) {
 		want bool
 	}{
 		{name: "config unset defaults to open", cfg: nil, want: true},
-		{name: "config disables", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(false)}, want: false},
-		{name: "config enables", cfg: &pubconfig.OpenBrowser{Enable: boolPtr(true)}, want: true},
+		{name: "config disables", cfg: &pubconfig.OpenBrowser{Enable: new(false)}, want: false},
+		{name: "config enables", cfg: &pubconfig.OpenBrowser{Enable: new(true)}, want: true},
 		{name: "config present but unspecified defaults to open", cfg: &pubconfig.OpenBrowser{}, want: true},
 	}
 	for _, tt := range tests {
@@ -268,7 +267,6 @@ func TestOpenBrowser(t *testing.T) {
 
 func TestClipboard(t *testing.T) {
 	t.Parallel()
-	boolPtr := func(b bool) *bool { return &b }
 	// The GHTKN_CLIPBOARD override is folded into the config upstream by
 	// config.ApplyEnvOverrides (tested there); this covers the flag/config/default resolution.
 	tests := []struct {
@@ -278,11 +276,11 @@ func TestClipboard(t *testing.T) {
 		want     bool
 	}{
 		{name: "all unset defaults to disabled", want: false},
-		{name: "config enables", cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: true},
-		{name: "config disables", cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: false},
+		{name: "config enables", cfg: &pubconfig.Clipboard{Enable: new(true)}, want: true},
+		{name: "config disables", cfg: &pubconfig.Clipboard{Enable: new(false)}, want: false},
 		{name: "config present but unspecified defaults to disabled", cfg: &pubconfig.Clipboard{}, want: false},
-		{name: "override true beats config disable", override: boolPtr(true), cfg: &pubconfig.Clipboard{Enable: boolPtr(false)}, want: true},
-		{name: "override false beats config enable", override: boolPtr(false), cfg: &pubconfig.Clipboard{Enable: boolPtr(true)}, want: false},
+		{name: "override true beats config disable", override: new(true), cfg: &pubconfig.Clipboard{Enable: new(false)}, want: true},
+		{name: "override false beats config enable", override: new(false), cfg: &pubconfig.Clipboard{Enable: new(true)}, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -47,7 +47,7 @@ open_browser:
 			writeFile:       true,
 			wantBackend:     "text",
 			wantMinExp:      "30m",
-			wantOpenBrowser: ptr(true),
+			wantOpenBrowser: new(true),
 		},
 		{
 			name:            "GHTKN_BACKEND overrides the file",
@@ -55,7 +55,7 @@ open_browser:
 			env:             map[string]string{"GHTKN_BACKEND": "agent"},
 			wantBackend:     "agent",
 			wantMinExp:      "30m",
-			wantOpenBrowser: ptr(true),
+			wantOpenBrowser: new(true),
 		},
 		{
 			name:            "all env overrides win over the file",
@@ -63,8 +63,8 @@ open_browser:
 			env:             map[string]string{"GHTKN_BACKEND": "agent", "GHTKN_MIN_EXPIRATION": "1h", "GHTKN_OPEN_BROWSER": "false", "GHTKN_CLIPBOARD": "true"},
 			wantBackend:     "agent",
 			wantMinExp:      "1h",
-			wantOpenBrowser: ptr(false),
-			wantClipboard:   ptr(true),
+			wantOpenBrowser: new(false),
+			wantClipboard:   new(true),
 		},
 		{
 			name:        "no config file, no env -> empty",
@@ -128,8 +128,6 @@ open_browser:
 		})
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func backendType(cfg *config.Config) string {
 	if cfg.Backend == nil {
