@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -17,6 +19,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // fakeAgent listens on a Unix socket and serves one request per connection using
@@ -134,6 +137,30 @@ func TestBackend_getWarning(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), warning) {
 		t.Fatalf("the warning must be surfaced to the user; got %q", buf.String())
+	}
+}
+
+// TestBackend_getWarning_customHook verifies that a consumer-provided AgentWarning log
+// hook is honored, so the agent's warning can be re-routed or reformatted instead of the
+// default stderr line.
+func TestBackend_getWarning_customHook(t *testing.T) {
+	t.Parallel()
+	value := `{"access_token":"abc","expiration_date":"2026-01-01T00:00:00Z"}`
+	const warning = "a still-valid refresh token failed to refresh"
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{OK: true, Token: json.RawMessage(value), Warning: warning}
+	})
+	var got string
+	logger := &publog.Logger{
+		AgentWarning: func(_ *slog.Logger, _ io.Writer, message string) {
+			got = message
+		},
+	}
+	if _, err := (&Backend{socket: f.socket, logger: logger}).Get(context.Background(), "Iv1.x"); err != nil {
+		t.Fatal(err)
+	}
+	if got != warning {
+		t.Fatalf("the custom AgentWarning hook must receive the warning; got %q, want %q", got, warning)
 	}
 }
 

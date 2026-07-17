@@ -10,12 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // Backend stores and retrieves access tokens through a running ghtkn agent over a
@@ -25,6 +28,12 @@ type Backend struct {
 	// warn is where security-relevant agent warnings are written. It defaults to
 	// os.Stderr when nil; tests set it to capture the output.
 	warn io.Writer
+	// logger holds the customizable log hooks; the AgentWarning hook renders the
+	// agent's security warnings. It defaults to the internal defaults when nil.
+	logger *publog.Logger
+	// slogLogger is the per-request structured logger passed to the log hooks. It
+	// defaults to slog.Default() when nil.
+	slogLogger *slog.Logger
 }
 
 // warnWriter returns where agent warnings should be written, defaulting to os.Stderr.
@@ -35,16 +44,35 @@ func (b *Backend) warnWriter() io.Writer {
 	return os.Stderr
 }
 
+// emitWarning surfaces a security-relevant agent warning through the AgentWarning log
+// hook, defaulting the hook table and the structured logger when they are unset (e.g.
+// a Backend built as a struct literal in a test).
+func (b *Backend) emitWarning(message string) {
+	lg := b.logger
+	if lg == nil || lg.AgentWarning == nil {
+		lg = log.NewLogger()
+	}
+	sl := b.slogLogger
+	if sl == nil {
+		sl = slog.Default()
+	}
+	lg.AgentWarning(sl, b.warnWriter(), message)
+}
+
 // New creates an agent backend. It resolves the socket path (GHTKN_AGENT_SOCKET, then
 // the XDG-based default) but does not connect; a missing agent is reported on the
-// first Get.
-func New(getEnv func(string) string) (*Backend, error) {
+// first Get. logger supplies the customizable log hooks (AgentWarning) and slogLogger
+// is the per-request structured logger passed to them; both may be nil, in which case
+// the internal defaults and slog.Default() are used.
+func New(getEnv func(string) string, logger *publog.Logger, slogLogger *slog.Logger) (*Backend, error) {
 	socket, err := agentapi.SocketPath(getEnv, runtime.GOOS)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // SocketPath returns a descriptive error
 	}
 	return &Backend{
-		socket: socket,
+		socket:     socket,
+		logger:     logger,
+		slogLogger: slogLogger,
 	}, nil
 }
 
@@ -88,8 +116,7 @@ func (b *Backend) get(ctx context.Context, req *agentapi.Request) (*agentapi.Res
 	// log which a background agent's operator may never see. Write it straight to
 	// stderr so `ghtkn get` and the git credential helper both surface it.
 	if resp.Warning != "" {
-		// A failed warning write to stderr is not actionable; ignore it.
-		_, _ = fmt.Fprintf(b.warnWriter(), "WARNING: ghtkn agent: %s\n", resp.Warning)
+		b.emitWarning(resp.Warning)
 	}
 	if !resp.OK {
 		if resp.Error == agentapi.RespNotFound {

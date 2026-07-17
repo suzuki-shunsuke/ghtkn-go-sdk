@@ -98,7 +98,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		return nil, nil, fmt.Errorf("resolve the min expiration: %w", attrs.With(err))
 	}
 
-	b, err := tm.resolveBackend(cfg)
+	b, err := tm.resolveBackend(logger, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve the backend: %w", attrs.With(err))
 	}

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
@@ -16,6 +17,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/keyring"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/backend/text"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // Backend stores and retrieves access tokens through a pluggable inner backend.
@@ -48,11 +50,12 @@ type deviceFlowBackend interface {
 // New creates a Backend based on the GHTKN_BACKEND environment variable.
 // An empty value or "keyring" selects the OS keyring (the default); "agent" selects
 // the ghtkn agent; "text" selects the plaintext file backend. Any other value
-// returns an error.
-func New(s string, getEnv func(string) string) (*Backend, error) {
+// returns an error. logger and slogLogger are only used by the agent backend to
+// surface its warnings; the keyring and text backends ignore them.
+func New(s string, getEnv func(string) string, logger *publog.Logger, slogLogger *slog.Logger) (*Backend, error) {
 	switch s {
 	case "agent":
-		a, err := agent.New(getEnv)
+		a, err := agent.New(getEnv, logger, slogLogger)
 		if err != nil {
 			return nil, err
 		}

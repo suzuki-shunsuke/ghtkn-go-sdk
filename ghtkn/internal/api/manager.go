@@ -67,11 +67,11 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 // Otherwise the backend is built from the resolved backend type: the
 // GHTKN_BACKEND environment variable takes precedence, then the config's
 // backend.type, defaulting to the OS keyring.
-func (tm *TokenManager) resolveBackend(cfg *pubconfig.Config) (Backend, error) {
+func (tm *TokenManager) resolveBackend(logger *slog.Logger, cfg *pubconfig.Config) (Backend, error) {
 	if tm.input.Backend != nil {
 		return tm.input.Backend, nil
 	}
-	return backend.New(resolveBackendType(cfg.Backend), tm.input.Getenv)
+	return backend.New(resolveBackendType(cfg.Backend), tm.input.Getenv, tm.input.Logger, logger)
 }
 
 // Validate checks if the Input configuration is valid.

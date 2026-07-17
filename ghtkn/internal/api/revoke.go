@@ -84,7 +84,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 		return err
 	}
 
-	b, err := tm.resolveBackend(cfg)
+	b, err := tm.resolveBackend(logger, cfg)
 	if err != nil {
 		return fmt.Errorf("resolve the backend: %w", err)
 	}
