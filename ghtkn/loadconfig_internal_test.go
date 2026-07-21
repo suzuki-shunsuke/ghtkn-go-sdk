@@ -23,13 +23,23 @@ min_expiration: 30m
 open_browser:
   enable: true
 `
-	writeConfig := func(t *testing.T) string {
+	// A second config file with different values, used as the GHTKN_CONFIG target in the
+	// explicit-path cases so the tests can prove the explicit path is the file that is read.
+	const otherCfgYAML = `backend:
+  type: agent
+min_expiration: 5m
+`
+	writeConfigContent := func(t *testing.T, content string) string {
 		t.Helper()
 		path := filepath.Join(t.TempDir(), "ghtkn.yaml")
-		if err := os.WriteFile(path, []byte(cfgYAML), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		return path
+	}
+	writeConfig := func(t *testing.T) string {
+		t.Helper()
+		return writeConfigContent(t, cfgYAML)
 	}
 
 	tests := []struct {
@@ -37,6 +47,8 @@ open_browser:
 		env             map[string]string
 		writeFile       bool
 		invalidYAML     bool // write a malformed config file to exercise the Read error path
+		explicitPath    bool // pass the config file path explicitly, with GHTKN_CONFIG pointing elsewhere
+		explicitMissing bool // pass an explicit path to a file that does not exist
 		wantErr         bool
 		wantBackend     string
 		wantMinExp      string
@@ -90,6 +102,28 @@ open_browser:
 			invalidYAML: true,
 			wantErr:     true,
 		},
+		{
+			name:            "an explicit path wins over GHTKN_CONFIG",
+			explicitPath:    true,
+			wantBackend:     "text",
+			wantMinExp:      "30m",
+			wantOpenBrowser: new(true),
+		},
+		{
+			name:            "env overrides still win over an explicit path",
+			explicitPath:    true,
+			env:             map[string]string{"GHTKN_BACKEND": "keyring"},
+			wantBackend:     "keyring",
+			wantMinExp:      "30m",
+			wantOpenBrowser: new(true),
+		},
+		{
+			name:            "a missing explicit path yields an empty config, ignoring GHTKN_CONFIG",
+			explicitMissing: true,
+			env:             map[string]string{"GHTKN_BACKEND": "agent"},
+			wantBackend:     "agent",
+			wantMinExp:      "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -97,13 +131,22 @@ open_browser:
 
 			env := map[string]string{}
 			maps.Copy(env, tt.env)
+			path := ""
 			switch {
 			case tt.invalidYAML:
-				path := filepath.Join(t.TempDir(), "ghtkn.yaml")
-				if err := os.WriteFile(path, []byte("apps: [ this is not valid yaml"), 0o600); err != nil {
+				p := filepath.Join(t.TempDir(), "ghtkn.yaml")
+				if err := os.WriteFile(p, []byte("apps: [ this is not valid yaml"), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				env["GHTKN_CONFIG"] = path
+				env["GHTKN_CONFIG"] = p
+			case tt.explicitPath:
+				// GHTKN_CONFIG points at a different config file, so reading it instead of
+				// the explicit path would change the expected backend and min_expiration.
+				env["GHTKN_CONFIG"] = writeConfigContent(t, otherCfgYAML)
+				path = writeConfig(t)
+			case tt.explicitMissing:
+				env["GHTKN_CONFIG"] = writeConfig(t)
+				path = filepath.Join(t.TempDir(), "absent.yaml")
 			case tt.writeFile:
 				env["GHTKN_CONFIG"] = writeConfig(t)
 			default:
@@ -111,7 +154,7 @@ open_browser:
 			}
 			getEnv := func(k string) string { return env[k] }
 
-			cfg, err := loadConfig(getEnv, "linux")
+			cfg, err := loadConfig(getEnv, "linux", path)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("loadConfig() expected an error, got nil")
