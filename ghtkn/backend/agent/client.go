@@ -60,7 +60,14 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshal the request: %w", err)
 	}
-	if _, err := conn.Write(append(b, '\n')); err != nil {
+	// An UNLOCK request line carries the passphrase in the clear, so zero the marshaled
+	// bytes once they are written, as the agent does with the line it reads. Both buffers
+	// are zeroed because append may or may not reuse b's array; zeroing the same array
+	// twice is harmless.
+	reqLine := append(b, '\n')
+	defer zero(b)
+	defer zero(reqLine)
+	if _, err := conn.Write(reqLine); err != nil {
 		return nil, fmt.Errorf("send the request: %w", err)
 	}
 

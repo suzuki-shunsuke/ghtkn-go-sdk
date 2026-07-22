@@ -78,7 +78,11 @@ const (
 // pre-versioning clients that send a string).
 type SecretBytes []byte
 
-// MarshalJSON encodes the secret as a plain JSON string.
+// MarshalJSON encodes the secret as a plain JSON string. Encoding materializes a
+// transient string that cannot be zeroed, and the marshaled bytes hold the secret in
+// the clear until the caller discards them (Send zeroes the request line it writes).
+// Zeroing every copy is not achievable through encoding/json; a process that holds a
+// secret should also block memory reads and core dumps of itself.
 func (s SecretBytes) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(s)) //nolint:wrapcheck
 }
@@ -96,8 +100,13 @@ func (s *SecretBytes) UnmarshalJSON(b []byte) error {
 
 // Zero overwrites the secret's bytes with zeros. It is a no-op on a nil slice.
 func (s SecretBytes) Zero() {
-	for i := range s {
-		s[i] = 0
+	zero(s)
+}
+
+// zero overwrites b with zeros. It is a no-op on a nil slice.
+func zero(b []byte) {
+	for i := range b {
+		b[i] = 0
 	}
 }
 
