@@ -1,4 +1,4 @@
-package deviceflow
+package deviceflow_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	intdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/ui"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
@@ -66,7 +67,7 @@ func (m *mockOnetimeCodeUI) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTe
 func TestClient_SetCopyOnetimeCodeToClipboard(t *testing.T) {
 	t.Parallel()
 	onetime := &mockOnetimeCodeUI{}
-	c := NewClient(&Input{OnetimeCodeUI: onetime})
+	c := intdeviceflow.NewClient(&intdeviceflow.Input{OnetimeCodeUI: onetime})
 
 	called := false
 	c.SetCopyOnetimeCodeToClipboard(func(context.Context, string) error {
@@ -109,14 +110,14 @@ func TestClient_Create_coordination(t *testing.T) {
 		onetime := &mockOnetimeCodeUI{calls: &calls}
 		fixedTime := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-		input := &Input{
+		input := &intdeviceflow.Input{
 			Stderr:        io.Discard,
 			Logger:        log.NewLogger(),
 			OnetimeCodeUI: onetime,
 			Client:        df,
 		}
 
-		tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+		tk, err := intdeviceflow.NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &intdeviceflow.InputCreate{
 			ClientID:          "test-client-id",
 			AppName:           "my-app",
 			SkipAccountPicker: true,
@@ -161,14 +162,14 @@ func TestClient_Create_emptyClientID(t *testing.T) {
 
 	var calls []string
 	df := &mockDeviceFlow{calls: &calls}
-	input := &Input{
+	input := &intdeviceflow.Input{
 		Stderr:        io.Discard,
 		Logger:        log.NewLogger(),
 		OnetimeCodeUI: &mockOnetimeCodeUI{calls: &calls},
 		Client:        df,
 	}
 
-	_, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{ClientID: ""})
+	_, err := intdeviceflow.NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &intdeviceflow.InputCreate{ClientID: ""})
 	if err == nil {
 		t.Fatal("Create() expected an error, got nil")
 	}
@@ -183,7 +184,7 @@ func TestClient_Show(t *testing.T) {
 	t.Parallel()
 
 	onetime := &mockOnetimeCodeUI{}
-	input := &Input{
+	input := &intdeviceflow.Input{
 		Stderr:        io.Discard,
 		Logger:        log.NewLogger(),
 		OnetimeCodeUI: onetime,
@@ -193,7 +194,7 @@ func TestClient_Show(t *testing.T) {
 		VerificationURI: "https://github.com/login/device",
 	}
 
-	if err := NewClient(input).Show(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+	if err := intdeviceflow.NewClient(input).Show(t.Context(), slog.New(slog.DiscardHandler), &intdeviceflow.InputCreate{
 		ClientID:          "test-client-id",
 		AppName:           "my-app",
 		SkipAccountPicker: true,
