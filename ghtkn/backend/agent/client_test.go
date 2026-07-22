@@ -2,7 +2,6 @@ package agent_test
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"net"
 	"path/filepath"
@@ -59,7 +58,7 @@ func TestSend_roundTrip(t *testing.T) {
 		}
 		return &agentapi.Response{OK: true, Token: json.RawMessage(`{"access_token":"abc"}`)}
 	})
-	resp, err := agentapi.Send(context.Background(), socket, &agentapi.Request{Command: agentapi.CommandGet, ClientID: "Iv1.x"})
+	resp, err := agentapi.Send(t.Context(), socket, &agentapi.Request{Command: agentapi.CommandGet, ClientID: "Iv1.x"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +73,7 @@ func TestSend_notFound(t *testing.T) {
 	socket := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespNotFound}
 	})
-	resp, err := agentapi.Send(context.Background(), socket, &agentapi.Request{Command: agentapi.CommandGet, ClientID: "Iv1.x"})
+	resp, err := agentapi.Send(t.Context(), socket, &agentapi.Request{Command: agentapi.CommandGet, ClientID: "Iv1.x"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +85,7 @@ func TestSend_notFound(t *testing.T) {
 func TestSend_agentNotRunning(t *testing.T) {
 	t.Parallel()
 	socket := filepath.Join(t.TempDir(), "absent.sock")
-	_, err := agentapi.Send(context.Background(), socket, &agentapi.Request{Command: agentapi.CommandStatus})
+	_, err := agentapi.Send(t.Context(), socket, &agentapi.Request{Command: agentapi.CommandStatus})
 	if !agentapi.IsNotRunning(err) {
 		t.Fatalf("err = %v, want ErrAgentNotRunning", err)
 	}

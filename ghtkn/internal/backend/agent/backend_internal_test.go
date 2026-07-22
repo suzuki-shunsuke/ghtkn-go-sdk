@@ -3,7 +3,6 @@ package agent
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -94,7 +93,7 @@ func TestBackend_getHit(t *testing.T) {
 		}
 		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
 	})
-	got, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x")
+	got, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +107,7 @@ func TestBackend_getMiss(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespNotFound}
 	})
-	got, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.absent")
+	got, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.absent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +127,7 @@ func TestBackend_getWarning(t *testing.T) {
 		return &agentapi.Response{OK: true, Token: json.RawMessage(value), Warning: warning}
 	})
 	var buf bytes.Buffer
-	got, err := (&Backend{socket: f.socket, warn: &buf}).Get(context.Background(), "Iv1.x")
+	got, err := (&Backend{socket: f.socket, warn: &buf}).Get(t.Context(), "Iv1.x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +155,7 @@ func TestBackend_getWarning_customHook(t *testing.T) {
 			got = message
 		},
 	}
-	if _, err := (&Backend{socket: f.socket, logger: logger}).Get(context.Background(), "Iv1.x"); err != nil {
+	if _, err := (&Backend{socket: f.socket, logger: logger}).Get(t.Context(), "Iv1.x"); err != nil {
 		t.Fatal(err)
 	}
 	if got != warning {
@@ -171,7 +170,7 @@ func TestBackend_getProbeShape(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespNotFound}
 	})
-	if _, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x"); err != nil {
+	if _, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.x"); err != nil {
 		t.Fatal(err)
 	}
 	reqs := f.reqs()
@@ -185,7 +184,7 @@ func TestBackend_serverError(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: "boom"}
 	})
-	if _, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x"); err == nil {
+	if _, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.x"); err == nil {
 		t.Fatal("a server error response must produce an error")
 	}
 }
@@ -193,7 +192,7 @@ func TestBackend_serverError(t *testing.T) {
 func TestBackend_agentNotRunning(t *testing.T) {
 	t.Parallel()
 	socket := filepath.Join(t.TempDir(), "absent.sock")
-	if _, err := (&Backend{socket: socket}).Get(context.Background(), "Iv1.x"); !agentapi.IsNotRunning(err) {
+	if _, err := (&Backend{socket: socket}).Get(t.Context(), "Iv1.x"); !agentapi.IsNotRunning(err) {
 		t.Fatalf("Get err = %v, want ErrAgentNotRunning", err)
 	}
 }
@@ -203,7 +202,7 @@ func TestBackend_locked(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	})
-	if _, err := (&Backend{socket: f.socket}).Get(context.Background(), "Iv1.x"); !agentapi.IsLocked(err) {
+	if _, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.x"); !agentapi.IsLocked(err) {
 		t.Fatalf("Get err = %v, want ErrAgentLocked", err)
 	}
 }
@@ -212,7 +211,7 @@ func TestBackend_locked(t *testing.T) {
 // agent mints and stores tokens itself.
 func TestBackend_setUnsupported(t *testing.T) {
 	t.Parallel()
-	if err := (&Backend{socket: "unused"}).Set(context.Background(), "Iv1.x", "{}"); err == nil {
+	if err := (&Backend{socket: "unused"}).Set(t.Context(), "Iv1.x", "{}"); err == nil {
 		t.Fatal("Set must return an error on the agent backend")
 	}
 }
@@ -251,7 +250,7 @@ func TestBackend_beginAndPoll(t *testing.T) {
 	// counter above, not by timing, so the assertions are unchanged.
 	synctest.Test(t, func(t *testing.T) {
 		b := &Backend{socket: f.socket}
-		ctx := context.Background()
+		ctx := t.Context()
 
 		token, dc, err := b.Begin(ctx, "Iv1.x", 0)
 		if err != nil {
@@ -284,7 +283,7 @@ func TestBackend_pollFlowFailed(t *testing.T) {
 	})
 	synctest.Test(t, func(t *testing.T) {
 		b := &Backend{socket: f.socket}
-		if _, err := b.Poll(context.Background(), "Iv1.x", 0); err == nil {
+		if _, err := b.Poll(t.Context(), "Iv1.x", 0); err == nil {
 			t.Fatal("Poll must error when the flow ends without a token")
 		}
 	})
@@ -299,7 +298,7 @@ func TestBackend_getActiveSendsMinExpiration(t *testing.T) {
 		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
 	})
 	const minExpiration = 30 * time.Minute
-	if _, err := (&Backend{socket: f.socket}).GetActive(context.Background(), "Iv1.x", minExpiration); err != nil {
+	if _, err := (&Backend{socket: f.socket}).GetActive(t.Context(), "Iv1.x", minExpiration); err != nil {
 		t.Fatal(err)
 	}
 	reqs := f.reqs()
@@ -327,7 +326,7 @@ func TestBackend_beginReturnsExistingToken(t *testing.T) {
 		return &agentapi.Response{OK: true, Token: json.RawMessage(value)}
 	})
 	b := &Backend{socket: f.socket}
-	token, dc, err := b.Begin(context.Background(), "Iv1.x", 0)
+	token, dc, err := b.Begin(t.Context(), "Iv1.x", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +348,7 @@ func TestBackend_revokeTokens(t *testing.T) {
 		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 			return &agentapi.Response{OK: true, RevokeFailed: []string{"Iv1.b"}, CleanupFailed: []string{"Iv1.c"}}
 		})
-		revokeFailed, cleanupFailed, err := (&Backend{socket: f.socket}).RevokeTokens(context.Background(), []string{"Iv1.a", "Iv1.b", "Iv1.c"})
+		revokeFailed, cleanupFailed, err := (&Backend{socket: f.socket}).RevokeTokens(t.Context(), []string{"Iv1.a", "Iv1.b", "Iv1.c"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -372,7 +371,7 @@ func TestBackend_revokeTokens(t *testing.T) {
 		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 			return &agentapi.Response{Error: "boom"}
 		})
-		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(context.Background(), []string{"Iv1.x"}); err == nil {
+		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(t.Context(), []string{"Iv1.x"}); err == nil {
 			t.Fatal("a server error response must produce an error")
 		}
 	})
@@ -381,7 +380,7 @@ func TestBackend_revokeTokens(t *testing.T) {
 		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 			return &agentapi.Response{Error: agentapi.RespLocked}
 		})
-		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(context.Background(), []string{"Iv1.x"}); !agentapi.IsLocked(err) {
+		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(t.Context(), []string{"Iv1.x"}); !agentapi.IsLocked(err) {
 			t.Fatalf("RevokeTokens err = %v, want ErrAgentLocked", err)
 		}
 	})
@@ -390,7 +389,7 @@ func TestBackend_revokeTokens(t *testing.T) {
 func TestBackend_deleteOK(t *testing.T) {
 	t.Parallel()
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response { return &agentapi.Response{OK: true} })
-	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.x"); err != nil {
+	if err := (&Backend{socket: f.socket}).Delete(t.Context(), "Iv1.x"); err != nil {
 		t.Fatal(err)
 	}
 	reqs := f.reqs()
@@ -404,7 +403,7 @@ func TestBackend_deleteMiss(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespNotFound}
 	})
-	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.absent"); err != nil {
+	if err := (&Backend{socket: f.socket}).Delete(t.Context(), "Iv1.absent"); err != nil {
 		t.Fatalf("Delete() on miss must return nil, got %v", err)
 	}
 }
@@ -414,7 +413,7 @@ func TestBackend_deleteLocked(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	})
-	if err := (&Backend{socket: f.socket}).Delete(context.Background(), "Iv1.x"); !agentapi.IsLocked(err) {
+	if err := (&Backend{socket: f.socket}).Delete(t.Context(), "Iv1.x"); !agentapi.IsLocked(err) {
 		t.Fatalf("Delete err = %v, want ErrAgentLocked", err)
 	}
 }
@@ -422,7 +421,7 @@ func TestBackend_deleteLocked(t *testing.T) {
 func TestBackend_deleteNotRunning(t *testing.T) {
 	t.Parallel()
 	socket := filepath.Join(t.TempDir(), "absent.sock")
-	if err := (&Backend{socket: socket}).Delete(context.Background(), "Iv1.x"); !agentapi.IsNotRunning(err) {
+	if err := (&Backend{socket: socket}).Delete(t.Context(), "Iv1.x"); !agentapi.IsNotRunning(err) {
 		t.Fatalf("Delete err = %v, want ErrAgentNotRunning", err)
 	}
 }
