@@ -248,6 +248,30 @@ func skipAccountPicker(cfg *bool) bool {
 // and any error that occurred. The changed flag is used to determine if the token should be
 // saved back to the keyring.
 func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, bool, error) {
+	create := func() (*pubapi.AccessToken, bool, error) {
+		token, changed, err := tm.createToken(ctx, logger, input.Backend, input.MinExpiration, &deviceflow.InputCreate{
+			ClientID:          input.App.ClientID,
+			AppName:           input.App.Name,
+			SkipAccountPicker: input.SkipAccountPicker,
+			OpenBrowser:       input.OpenBrowser,
+			Clipboard:         input.Clipboard,
+		}, input.EnableDeviceFlow)
+		if err != nil {
+			return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
+		}
+		return token, changed, nil
+	}
+
+	// A backend that owns the lifecycle (the agent) checks its own cache before it starts
+	// a flow, so when the flow may run, one request does both: it returns a still-valid
+	// token if there is one. Reading it separately first would make the agent run its
+	// cache path twice, which means a second attempt to refresh an expiring token and,
+	// when that refresh fails while the refresh token is still valid, a second copy of
+	// the incident warning that failure raises.
+	if input.Backend.SupportsDeviceFlow() && input.EnableDeviceFlow {
+		return create()
+	}
+
 	// Get an access token from keyring
 	token, err := tm.getAccessTokenFromBackend(ctx, logger, input)
 	if err != nil {
@@ -257,28 +281,22 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Create access token
-	token, changed, err := tm.createToken(ctx, logger, input.Backend, input.MinExpiration, &deviceflow.InputCreate{
-		ClientID:          input.App.ClientID,
-		AppName:           input.App.Name,
-		SkipAccountPicker: input.SkipAccountPicker,
-		OpenBrowser:       input.OpenBrowser,
-		Clipboard:         input.Clipboard,
-	}, input.EnableDeviceFlow)
-	if err != nil {
-		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
-	}
-	return token, changed, nil
+	return create()
 }
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns the token and whether the caller must persist it (changed).
 //
 // When the backend runs the device flow itself (the agent), the flow runs on the
-// server: this asks it to begin and, unless the agent already has a valid token
-// (minted concurrently), displays the one-time code with the shared UI and polls the
-// backend until the server has minted and stored the token. The server already stored
-// it, so changed is false. Otherwise the client-side device flow runs and the caller
-// must store the token, so changed is true.
+// server: this asks it to begin and, unless the agent already has a valid token,
+// displays the one-time code with the shared UI and polls the backend until the server
+// has minted and stored the token. The server already stored it, so changed is false.
+// Otherwise the client-side device flow runs and the caller must store the token, so
+// changed is true.
+//
+// Beginning is also how a cached token is read on that backend when the flow may run:
+// the agent returns a still-valid token instead of starting a flow, so getOrCreateToken
+// comes straight here rather than reading the backend first (see its comment).
 func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, backend Backend, minExpiration time.Duration, input *deviceflow.InputCreate, enableDeviceFlow bool) (*pubapi.AccessToken, bool, error) {
 	if !enableDeviceFlow {
 		return nil, false, pubapi.ErrDisableDeviceFlow
@@ -289,10 +307,13 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, ba
 			return nil, false, fmt.Errorf("begin the device flow on the agent: %w", err)
 		}
 		if token != nil {
-			// A valid token became available (e.g. minted concurrently), so no flow
-			// was started and there is nothing to display.
+			// The agent had a still-valid token (cached, refreshed, or minted
+			// concurrently), so no flow was started and there is nothing to display.
 			return token, false, nil
 		}
+		// No usable token: report the miss the way the backend read does, since this is
+		// the path that replaces it when the flow may run.
+		tm.input.Logger.AccessTokenIsNotFoundInBackend(logger)
 		if err := tm.input.DeviceFlow.Show(ctx, logger, input, deviceCode); err != nil {
 			return nil, false, fmt.Errorf("show the one-time code: %w", err)
 		}

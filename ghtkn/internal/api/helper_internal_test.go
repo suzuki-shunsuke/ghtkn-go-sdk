@@ -191,13 +191,20 @@ func TestController_createToken_disableDeviceFlow(t *testing.T) {
 // agentBackend is a Backend that runs the device flow itself (like the agent):
 // SupportsDeviceFlow returns true and token creation is driven through
 // GetActive/BeginDeviceFlow/PollDeviceFlow. It records whether Set was called so
-// tests can assert the token is not re-stored by the caller.
+// tests can assert the token is not re-stored by the caller, and how often each read
+// was made so they can assert the agent is asked once rather than twice.
+//
+// Like the real agent, BeginDeviceFlow answers with a still-valid cached token instead
+// of starting a flow, which is what begun models.
 type agentBackend struct {
 	active     *pubapi.AccessToken // token returned by GetActive (nil => none active)
 	begun      *pubapi.AccessToken // token returned by BeginDeviceFlow (nil => a flow starts)
 	deviceCode *pubdeviceflow.DeviceCodeResponse
 	polled     *pubapi.AccessToken
 	setCalled  bool
+	// getActiveCalls and beginCalls count the reads the api layer makes.
+	getActiveCalls int
+	beginCalls     int
 	// revokeFailed and cleanupFailed are returned by RevokeTokens, and revokeErr is
 	// its transport error. revoked records the client IDs passed to RevokeTokens.
 	revokeFailed  []string
@@ -220,10 +227,12 @@ func (b *agentBackend) Delete(_ context.Context, _ string) error { return nil }
 func (b *agentBackend) SupportsDeviceFlow() bool { return true }
 
 func (b *agentBackend) GetActive(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, error) {
+	b.getActiveCalls++
 	return b.active, nil
 }
 
 func (b *agentBackend) BeginDeviceFlow(_ context.Context, _ string, _ time.Duration) (*pubapi.AccessToken, *pubdeviceflow.DeviceCodeResponse, error) {
+	b.beginCalls++
 	return b.begun, b.deviceCode, nil
 }
 
@@ -283,9 +292,13 @@ func TestTokenManager_getOrCreateToken_agentDeviceFlow(t *testing.T) {
 	}
 }
 
-// TestTokenManager_getAccessTokenFromBackend_agentActive verifies that for a
-// backend that owns the token lifecycle, getOrCreateToken returns the token from
-// GetActive without re-fetching via Get, and does not run the device flow.
+// TestTokenManager_getAccessTokenFromBackend_agentActive verifies that for a backend
+// that owns the token lifecycle, getOrCreateToken returns the still-valid token the
+// backend already has and does not run the device flow.
+//
+// The backend is asked exactly once. Reading it and then beginning would make the agent
+// run its cache path twice, so an expiring token would be refreshed twice and a failed
+// refresh would warn twice.
 func TestTokenManager_getAccessTokenFromBackend_agentActive(t *testing.T) {
 	t.Parallel()
 
@@ -293,7 +306,9 @@ func TestTokenManager_getAccessTokenFromBackend_agentActive(t *testing.T) {
 		AccessToken:    "agent-active-token",
 		ExpirationDate: time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
 	}
-	backend := &agentBackend{active: active}
+	// Like the agent, the backend answers a begin with its cached token rather than
+	// starting a flow.
+	backend := &agentBackend{active: active, begun: active}
 	df := &mockDeviceFlow{}
 	input := &Input{
 		DeviceFlow: df,
@@ -320,6 +335,10 @@ func TestTokenManager_getAccessTokenFromBackend_agentActive(t *testing.T) {
 	}
 	if diff := cmp.Diff(active, token); diff != "" {
 		t.Errorf("token mismatch (-want +got):\n%s", diff)
+	}
+	if backend.getActiveCalls+backend.beginCalls != 1 {
+		t.Errorf("the backend was read %d times (GetActive %d, BeginDeviceFlow %d), want exactly 1",
+			backend.getActiveCalls+backend.beginCalls, backend.getActiveCalls, backend.beginCalls)
 	}
 }
 
@@ -364,6 +383,42 @@ func TestTokenManager_getOrCreateToken_agentNoActive(t *testing.T) {
 	}
 	if diff := cmp.Diff(polled, token); diff != "" {
 		t.Errorf("token mismatch (-want +got):\n%s", diff)
+	}
+	if backend.getActiveCalls != 0 {
+		t.Errorf("GetActive was called %d times; beginning already reads the cache, and reading it separately would refresh (and warn) twice", backend.getActiveCalls)
+	}
+}
+
+// TestTokenManager_getOrCreateToken_agentDeviceFlowDisabled verifies that with the
+// device flow disabled the backend is read rather than begun: the agent must not start
+// a flow the caller has not allowed, so the read is the only way to serve a cached
+// token, and a miss is the disabled-device-flow error.
+func TestTokenManager_getOrCreateToken_agentDeviceFlowDisabled(t *testing.T) {
+	t.Parallel()
+
+	backend := &agentBackend{deviceCode: &pubdeviceflow.DeviceCodeResponse{UserCode: "ABCD-1234"}}
+	df := &mockDeviceFlow{}
+	tm := &TokenManager{input: &Input{
+		DeviceFlow: df,
+		Backend:    backend,
+		Logger:     log.NewLogger(),
+		Getenv:     func(string) string { return "" },
+	}}
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+	_, _, err := tm.getOrCreateToken(t.Context(), logger, &inputGetOrCreateToken{
+		App:              &pubconfig.App{Name: "test-app", ClientID: "cid"},
+		Backend:          backend,
+		EnableDeviceFlow: false,
+	})
+	if !errors.Is(err, pubapi.ErrDisableDeviceFlow) {
+		t.Fatalf("getOrCreateToken() error = %v, want ErrDisableDeviceFlow", err)
+	}
+	if backend.getActiveCalls != 1 {
+		t.Errorf("GetActive was called %d times, want 1", backend.getActiveCalls)
+	}
+	if backend.beginCalls != 0 {
+		t.Errorf("BeginDeviceFlow was called %d times, want 0 (the device flow is disabled)", backend.beginCalls)
 	}
 }
 
