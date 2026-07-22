@@ -206,9 +206,10 @@ func resolveMinExpiration(override *time.Duration, cfg string) (time.Duration, e
 
 // openBrowser resolves whether the device flow may open a browser automatically from
 // the (already env-overridden) config's open_browser.enable, defaulting to enabled. The
-// GHTKN_OPEN_BROWSER override (only "false" disables) is applied upstream by
-// config.ApplyEnvOverrides. This lets users in WSL, containers, and headless
-// environments suppress the unreliable browser launch and open the URL manually instead.
+// GHTKN_OPEN_BROWSER override is applied upstream by config.ApplyEnvOverrides, which
+// parses it with strconv.ParseBool and rejects a value it cannot parse. This lets users
+// in WSL, containers, and headless environments suppress the unreliable browser launch
+// and open the URL manually instead.
 func openBrowser(cfg *pubconfig.OpenBrowser) bool {
 	if cfg != nil && cfg.Enable != nil {
 		return *cfg.Enable
@@ -219,9 +220,9 @@ func openBrowser(cfg *pubconfig.OpenBrowser) bool {
 // clipboard resolves whether the device flow copies the one-time code to the system
 // clipboard. An explicit override (the -clipboard flag) takes precedence; otherwise the
 // (already env-overridden) config's clipboard.enable decides, defaulting to disabled.
-// The GHTKN_CLIPBOARD override (only "true" enables) is applied upstream by
-// config.ApplyEnvOverrides. Copying also requires the consumer to inject an
-// implementation via SetCopyOnetimeCodeToClipboard.
+// The GHTKN_CLIPBOARD override is applied upstream by config.ApplyEnvOverrides, which
+// parses it with strconv.ParseBool and rejects a value it cannot parse. Copying also
+// requires the consumer to inject an implementation via SetCopyOnetimeCodeToClipboard.
 func clipboard(override *bool, cfg *pubconfig.Clipboard) bool {
 	if override != nil {
 		return *override
