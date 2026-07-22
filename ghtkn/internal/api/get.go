@@ -67,13 +67,10 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := tm.readConfig(cfg, configPath); err != nil {
+	// The effective config: the file plus the environment overrides, so the resolvers
+	// below read values the environment has already been folded into.
+	if err := tm.loadConfig(cfg, configPath); err != nil {
 		return nil, nil, err
-	}
-	// Fold the environment overrides into the config once, so the resolvers below read
-	// the effective (file plus env) values and the env semantics live in one place.
-	if err := config.ApplyEnvOverrides(cfg, tm.input.Getenv); err != nil {
-		return nil, nil, fmt.Errorf("apply environment overrides: %w", err)
 	}
 
 	// Get the app name
@@ -356,8 +353,24 @@ func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Durati
 	return time.Now().Add(minExpiration).After(exDate)
 }
 
+// loadConfig reads the configuration file and folds the environment overrides into
+// it, so every caller works with the effective (file plus environment) config. The
+// two steps are always paired: the resolvers downstream (resolveBackendType,
+// resolveMinExpiration, openBrowser, clipboard) read the config alone and would
+// silently ignore the environment if a caller read the file without this.
+func (tm *TokenManager) loadConfig(cfg *pubconfig.Config, configFilePath string) error {
+	if err := tm.readConfig(cfg, configFilePath); err != nil {
+		return err
+	}
+	if err := config.ApplyEnvOverrides(cfg, tm.input.Getenv); err != nil {
+		return fmt.Errorf("apply environment overrides: %w", err)
+	}
+	return nil
+}
+
 // readConfig loads and validates the configuration from the configured file path.
-// It returns an error if the configuration cannot be read or is invalid.
+// It returns an error if the configuration cannot be read or is invalid. It is the
+// plain file read; use loadConfig to get the effective config.
 func (tm *TokenManager) readConfig(cfg *pubconfig.Config, configFilePath string) error {
 	if err := tm.input.ConfigReader.Read(cfg, configFilePath); err != nil {
 		return fmt.Errorf("read config: %w", slogerr.With(err, "config", configFilePath))

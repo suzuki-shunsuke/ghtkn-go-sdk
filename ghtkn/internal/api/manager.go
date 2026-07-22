@@ -64,9 +64,10 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 
 // resolveBackend returns the storage backend to use. An injected backend
 // (Input.Backend, e.g. set by a test or an SDK consumer) is honored as is.
-// Otherwise the backend is built from the resolved backend type: the
-// GHTKN_BACKEND environment variable takes precedence, then the config's
-// backend.type, defaulting to the OS keyring.
+// Otherwise the backend is built from cfg's backend.type, defaulting to the OS
+// keyring. cfg must be the effective config (see loadConfig): GHTKN_BACKEND is folded
+// into backend.type upstream, so a cfg read straight from the file selects the wrong
+// backend.
 func (tm *TokenManager) resolveBackend(logger *slog.Logger, cfg *pubconfig.Config) (Backend, error) {
 	if tm.input.Backend != nil {
 		return tm.input.Backend, nil

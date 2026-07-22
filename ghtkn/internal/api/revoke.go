@@ -75,7 +75,10 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	if err != nil {
 		return err
 	}
-	if err := tm.readConfig(cfg, configPath); err != nil {
+	// The effective config: the file plus the environment overrides. GHTKN_BACKEND
+	// selects the backend to revoke from, so reading the file alone would revoke from
+	// the wrong backend and silently leave the real token live.
+	if err := tm.loadConfig(cfg, configPath); err != nil {
 		return err
 	}
 
