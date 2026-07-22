@@ -161,6 +161,13 @@ type Request struct {
 // Response is a single response returned by the agent for a Request.
 // The wire format is one JSON object per line (newline-delimited JSON).
 type Response struct {
+	// ProtocolVersion is the agent's protocol version (see ProtocolVersion). The agent
+	// stamps it on every response so a client can tell how old the agent is. A
+	// pre-versioning agent never sets it, so an absent field decodes to 0: that agent
+	// silently ignores the fields a current client relies on (min_expiration,
+	// start_device_flow, await_device_flow), which is why the agent backend refuses to
+	// use it (see ErrObsoleteAgent) instead of trusting its answers.
+	ProtocolVersion int `json:"protocol_version,omitempty"`
 	// OK reports whether the command succeeded.
 	OK bool `json:"ok"`
 	// Token is the cached access token payload (returned by a successful GET).

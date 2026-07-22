@@ -28,9 +28,24 @@ type fakeAgent struct {
 	listener net.Listener
 	mu       sync.Mutex
 	requests []*agentapi.Request
+	// legacy makes the fake answer like a pre-versioning agent: it leaves
+	// Response.ProtocolVersion unset, the way an agent that predates the field does.
+	legacy bool
 }
 
 func startFakeAgent(t *testing.T, handler func(*agentapi.Request) *agentapi.Response) *fakeAgent {
+	t.Helper()
+	return startAgent(t, false, handler)
+}
+
+// startLegacyFakeAgent starts a fake agent that answers like a pre-versioning one: it
+// never sets Response.ProtocolVersion.
+func startLegacyFakeAgent(t *testing.T, handler func(*agentapi.Request) *agentapi.Response) *fakeAgent {
+	t.Helper()
+	return startAgent(t, true, handler)
+}
+
+func startAgent(t *testing.T, legacy bool, handler func(*agentapi.Request) *agentapi.Response) *fakeAgent {
 	t.Helper()
 	// Keep the socket path well under the platform's sun_path limit (104 bytes on
 	// macOS): the default per-test TempDir embeds the (long) test name and can overflow.
@@ -44,7 +59,7 @@ func startFakeAgent(t *testing.T, handler func(*agentapi.Request) *agentapi.Resp
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &fakeAgent{socket: socket, listener: listener}
+	f := &fakeAgent{socket: socket, listener: listener, legacy: legacy}
 	t.Cleanup(func() { listener.Close() }) //nolint:errcheck
 	go func() {
 		for {
@@ -71,7 +86,12 @@ func (f *fakeAgent) serve(conn net.Conn, handler func(*agentapi.Request) *agenta
 	f.mu.Lock()
 	f.requests = append(f.requests, req)
 	f.mu.Unlock()
-	b, err := json.Marshal(handler(req))
+	resp := handler(req)
+	if !f.legacy {
+		// A current agent stamps its protocol version on every response.
+		resp.ProtocolVersion = agentapi.ProtocolVersion
+	}
+	b, err := json.Marshal(resp)
 	if err != nil {
 		return
 	}
@@ -423,5 +443,47 @@ func TestBackend_deleteNotRunning(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "absent.sock")
 	if err := (&Backend{socket: socket}).Delete(t.Context(), "Iv1.x"); !agentapi.IsNotRunning(err) {
 		t.Fatalf("Delete err = %v, want ErrAgentNotRunning", err)
+	}
+}
+
+// TestBackend_obsoleteAgent verifies that an agent which predates protocol versioning
+// is refused instead of trusted. Such an agent ignores min_expiration and
+// start_device_flow, so it would answer a freshness-checked GET with whatever it has
+// cached (an expired token reads as valid) and never start the server-side device
+// flow. Upgrading ghtkn does not update an already-running agent, so this is what a
+// user who forgot to restart it hits.
+func TestBackend_obsoleteAgent(t *testing.T) {
+	t.Parallel()
+	stale := `{"access_token":"expired","expiration_date":"2000-01-01T00:00:00Z"}`
+	f := startLegacyFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		// A pre-versioning agent knows GET and answers it with its cached token, no
+		// matter how the current client meant the request.
+		return &agentapi.Response{OK: true, Token: json.RawMessage(stale)}
+	})
+	b := &Backend{socket: f.socket}
+
+	if _, err := b.GetActive(t.Context(), "Iv1.x", time.Hour); !agentapi.IsObsoleteAgent(err) {
+		t.Fatalf("GetActive err = %v, want ErrObsoleteAgent", err)
+	}
+	if _, _, err := b.Begin(t.Context(), "Iv1.x", 0); !agentapi.IsObsoleteAgent(err) {
+		t.Fatalf("Begin err = %v, want ErrObsoleteAgent", err)
+	}
+	if _, err := b.Poll(t.Context(), "Iv1.x", 0); !agentapi.IsObsoleteAgent(err) {
+		t.Fatalf("Poll err = %v, want ErrObsoleteAgent", err)
+	}
+	if _, _, err := b.RevokeTokens(t.Context(), []string{"Iv1.x"}); !agentapi.IsObsoleteAgent(err) {
+		t.Fatalf("RevokeTokens err = %v, want ErrObsoleteAgent", err)
+	}
+}
+
+// TestBackend_obsoleteAgentReported verifies that an agent which does know versioning
+// but is older than the client (it answers RespObsoleteAgent) is reported the same way.
+func TestBackend_obsoleteAgentReported(t *testing.T) {
+	t.Parallel()
+	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
+		return &agentapi.Response{Error: agentapi.RespObsoleteAgent}
+	})
+	if _, err := (&Backend{socket: f.socket}).GetActive(t.Context(), "Iv1.x", 0); !agentapi.IsObsoleteAgent(err) {
+		t.Fatalf("GetActive err = %v, want ErrObsoleteAgent", err)
 	}
 }

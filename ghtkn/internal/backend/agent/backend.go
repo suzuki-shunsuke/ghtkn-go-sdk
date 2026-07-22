@@ -103,6 +103,19 @@ func (b *Backend) GetActive(ctx context.Context, clientID string, minExpiration 
 	return nil, nil
 }
 
+// checkAgentVersion rejects an agent that cannot serve this client. An agent that
+// predates protocol versioning does not know the fields the token lifecycle depends on
+// and silently ignores them: it would answer a GET carrying MinExpiration with
+// whatever it has cached (possibly expired) and never start the server-side device
+// flow, so its answers must not be used. It reports the same for an agent that knows
+// versioning but is older than this client, which says so with RespObsoleteAgent.
+func checkAgentVersion(resp *agentapi.Response) error {
+	if resp.ProtocolVersion < agentapi.ProtocolVersionServerLifecycle || resp.Error == agentapi.RespObsoleteAgent {
+		return agentapi.ErrObsoleteAgent
+	}
+	return nil
+}
+
 // get sends a single GET built from the given request (ClientID, StartDeviceFlow,
 // AwaitDeviceFlow, MinExpiration); only the command is filled in here.
 func (b *Backend) get(ctx context.Context, req *agentapi.Request) (*agentapi.Response, error) {
@@ -110,6 +123,11 @@ func (b *Backend) get(ctx context.Context, req *agentapi.Request) (*agentapi.Res
 	resp, err := agentapi.Send(ctx, b.socket, req)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
+	}
+	// Check the agent's version before reading anything else: an older agent's answer
+	// does not mean what this client would take it to mean.
+	if err := checkAgentVersion(resp); err != nil {
+		return nil, err
 	}
 	// A security-relevant warning (e.g. a still-valid refresh token that failed to
 	// refresh, suggesting it may have leaked) must reach the human, not just the agent
@@ -214,6 +232,11 @@ func (b *Backend) RevokeTokens(ctx context.Context, clientIDs []string) (revokeF
 	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: clientIDs})
 	if err != nil {
 		return nil, nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
+	}
+	// An agent that predates REVOKE answers it as an unknown command; report that it is
+	// too old rather than passing on a confusing error, since nothing was revoked.
+	if err := checkAgentVersion(resp); err != nil {
+		return nil, nil, err
 	}
 	if !resp.OK {
 		if resp.Error == agentapi.RespLocked {

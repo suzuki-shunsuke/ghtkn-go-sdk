@@ -29,6 +29,15 @@ var ErrAgentNotRunning = errors.New("the ghtkn agent is not running; run 'ghtkn 
 // agent to ask the user to unlock it instead of trying itself.
 var ErrAgentLocked = errors.New("the ghtkn agent is locked. Unlocking it requires a passphrase entered in an interactive terminal, which a background or non-interactive process can't do. If you are a coding agent, do NOT try to unlock it yourself; instead, ask the user to run `ghtkn agent unlock` in their own interactive terminal")
 
+// ErrObsoleteAgent is returned by the agent backend when the running agent is too old
+// for this client: it either predates protocol versioning (Response.ProtocolVersion is
+// absent) or reports RespObsoleteAgent. Such an agent ignores the request fields the
+// token lifecycle depends on, so it would answer a freshness-checked GET with whatever
+// it has cached, including an expired token. Upgrading ghtkn does not fix a running
+// agent: the process must be restarted to pick up the new binary. Detect it with
+// IsObsoleteAgent.
+var ErrObsoleteAgent = errors.New("the running ghtkn agent is older than this client and does not speak the current agent protocol. Upgrading ghtkn is not enough: the already-running agent keeps the old binary, so it must be restarted with `ghtkn agent stop` and then `ghtkn agent start`")
+
 // Send opens a connection to the agent at path, writes a single newline-delimited
 // JSON request, and reads the single newline-delimited JSON response. It returns
 // ErrAgentNotRunning when no agent is listening.
@@ -76,6 +85,12 @@ func IsNotRunning(err error) bool {
 // IsLocked reports whether err indicates that the agent is running but locked.
 func IsLocked(err error) bool {
 	return errors.Is(err, ErrAgentLocked)
+}
+
+// IsObsoleteAgent reports whether err indicates that the running agent is too old for
+// this client and must be restarted.
+func IsObsoleteAgent(err error) bool {
+	return errors.Is(err, ErrObsoleteAgent)
 }
 
 // isDialDown reports whether a dial error means no agent is listening.
