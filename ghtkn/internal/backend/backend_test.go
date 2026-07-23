@@ -69,9 +69,17 @@ func TestBackend_Get(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "invalid token fails validation",
-			inner:   &mockInner{data: []byte(`{"access_token":"tok"}`)},
+			name:    "missing access_token fails validation",
+			inner:   &mockInner{data: []byte(`{"expiration_date":"2025-01-15T10:30:00Z"}`)},
 			wantErr: true,
+		},
+		{
+			// A never-expiring token (no expiration_date) round-trips: it is valid on read
+			// and returned with a zero ExpirationDate, which the expiry checks treat as
+			// never-expiring.
+			name:  "never-expiring token round-trips",
+			inner: &mockInner{data: []byte(`{"access_token":"tok"}`)},
+			want:  &api.AccessToken{AccessToken: "tok"},
 		},
 	}
 	for _, tt := range tests {

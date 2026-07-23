@@ -28,9 +28,12 @@ func TestAccessToken_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "missing expiration_date",
+			// The zero expiration means the token never expires (a GitHub App with
+			// user-token expiration disabled), which is valid: such a token round-trips
+			// through the backend, which validates on read.
+			name:    "no expiration is valid (never expires)",
 			token:   &api.AccessToken{AccessToken: "token"},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 
