@@ -48,6 +48,11 @@ const (
 	CommandStatus = "STATUS"
 	CommandStop   = "STOP"
 	CommandUnlock = "UNLOCK"
+	// CommandLock discards the agent's in-memory data key and returns it to the locked
+	// state, without stopping the process. Unlike UNLOCK it needs no passphrase, since it
+	// only reduces access; UNLOCK re-derives the data key from the key file. It is an
+	// additive command, so an agent too old to know it answers with "unknown command".
+	CommandLock = "LOCK"
 	// CommandSet stores a client-minted token (legacy, protocol version 0 only). The
 	// agent keeps handling it so pre-versioning clients that mint tokens themselves
 	// keep working; a version-1 client never sends it because the server owns the
