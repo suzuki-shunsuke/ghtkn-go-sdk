@@ -2,6 +2,7 @@ package agent_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -50,6 +51,23 @@ func TestSecretBytes_zero(t *testing.T) {
 	for i, b := range s {
 		if b != 0 {
 			t.Fatalf("byte %d was not zeroed: %d", i, b)
+		}
+	}
+}
+
+// TestSecretBytes_redacted verifies the passphrase never appears when a value is
+// formatted, so a stray %v/%+v/%s/%#v (e.g. a future debug log) cannot leak it. The
+// underlying []byte would otherwise print as its raw byte values.
+func TestSecretBytes_redacted(t *testing.T) {
+	t.Parallel()
+	req := &agent.Request{Command: agent.CommandUnlock, Passphrase: agent.SecretBytes("s3cret")}
+	for _, verb := range []string{"%v", "%+v", "%s", "%#v"} {
+		got := fmt.Sprintf(verb, req.Passphrase)
+		if got != "REDACTED" {
+			t.Errorf("SecretBytes formatted with %s = %q, want REDACTED", verb, got)
+		}
+		if line := fmt.Sprintf(verb, req); strings.Contains(line, "s3cret") {
+			t.Errorf("formatting a Request with %s leaked the passphrase: %s", verb, line)
 		}
 	}
 }

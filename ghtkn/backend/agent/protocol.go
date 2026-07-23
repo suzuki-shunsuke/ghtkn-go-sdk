@@ -103,6 +103,15 @@ func (s SecretBytes) Zero() {
 	zero(s)
 }
 
+// String redacts the secret so fmt verbs that consult a Stringer (%v, %+v, %s) never
+// print the passphrase. Without it, the underlying []byte would format as its raw byte
+// values, which trivially map back to the plaintext. JSON marshaling is unaffected: it
+// converts with string(s), not this method.
+func (s SecretBytes) String() string { return "REDACTED" }
+
+// GoString redacts the secret for the %#v verb, for the same reason as String.
+func (s SecretBytes) GoString() string { return "REDACTED" }
+
 // zero overwrites b with zeros. It is a no-op on a nil slice.
 func zero(b []byte) {
 	for i := range b {
