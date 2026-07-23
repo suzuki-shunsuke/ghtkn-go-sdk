@@ -155,6 +155,34 @@ func TestClient_Create_coordination(t *testing.T) {
 	})
 }
 
+// TestClient_Create_nonExpiringToken verifies that a token GitHub returns with
+// expires_in=0 (a GitHub App with user-token expiration disabled) is minted with a zero
+// ExpirationDate, which the expiry checks read as never-expiring rather than
+// already-expired.
+func TestClient_Create_nonExpiringToken(t *testing.T) {
+	t.Parallel()
+	var calls []string
+	df := &mockDeviceFlow{
+		calls:      &calls,
+		deviceCode: &pubdeviceflow.DeviceCodeResponse{UserCode: "USER-CODE"},
+		token:      &deviceflow.AccessToken{AccessToken: "gho_never", ExpiresIn: 0},
+	}
+	input := &intdeviceflow.Input{
+		Stderr:        io.Discard,
+		Logger:        log.NewLogger(),
+		OnetimeCodeUI: &mockOnetimeCodeUI{calls: &calls},
+		Client:        df,
+	}
+
+	tk, err := intdeviceflow.NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &intdeviceflow.InputCreate{ClientID: "test-client-id"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if !tk.ExpirationDate.IsZero() {
+		t.Errorf("ExpirationDate = %v, want the zero time (never expires)", tk.ExpirationDate)
+	}
+}
+
 // TestClient_Create_emptyClientID verifies Create fails before contacting the device
 // flow when no client ID is given.
 func TestClient_Create_emptyClientID(t *testing.T) {

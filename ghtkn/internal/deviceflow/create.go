@@ -50,10 +50,19 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, input *InputCr
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
 
-	now := time.Now()
-
 	return &AccessToken{
 		AccessToken:    token.AccessToken,
-		ExpirationDate: now.Add(time.Duration(token.ExpiresIn) * time.Second),
+		ExpirationDate: expirationDate(token.ExpiresIn),
 	}, nil
+}
+
+// expirationDate turns GitHub's expires_in (seconds from now) into an absolute time.
+// A GitHub App with user-token expiration disabled returns expires_in=0; that token
+// never expires, so it is represented as the zero time rather than "now", which the
+// expiry checks treat as never-expiring instead of already-expired.
+func expirationDate(expiresIn int) time.Time {
+	if expiresIn == 0 {
+		return time.Time{}
+	}
+	return time.Now().Add(time.Duration(expiresIn) * time.Second)
 }

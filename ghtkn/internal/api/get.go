@@ -366,10 +366,22 @@ func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *s
 	return tk, nil
 }
 
+// maxTokenLifetime is the longest a GitHub App user access token can be valid: GitHub
+// issues them for at most 8 hours. A MinExpiration greater than this cannot be satisfied
+// by any real token, so it means "always regenerate" (as 'ghtkn auth' relies on).
+const maxTokenLifetime = 8 * time.Hour
+
 // checkExpired determines if an access token should be considered expired.
 // It returns true if the token will expire within the MinExpiration duration from now.
 // This ensures tokens are renewed before they actually expire.
 func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Duration) bool {
+	// The zero time means the token never expires (a GitHub App with user-token
+	// expiration disabled). It is never expiring on its own, but a MinExpiration beyond
+	// the maximum token lifetime is a request to regenerate regardless (e.g. 'ghtkn auth'
+	// forcing a fresh token so a revoked one is replaced), so honor that even here.
+	if exDate.IsZero() {
+		return minExpiration > maxTokenLifetime
+	}
 	// Expiration Date - Now < Min Expiration
 	// Now + Min Expiration > Expiration Date
 	return time.Now().Add(minExpiration).After(exDate)

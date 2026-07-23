@@ -56,6 +56,7 @@ func TestTokenManager_checkExpired(t *testing.T) {
 	tests := []struct {
 		name          string
 		exOffset      time.Duration
+		zero          bool // the token never expires (a GitHub App with token expiration disabled)
 		minExpiration time.Duration
 		want          bool
 	}{
@@ -64,6 +65,18 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			exOffset:      2 * time.Hour,
 			minExpiration: time.Hour,
 			want:          false,
+		},
+		{
+			name:          "never expires - zero time is not expired for a normal min expiration",
+			zero:          true,
+			minExpiration: time.Hour,
+			want:          false,
+		},
+		{
+			name:          "never expires - forced regeneration (min expiration beyond the token lifetime) expires even the zero time",
+			zero:          true,
+			minExpiration: 9 * time.Hour,
+			want:          true,
 		},
 		{
 			name:          "expired - within min expiration",
@@ -92,7 +105,11 @@ func TestTokenManager_checkExpired(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				tm := &TokenManager{input: &Input{}}
 
-				got := tm.checkExpired(time.Now().Add(tt.exOffset), tt.minExpiration)
+				exDate := time.Now().Add(tt.exOffset)
+				if tt.zero {
+					exDate = time.Time{}
+				}
+				got := tm.checkExpired(exDate, tt.minExpiration)
 				if got != tt.want {
 					t.Errorf("checkExpired() = %v, want %v", got, tt.want)
 				}
