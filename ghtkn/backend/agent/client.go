@@ -61,14 +61,16 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("marshal the request: %w", err)
 	}
 	// An UNLOCK request line carries the passphrase in the clear, so zero the marshaled
-	// bytes once they are written, as the agent does with the line it reads. Both buffers
-	// are zeroed because append may or may not reuse b's array; zeroing the same array
-	// twice is harmless.
+	// bytes right after the write, not at function exit: otherwise the plaintext lingers
+	// through the blocking response read, which for UNLOCK spans the agent's (deliberately
+	// slow) Argon2id derivation. Both buffers are zeroed because append may or may not
+	// reuse b's array; zeroing the same array twice is harmless.
 	reqLine := append(b, '\n')
-	defer zero(b)
-	defer zero(reqLine)
-	if _, err := conn.Write(reqLine); err != nil {
-		return nil, fmt.Errorf("send the request: %w", err)
+	_, werr := conn.Write(reqLine)
+	zero(b)
+	zero(reqLine)
+	if werr != nil {
+		return nil, fmt.Errorf("send the request: %w", werr)
 	}
 
 	// ReadBytes returns io.EOF together with the data when the agent closes the
