@@ -6,8 +6,8 @@ go 1.26.5
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260714121453-3389c27e8995
-	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
+	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260723200608-b91d9018984b
+	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2-0.20260723202049-b59e884ad0ce
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/oauth2 v0.36.0
