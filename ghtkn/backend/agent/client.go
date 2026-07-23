@@ -35,7 +35,7 @@ var ErrAgentLocked = errors.New("the ghtkn agent is locked. Unlocking it require
 // token lifecycle depends on, so it would answer a freshness-checked GET with whatever
 // it has cached, including an expired token. Upgrading ghtkn does not fix a running
 // agent: the process must be restarted to pick up the new binary. Detect it with
-// IsObsoleteAgent.
+// errors.Is.
 var ErrObsoleteAgent = errors.New("the running ghtkn agent is older than this client and does not speak the current agent protocol. Upgrading ghtkn is not enough: the already-running agent keeps the old binary, so it must be restarted with `ghtkn agent stop` and then `ghtkn agent start`")
 
 // Send opens a connection to the agent at path, writes a single newline-delimited
@@ -87,17 +87,6 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 // IsNotRunning reports whether err indicates that no agent is listening.
 func IsNotRunning(err error) bool {
 	return errors.Is(err, ErrAgentNotRunning)
-}
-
-// IsLocked reports whether err indicates that the agent is running but locked.
-func IsLocked(err error) bool {
-	return errors.Is(err, ErrAgentLocked)
-}
-
-// IsObsoleteAgent reports whether err indicates that the running agent is too old for
-// this client and must be restarted.
-func IsObsoleteAgent(err error) bool {
-	return errors.Is(err, ErrObsoleteAgent)
 }
 
 // isDialDown reports whether a dial error means no agent is listening.

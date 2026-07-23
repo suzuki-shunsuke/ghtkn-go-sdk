@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -222,7 +223,7 @@ func TestBackend_locked(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	})
-	if _, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.x"); !agentapi.IsLocked(err) {
+	if _, err := (&Backend{socket: f.socket}).Get(t.Context(), "Iv1.x"); !errors.Is(err, agentapi.ErrAgentLocked) {
 		t.Fatalf("Get err = %v, want ErrAgentLocked", err)
 	}
 }
@@ -400,7 +401,7 @@ func TestBackend_revokeTokens(t *testing.T) {
 		f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 			return &agentapi.Response{Error: agentapi.RespLocked}
 		})
-		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(t.Context(), []string{"Iv1.x"}); !agentapi.IsLocked(err) {
+		if _, _, err := (&Backend{socket: f.socket}).RevokeTokens(t.Context(), []string{"Iv1.x"}); !errors.Is(err, agentapi.ErrAgentLocked) {
 			t.Fatalf("RevokeTokens err = %v, want ErrAgentLocked", err)
 		}
 	})
@@ -433,7 +434,7 @@ func TestBackend_deleteLocked(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	})
-	if err := (&Backend{socket: f.socket}).Delete(t.Context(), "Iv1.x"); !agentapi.IsLocked(err) {
+	if err := (&Backend{socket: f.socket}).Delete(t.Context(), "Iv1.x"); !errors.Is(err, agentapi.ErrAgentLocked) {
 		t.Fatalf("Delete err = %v, want ErrAgentLocked", err)
 	}
 }
@@ -462,16 +463,16 @@ func TestBackend_obsoleteAgent(t *testing.T) {
 	})
 	b := &Backend{socket: f.socket}
 
-	if _, err := b.GetActive(t.Context(), "Iv1.x", time.Hour); !agentapi.IsObsoleteAgent(err) {
+	if _, err := b.GetActive(t.Context(), "Iv1.x", time.Hour); !errors.Is(err, agentapi.ErrObsoleteAgent) {
 		t.Fatalf("GetActive err = %v, want ErrObsoleteAgent", err)
 	}
-	if _, _, err := b.Begin(t.Context(), "Iv1.x", 0); !agentapi.IsObsoleteAgent(err) {
+	if _, _, err := b.Begin(t.Context(), "Iv1.x", 0); !errors.Is(err, agentapi.ErrObsoleteAgent) {
 		t.Fatalf("Begin err = %v, want ErrObsoleteAgent", err)
 	}
-	if _, err := b.Poll(t.Context(), "Iv1.x", 0); !agentapi.IsObsoleteAgent(err) {
+	if _, err := b.Poll(t.Context(), "Iv1.x", 0); !errors.Is(err, agentapi.ErrObsoleteAgent) {
 		t.Fatalf("Poll err = %v, want ErrObsoleteAgent", err)
 	}
-	if _, _, err := b.RevokeTokens(t.Context(), []string{"Iv1.x"}); !agentapi.IsObsoleteAgent(err) {
+	if _, _, err := b.RevokeTokens(t.Context(), []string{"Iv1.x"}); !errors.Is(err, agentapi.ErrObsoleteAgent) {
 		t.Fatalf("RevokeTokens err = %v, want ErrObsoleteAgent", err)
 	}
 }
@@ -483,7 +484,7 @@ func TestBackend_obsoleteAgentReported(t *testing.T) {
 	f := startFakeAgent(t, func(*agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespObsoleteAgent}
 	})
-	if _, err := (&Backend{socket: f.socket}).GetActive(t.Context(), "Iv1.x", 0); !agentapi.IsObsoleteAgent(err) {
+	if _, err := (&Backend{socket: f.socket}).GetActive(t.Context(), "Iv1.x", 0); !errors.Is(err, agentapi.ErrObsoleteAgent) {
 		t.Fatalf("GetActive err = %v, want ErrObsoleteAgent", err)
 	}
 }
