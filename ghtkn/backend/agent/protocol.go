@@ -228,6 +228,11 @@ type Response struct {
 	// tokens with stored refresh tokens (returned by UNLOCK and STATUS) so the client
 	// can surface the current state to the user.
 	RefreshTokenEnabled bool `json:"refresh_token_enabled,omitempty"`
+	// RefreshTokenTTL is how long a stored token may sit unused before the agent sweeps
+	// it (see the refresh-token TTL). STATUS returns it only when the agent is unlocked
+	// and refresh is enabled, so a client (e.g. ghtkn info) can report it; it is zero
+	// otherwise, and an agent that predates this field omits it.
+	RefreshTokenTTL time.Duration `json:"refresh_token_ttl,omitempty"`
 	// Warning carries a non-fatal but security-relevant message the client must show
 	// the user (e.g. on GET). The agent sets it when a still-valid refresh token fails
 	// to refresh, which suggests the refresh token may have been leaked or revoked. It
