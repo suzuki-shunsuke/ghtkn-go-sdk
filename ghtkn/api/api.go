@@ -21,13 +21,14 @@ type InputGet struct {
 	MinExpiration *time.Duration
 	// EnableDeviceFlow overrides whether the OAuth device flow may run to create a
 	// new token. nil means "not specified", in which case the GHTKN_ENABLE_DEVICE_FLOW
-	// environment variable decides (default disabled; set the environment variable to
-	// "true" to enable).
+	// environment variable decides (default disabled; the value is a boolean parsed
+	// with strconv.ParseBool, and a value it cannot parse is an error).
 	EnableDeviceFlow *bool
 	// Clipboard overrides whether the device flow copies the one-time code to the
 	// system clipboard. nil means "not specified", in which case the GHTKN_CLIPBOARD
 	// environment variable and then the config's clipboard.enable decide (default
-	// disabled; set the environment variable to "true" to enable). Copying also
+	// disabled; the value is a boolean parsed with strconv.ParseBool, and a value it
+	// cannot parse is an error). Copying also
 	// requires the consumer to inject an implementation via
 	// Client.SetCopyOnetimeCodeToClipboard.
 	Clipboard *bool

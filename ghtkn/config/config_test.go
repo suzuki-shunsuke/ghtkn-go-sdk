@@ -94,6 +94,26 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 			wantErr: true,
 		},
 		{
+			// Two apps sharing a client id are two names for one stored token: revoking
+			// or minting for one would silently do it for the other.
+			name: "duplicate client ids",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "app1",
+						ClientID: "same-client-id",
+						GitOwner: "owner1",
+					},
+					{
+						Name:     "app2",
+						ClientID: "same-client-id",
+						GitOwner: "owner2",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "duplicate git owners",
 			config: &config.Config{
 				Apps: []*config.App{

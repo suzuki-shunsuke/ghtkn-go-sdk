@@ -10,11 +10,11 @@ func cmds() []string {
 
 // openB opens a browser on Linux using the appropriate system command.
 // It delegates to runCmd with the platform-specific commands.
-func openB(ctx context.Context, url string) error {
-	return runCmd(ctx, url)
+func (b *Browser) openB(ctx context.Context, url string) error {
+	return b.runCmd(ctx, url)
 }
 
 // availableB reports whether a browser command is available on Linux.
-func availableB() bool {
-	return hasCmd()
+func (b *Browser) availableB() bool {
+	return b.hasCmd()
 }

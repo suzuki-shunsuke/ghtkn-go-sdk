@@ -60,7 +60,8 @@ type Backend struct {
 
 // Validate checks if the Config is valid.
 // It ensures the config is not nil and contains at least one app.
-// It also validates each app in the configuration.
+// It also validates each app in the configuration, and that name, client_id, and
+// git_owner are each unique across the apps.
 func (c *Config) Validate() error {
 	if c == nil {
 		return errors.New("config is required")
@@ -70,6 +71,9 @@ func (c *Config) Validate() error {
 	}
 	names := map[string]struct{}{}
 	owners := map[string]struct{}{}
+	// clientIDs maps a client ID to the app that declared it, so a duplicate can name
+	// the other app instead of only the ID.
+	clientIDs := map[string]string{}
 	for _, app := range c.Apps {
 		if err := app.Validate(); err != nil {
 			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
@@ -78,6 +82,20 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("app name must be unique: %s", app.Name)
 		}
 		names[app.Name] = struct{}{}
+		// A client ID identifies the GitHub App everywhere below the config: the stored
+		// token, the refresh, and the revocation are all keyed by it. Two apps sharing
+		// one are therefore two names for a single token, where revoking or minting for
+		// one silently does it for the other. Reject that instead of letting the two
+		// entries look independent.
+		if other, ok := clientIDs[app.ClientID]; ok {
+			return fmt.Errorf(
+				"app client_id must be unique: %q and %q share the client id %s. "+
+					"They would share one access token, so revoking or minting for one would silently do it for the other. "+
+					"Keep a single app for that client id; to use it for several repository owners, "+
+					"select it with the GHTKN_APP or GHTKN_GIT_APP environment variable instead of a second git_owner entry",
+				other, app.Name, app.ClientID)
+		}
+		clientIDs[app.ClientID] = app.Name
 		if app.GitOwner != "" {
 			if _, ok := owners[app.GitOwner]; ok {
 				return fmt.Errorf("app git_owner must be unique: %s", app.GitOwner)

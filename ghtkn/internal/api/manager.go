@@ -36,10 +36,9 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	DeviceFlow   deviceFlow       // Client for creating GitHub App tokens
-	Backend      Backend          // Keyring for token storage
-	Revoker      revoker          // Client for revoking credentials
-	Now          func() time.Time // Current time provider for testing
+	DeviceFlow   deviceFlow // Client for creating GitHub App tokens
+	Backend      Backend    // Keyring for token storage
+	Revoker      revoker    // Client for revoking credentials
 	Logger       *publog.Logger
 	ConfigReader configReader
 	Getenv       func(string) string
@@ -56,7 +55,6 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 	return &Input{
 		DeviceFlow:   deviceflow.NewClient(deviceflow.NewInput()),
 		Revoker:      revoke.New(nil),
-		Now:          time.Now,
 		Logger:       log.NewLogger(),
 		ConfigReader: config.NewReader(),
 		Getenv:       getEnv,
@@ -66,14 +64,15 @@ func NewInput(getEnv func(string) string) (*Input, error) {
 
 // resolveBackend returns the storage backend to use. An injected backend
 // (Input.Backend, e.g. set by a test or an SDK consumer) is honored as is.
-// Otherwise the backend is built from the resolved backend type: the
-// GHTKN_BACKEND environment variable takes precedence, then the config's
-// backend.type, defaulting to the OS keyring.
-func (tm *TokenManager) resolveBackend(cfg *pubconfig.Config) (Backend, error) {
+// Otherwise the backend is built from cfg's backend.type, defaulting to the OS
+// keyring. cfg must be the effective config (see loadConfig): GHTKN_BACKEND is folded
+// into backend.type upstream, so a cfg read straight from the file selects the wrong
+// backend.
+func (tm *TokenManager) resolveBackend(logger *slog.Logger, cfg *pubconfig.Config) (Backend, error) {
 	if tm.input.Backend != nil {
 		return tm.input.Backend, nil
 	}
-	return backend.New(resolveBackendType(cfg.Backend, tm.input.Getenv), tm.input.Getenv)
+	return backend.New(resolveBackendType(cfg.Backend), tm.input.Getenv, tm.input.Logger, logger)
 }
 
 // Validate checks if the Input configuration is valid.
@@ -85,6 +84,7 @@ func (i *Input) Validate() error {
 // deviceFlow defines the interface for creating GitHub App access tokens.
 type deviceFlow interface {
 	Create(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate) (*deviceflow.AccessToken, error)
+	Show(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate, deviceCode *pubdeviceflow.DeviceCodeResponse) error
 	SetLogger(logger *publog.Logger)
 	SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI)
 	SetBrowser(browser pubdeviceflow.Browser)
@@ -96,6 +96,15 @@ type Backend interface {
 	Get(ctx context.Context, clientID string) (*api.AccessToken, error)
 	Set(ctx context.Context, clientID string, token *api.AccessToken) error
 	Delete(ctx context.Context, clientID string) error
+	// SupportsDeviceFlow reports whether the backend owns the token lifecycle
+	// server-side (the agent). When true, expiration-aware reads, device-flow token
+	// creation, and revocation are driven through the backend below instead of the
+	// client-side equivalents (GetActive, BeginDeviceFlow/PollDeviceFlow, RevokeToken).
+	SupportsDeviceFlow() bool
+	GetActive(ctx context.Context, clientID string, minExpiration time.Duration) (*api.AccessToken, error)
+	BeginDeviceFlow(ctx context.Context, clientID string, minExpiration time.Duration) (*api.AccessToken, *pubdeviceflow.DeviceCodeResponse, error)
+	PollDeviceFlow(ctx context.Context, clientID string, minExpiration time.Duration) (*api.AccessToken, error)
+	RevokeTokens(ctx context.Context, clientIDs []string) (revokeFailed, cleanupFailed []string, err error)
 }
 
 // revoker defines the interface for revoking GitHub credentials.

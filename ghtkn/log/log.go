@@ -21,4 +21,7 @@ type Logger struct {
 	OpenedBrowser func(logger *slog.Logger, url string)
 	// AccessTokenIsNotFoundInBackend logs when no access token is found in the backend.
 	AccessTokenIsNotFoundInBackend func(logger *slog.Logger)
+	// AgentWarning logs a security-relevant warning returned by the ghtkn agent
+	// (e.g. a still-valid refresh token that failed to refresh, a possible leak).
+	AgentWarning func(logger *slog.Logger, stderr io.Writer, message string)
 }

@@ -3,27 +3,26 @@
 package browser
 
 import (
-	"os"
-	"path/filepath"
+	"errors"
 	"testing"
 )
 
 func TestBrowser_Available(t *testing.T) {
-	b := &Browser{}
+	t.Parallel()
 
 	// With no browser command on PATH, the browser is not available.
-	t.Setenv("PATH", "")
-	if b.Available() {
-		t.Error("Available() = true with empty PATH, want false")
+	notFound := &Browser{lookPath: func(string) (string, error) {
+		return "", errors.New("not found")
+	}}
+	if notFound.Available() {
+		t.Error("Available() = true when no command is on PATH, want false")
 	}
 
 	// With a platform browser command on PATH, the browser is available.
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, cmds()[0]), []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", dir)
-	if !b.Available() {
-		t.Error("Available() = false with a browser command on PATH, want true")
+	found := &Browser{lookPath: func(cmd string) (string, error) {
+		return "/usr/bin/" + cmd, nil
+	}}
+	if !found.Available() {
+		t.Error("Available() = false when a browser command is on PATH, want true")
 	}
 }

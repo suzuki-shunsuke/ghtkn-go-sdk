@@ -7,73 +7,252 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"os"
 	"runtime"
+	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
+	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
 // Backend stores and retrieves access tokens through a running ghtkn agent over a
 // Unix domain socket.
 type Backend struct {
 	socket string
+	// warn is where security-relevant agent warnings are written. It defaults to
+	// os.Stderr when nil; tests set it to capture the output.
+	warn io.Writer
+	// logger holds the customizable log hooks; the AgentWarning hook renders the
+	// agent's security warnings. It defaults to the internal defaults when nil.
+	logger *publog.Logger
+	// slogLogger is the per-request structured logger passed to the log hooks. It
+	// defaults to slog.Default() when nil.
+	slogLogger *slog.Logger
+}
+
+// warnWriter returns where agent warnings should be written, defaulting to os.Stderr.
+func (b *Backend) warnWriter() io.Writer {
+	if b.warn != nil {
+		return b.warn
+	}
+	return os.Stderr
+}
+
+// emitWarning surfaces a security-relevant agent warning through the AgentWarning log
+// hook, defaulting the hook table and the structured logger when they are unset (e.g.
+// a Backend built as a struct literal in a test).
+func (b *Backend) emitWarning(message string) {
+	lg := b.logger
+	if lg == nil || lg.AgentWarning == nil {
+		lg = log.NewLogger()
+	}
+	sl := b.slogLogger
+	if sl == nil {
+		sl = slog.Default()
+	}
+	lg.AgentWarning(sl, b.warnWriter(), message)
 }
 
 // New creates an agent backend. It resolves the socket path (GHTKN_AGENT_SOCKET, then
 // the XDG-based default) but does not connect; a missing agent is reported on the
-// first Get or Set.
-func New(getEnv func(string) string) (*Backend, error) {
+// first Get. logger supplies the customizable log hooks (AgentWarning) and slogLogger
+// is the per-request structured logger passed to them; both may be nil, in which case
+// the internal defaults and slog.Default() are used.
+func New(getEnv func(string) string, logger *publog.Logger, slogLogger *slog.Logger) (*Backend, error) {
 	socket, err := agentapi.SocketPath(getEnv, runtime.GOOS)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // SocketPath returns a descriptive error
 	}
 	return &Backend{
-		socket: socket,
+		socket:     socket,
+		logger:     logger,
+		slogLogger: slogLogger,
 	}, nil
 }
 
-// Get retrieves the raw token stored for clientID from the agent.
-// It returns (nil, nil) when the agent has no token for the client ID, and
-// agentapi.ErrAgentNotRunning when no agent is listening.
+// Get probes the agent for a cached token for clientID with no freshness requirement.
+// It exists to satisfy the storage backend interface; the token-lifecycle paths use
+// GetActive/Begin/Poll/Revoke instead. It returns (nil, nil) when the agent has no
+// token for the client ID, and agentapi.ErrAgentNotRunning when no agent is listening.
 func (b *Backend) Get(ctx context.Context, clientID string) ([]byte, error) {
-	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{Command: agentapi.CommandGet, ClientID: clientID})
+	return b.GetActive(ctx, clientID, 0)
+}
+
+// GetActive probes the agent for a token for clientID that is still valid for at least
+// minExpiration. The agent checks expiration server-side, so a token expiring within
+// minExpiration is reported as a miss. It is a pure read: it never starts a device
+// flow. It returns (nil, nil) on a miss and agentapi.ErrAgentNotRunning when no agent
+// is listening.
+func (b *Backend) GetActive(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, error) {
+	resp, err := b.get(ctx, &agentapi.Request{
+		ClientID:      clientID,
+		MinExpiration: minExpiration,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Token) != 0 {
+		return []byte(resp.Token), nil
+	}
+	return nil, nil
+}
+
+// checkAgentVersion rejects an agent that cannot serve this client. An agent that
+// predates protocol versioning does not know the fields the token lifecycle depends on
+// and silently ignores them: it would answer a GET carrying MinExpiration with
+// whatever it has cached (possibly expired) and never start the server-side device
+// flow, so its answers must not be used. It reports the same for an agent that knows
+// versioning but is older than this client, which says so with RespObsoleteAgent.
+func checkAgentVersion(resp *agentapi.Response) error {
+	if resp.ProtocolVersion < agentapi.ProtocolVersionServerLifecycle || resp.Error == agentapi.RespObsoleteAgent {
+		return agentapi.ErrObsoleteAgent
+	}
+	return nil
+}
+
+// get sends a single GET built from the given request (ClientID, StartDeviceFlow,
+// AwaitDeviceFlow, MinExpiration); only the command is filled in here.
+func (b *Backend) get(ctx context.Context, req *agentapi.Request) (*agentapi.Response, error) {
+	req.Command = agentapi.CommandGet
+	resp, err := agentapi.Send(ctx, b.socket, req)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
 	}
+	// Check the agent's version before reading anything else: an older agent's answer
+	// does not mean what this client would take it to mean.
+	if err := checkAgentVersion(resp); err != nil {
+		return nil, err
+	}
+	// A security-relevant warning (e.g. a still-valid refresh token that failed to
+	// refresh, suggesting it may have leaked) must reach the human, not just the agent
+	// log which a background agent's operator may never see. Write it straight to
+	// stderr so `ghtkn get` and the git credential helper both surface it.
+	if resp.Warning != "" {
+		b.emitWarning(resp.Warning)
+	}
 	if !resp.OK {
 		if resp.Error == agentapi.RespNotFound {
-			return nil, nil
+			return resp, nil
 		}
 		if resp.Error == agentapi.RespLocked {
 			return nil, agentapi.ErrAgentLocked
 		}
 		return nil, fmt.Errorf("get an access token through the agent: %s", resp.Error)
 	}
-	if len(resp.Token) == 0 {
-		return nil, nil
-	}
-	return []byte(resp.Token), nil
+	return resp, nil
 }
 
-// Set stores the raw token for clientID in the agent.
-// The token is already a JSON document, so it is sent verbatim as the request token.
-func (b *Backend) Set(ctx context.Context, clientID, token string) error {
-	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{
-		Command:  agentapi.CommandSet,
-		ClientID: clientID,
-		Token:    json.RawMessage(token),
+// Begin asks the agent to start (or join) the server-side device flow for clientID.
+// The server first checks its store: if a token valid for minExpiration is already
+// there (e.g. minted concurrently by another client), Begin returns it directly (as
+// raw bytes) and no flow is started. Otherwise it returns the one-time code for the
+// started flow, which the client displays before polling with Poll. Exactly one of
+// the returned token and device code is non-nil.
+func (b *Backend) Begin(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, *pubdeviceflow.DeviceCodeResponse, error) {
+	resp, err := b.get(ctx, &agentapi.Request{
+		ClientID:        clientID,
+		StartDeviceFlow: true,
+		MinExpiration:   minExpiration,
 	})
 	if err != nil {
-		return err //nolint:wrapcheck // Send returns a descriptive error
+		return nil, nil, err
+	}
+	if len(resp.Token) != 0 {
+		return []byte(resp.Token), nil, nil
+	}
+	if !resp.Pending {
+		return nil, nil, fmt.Errorf("the agent did not start the device flow for %s", clientID)
+	}
+	return nil, &pubdeviceflow.DeviceCodeResponse{
+		UserCode:        resp.UserCode,
+		VerificationURI: resp.VerificationURI,
+		ExpiresIn:       resp.ExpiresIn,
+	}, nil
+}
+
+// Poll waits for the agent to finish the server-side device flow for clientID and
+// returns the raw token bytes it minted and cached. It polls with AwaitDeviceFlow set,
+// so the agent returns the freshly minted token as is (no freshness check) once the
+// flow completes, and reports Pending while it runs.
+func (b *Backend) Poll(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, error) {
+	// Probe immediately so a token that is already available is returned without
+	// waiting for the first tick.
+	if token, err := b.pollOnce(ctx, clientID, minExpiration); err != nil || token != nil {
+		return token, err
+	}
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("wait for the device flow to complete: %w", ctx.Err())
+		case <-ticker.C:
+			token, err := b.pollOnce(ctx, clientID, minExpiration)
+			if err != nil || token != nil {
+				return token, err
+			}
+		}
+	}
+}
+
+// pollOnce sends one GET marked AwaitDeviceFlow while waiting for the device flow to
+// finish. It returns the token bytes when ready, (nil, nil) while the flow is still
+// pending, and an error when the agent reports the flow ended without a token.
+func (b *Backend) pollOnce(ctx context.Context, clientID string, minExpiration time.Duration) ([]byte, error) {
+	resp, err := b.get(ctx, &agentapi.Request{
+		ClientID:        clientID,
+		AwaitDeviceFlow: true,
+		MinExpiration:   minExpiration,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Token) != 0 {
+		return []byte(resp.Token), nil
+	}
+	if resp.Pending {
+		return nil, nil
+	}
+	return nil, fmt.Errorf("the agent's device flow for %s ended without a token", clientID)
+}
+
+// RevokeTokens asks the agent to revoke the tokens stored for clientIDs in one batch
+// and delete them. It returns the client IDs whose credential could not be revoked
+// (it may still be live) and those revoked but not deleted (a cleanup issue), so the
+// caller can classify each. A non-nil error means the request itself failed (e.g. the
+// agent is not running or locked), not that a particular token could not be revoked.
+func (b *Backend) RevokeTokens(ctx context.Context, clientIDs []string) (revokeFailed, cleanupFailed []string, err error) {
+	resp, err := agentapi.Send(ctx, b.socket, &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: clientIDs})
+	if err != nil {
+		return nil, nil, err //nolint:wrapcheck // Send returns a descriptive error; callers may use agentapi.IsNotRunning
+	}
+	// An agent that predates REVOKE answers it as an unknown command; report that it is
+	// too old rather than passing on a confusing error, since nothing was revoked.
+	if err := checkAgentVersion(resp); err != nil {
+		return nil, nil, err
 	}
 	if !resp.OK {
 		if resp.Error == agentapi.RespLocked {
-			return agentapi.ErrAgentLocked
+			return nil, nil, agentapi.ErrAgentLocked
 		}
-		return fmt.Errorf("set an access token through the agent: %s", resp.Error)
+		return nil, nil, fmt.Errorf("revoke access tokens through the agent: %s", resp.Error)
 	}
-	return nil
+	return resp.RevokeFailed, resp.CleanupFailed, nil
+}
+
+// Set exists only to satisfy the storage backend interface. The agent mints and
+// stores tokens itself as part of the server-side device flow, so a client never
+// pushes a token to it; this method is never called on the agent path (device-flow
+// creation returns changed=false) and always reports that pushing is unsupported.
+func (b *Backend) Set(_ context.Context, _, _ string) error {
+	return errors.New("the ghtkn agent stores tokens itself; pushing a token to it is not supported")
 }
 
 // Delete removes the token stored for clientID from the agent.

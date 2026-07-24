@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
@@ -49,9 +50,6 @@ func TestTokenManager_TokenSource(t *testing.T) {
 	if ts.tm == nil {
 		t.Error("tm is nil")
 	}
-	if ts.now == nil {
-		t.Error("now is nil")
-	}
 	if ts.logger != logger {
 		t.Error("logger was not propagated")
 	}
@@ -63,88 +61,93 @@ func TestTokenManager_TokenSource(t *testing.T) {
 func TestTokenSource_Token(t *testing.T) {
 	t.Parallel()
 
-	now := time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC)
-	future := now.Add(time.Hour)
-	past := now.Add(-time.Hour)
+	// Token() reads time.Now() to decide whether a cached token is still valid, so the
+	// expiry-sensitive sub-tests run in a synctest bubble where time.Now() is fixed and
+	// future/past are expressed relative to it.
 
 	t.Run("cached non-expired token is returned without calling client", func(t *testing.T) {
 		t.Parallel()
 
-		cached := &oauth2.Token{AccessToken: "cached", Expiry: future}
-		client := &mockTokenSourceClient{}
-		ts := &TokenSource{
-			token:  cached,
-			mutex:  &sync.Mutex{},
-			tm:     client,
-			logger: newTestLogger(),
-			now:    func() time.Time { return now },
-		}
+		synctest.Test(t, func(t *testing.T) {
+			cached := &oauth2.Token{AccessToken: "cached", Expiry: time.Now().Add(time.Hour)}
+			client := &mockTokenSourceClient{}
+			ts := &TokenSource{
+				token:  cached,
+				mutex:  &sync.Mutex{},
+				tm:     client,
+				logger: newTestLogger(),
+			}
 
-		got, err := ts.Token()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != cached {
-			t.Errorf("expected cached token, got %v", got)
-		}
-		if client.calls != 0 {
-			t.Errorf("client.calls = %d, want 0", client.calls)
-		}
+			got, err := ts.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != cached {
+				t.Errorf("expected cached token, got %v", got)
+			}
+			if client.calls != 0 {
+				t.Errorf("client.calls = %d, want 0", client.calls)
+			}
+		})
 	})
 
 	t.Run("no cached token fetches from client", func(t *testing.T) {
 		t.Parallel()
 
-		client := &mockTokenSourceClient{
-			token: &pubapi.AccessToken{AccessToken: "new", ExpirationDate: future},
-		}
-		ts := &TokenSource{
-			mutex:  &sync.Mutex{},
-			tm:     client,
-			logger: newTestLogger(),
-			now:    func() time.Time { return now },
-		}
+		synctest.Test(t, func(t *testing.T) {
+			future := time.Now().Add(time.Hour)
+			client := &mockTokenSourceClient{
+				token: &pubapi.AccessToken{AccessToken: "new", ExpirationDate: future},
+			}
+			ts := &TokenSource{
+				mutex:  &sync.Mutex{},
+				tm:     client,
+				logger: newTestLogger(),
+			}
 
-		got, err := ts.Token()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got.AccessToken != "new" || !got.Expiry.Equal(future) {
-			t.Errorf("got AccessToken=%q Expiry=%v, want AccessToken=%q Expiry=%v", got.AccessToken, got.Expiry, "new", future)
-		}
-		if client.calls != 1 {
-			t.Errorf("client.calls = %d, want 1", client.calls)
-		}
-		if ts.token == nil || ts.token.AccessToken != "new" {
-			t.Error("token was not cached")
-		}
+			got, err := ts.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.AccessToken != "new" || !got.Expiry.Equal(future) {
+				t.Errorf("got AccessToken=%q Expiry=%v, want AccessToken=%q Expiry=%v", got.AccessToken, got.Expiry, "new", future)
+			}
+			if client.calls != 1 {
+				t.Errorf("client.calls = %d, want 1", client.calls)
+			}
+			if ts.token == nil || ts.token.AccessToken != "new" {
+				t.Error("token was not cached")
+			}
+		})
 	})
 
 	t.Run("cached expired token triggers refetch", func(t *testing.T) {
 		t.Parallel()
 
-		expired := &oauth2.Token{AccessToken: "old", Expiry: past}
-		client := &mockTokenSourceClient{
-			token: &pubapi.AccessToken{AccessToken: "new", ExpirationDate: future},
-		}
-		ts := &TokenSource{
-			token:  expired,
-			mutex:  &sync.Mutex{},
-			tm:     client,
-			logger: newTestLogger(),
-			now:    func() time.Time { return now },
-		}
+		synctest.Test(t, func(t *testing.T) {
+			future := time.Now().Add(time.Hour)
+			expired := &oauth2.Token{AccessToken: "old", Expiry: time.Now().Add(-time.Hour)}
+			client := &mockTokenSourceClient{
+				token: &pubapi.AccessToken{AccessToken: "new", ExpirationDate: future},
+			}
+			ts := &TokenSource{
+				token:  expired,
+				mutex:  &sync.Mutex{},
+				tm:     client,
+				logger: newTestLogger(),
+			}
 
-		got, err := ts.Token()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got.AccessToken != "new" || !got.Expiry.Equal(future) {
-			t.Errorf("got AccessToken=%q Expiry=%v, want AccessToken=%q Expiry=%v", got.AccessToken, got.Expiry, "new", future)
-		}
-		if client.calls != 1 {
-			t.Errorf("client.calls = %d, want 1", client.calls)
-		}
+			got, err := ts.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.AccessToken != "new" || !got.Expiry.Equal(future) {
+				t.Errorf("got AccessToken=%q Expiry=%v, want AccessToken=%q Expiry=%v", got.AccessToken, got.Expiry, "new", future)
+			}
+			if client.calls != 1 {
+				t.Errorf("client.calls = %d, want 1", client.calls)
+			}
+		})
 	})
 
 	t.Run("client error is returned and token stays nil", func(t *testing.T) {
@@ -155,7 +158,6 @@ func TestTokenSource_Token(t *testing.T) {
 			mutex:  &sync.Mutex{},
 			tm:     client,
 			logger: newTestLogger(),
-			now:    func() time.Time { return now },
 		}
 
 		got, err := ts.Token()
@@ -173,30 +175,31 @@ func TestTokenSource_Token(t *testing.T) {
 	t.Run("fetched token is cached across calls", func(t *testing.T) {
 		t.Parallel()
 
-		client := &mockTokenSourceClient{
-			token: &pubapi.AccessToken{AccessToken: "new", ExpirationDate: future},
-		}
-		ts := &TokenSource{
-			mutex:  &sync.Mutex{},
-			tm:     client,
-			logger: newTestLogger(),
-			now:    func() time.Time { return now },
-		}
+		synctest.Test(t, func(t *testing.T) {
+			client := &mockTokenSourceClient{
+				token: &pubapi.AccessToken{AccessToken: "new", ExpirationDate: time.Now().Add(time.Hour)},
+			}
+			ts := &TokenSource{
+				mutex:  &sync.Mutex{},
+				tm:     client,
+				logger: newTestLogger(),
+			}
 
-		first, err := ts.Token()
-		if err != nil {
-			t.Fatal(err)
-		}
-		second, err := ts.Token()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if first != second {
-			t.Error("expected the same cached token instance on the second call")
-		}
-		if client.calls != 1 {
-			t.Errorf("client.calls = %d, want 1", client.calls)
-		}
+			first, err := ts.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			second, err := ts.Token()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if first != second {
+				t.Error("expected the same cached token instance on the second call")
+			}
+			if client.calls != 1 {
+				t.Errorf("client.calls = %d, want 1", client.calls)
+			}
+		})
 	})
 }
 
