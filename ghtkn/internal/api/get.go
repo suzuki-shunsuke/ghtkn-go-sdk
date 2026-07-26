@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
@@ -52,7 +54,7 @@ func (tm *TokenManager) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextTo
 // In this case the returned app config is nil and the access token has no
 // expiration date.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
-	if token := tm.input.Getenv("GHTKN_GITHUB_TOKEN"); token != "" {
+	if token := tm.input.Getenv(env.GitHubToken); token != "" {
 		return &pubapi.AccessToken{AccessToken: token}, nil, nil
 	}
 	if input == nil {
@@ -65,20 +67,22 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := tm.readConfig(cfg, configPath); err != nil {
+	// The effective config: the file plus the environment overrides, so the resolvers
+	// below read values the environment has already been folded into.
+	if err := tm.loadConfig(cfg, configPath); err != nil {
 		return nil, nil, err
 	}
 
 	// Get the app name
 	appName := input.AppName
 	if appName == "" {
-		appName = tm.input.Getenv("GHTKN_APP")
+		appName = tm.input.Getenv(env.App)
 	}
 
 	logger.Debug("selecting app", "app_name", appName, "git_owner", input.AppOwner)
 
 	// Get the app config
-	app := config.SelectApp(cfg, appName, input.AppOwner)
+	app := pubconfig.ResolveApp(cfg, appName, input.AppOwner)
 	if app == nil {
 		return nil, nil, errors.New("app is not found in the config")
 	}
@@ -86,12 +90,12 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	attrs := slogerr.NewAttrs(1)
 	logger = attrs.Add(logger, "app_name", app.Name)
 
-	minExpiration, err := resolveMinExpiration(input.MinExpiration, cfg.MinExpiration, tm.input.Getenv)
+	minExpiration, err := resolveMinExpiration(input.MinExpiration, cfg.MinExpiration)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve the min expiration: %w", attrs.With(err))
 	}
 
-	b, err := tm.resolveBackend(cfg)
+	b, err := tm.resolveBackend(logger, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve the backend: %w", attrs.With(err))
 	}
@@ -102,14 +106,19 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		"min_expiration", minExpiration,
 	)
 
+	enableDF, err := enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve whether the device flow is enabled: %w", attrs.With(err))
+	}
+
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		MinExpiration:     minExpiration,
 		App:               app,
 		Backend:           b,
-		EnableDeviceFlow:  enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv),
+		EnableDeviceFlow:  enableDF,
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
-		OpenBrowser:       openBrowser(cfg.OpenBrowser, tm.input.Getenv),
-		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard, tm.input.Getenv),
+		OpenBrowser:       openBrowser(cfg.OpenBrowser),
+		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("get or create token: %w", attrs.With(err))
@@ -147,26 +156,28 @@ type inputGetOrCreateToken struct {
 
 // enableDeviceFlow resolves whether the device flow may run. An explicit override
 // (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides (only "true" enables it). The device flow is
-// disabled by default so it is never started automatically; it must be enabled
-// explicitly (e.g. by `ghtkn auth`).
-func enableDeviceFlow(override *bool, getEnv func(string) string) bool {
+// environment variable decides (a boolean parsed by strconv.ParseBool; an
+// unparsable value is a hard error). The device flow is disabled by default so it
+// is never started automatically; it must be enabled explicitly (e.g. by `ghtkn auth`).
+func enableDeviceFlow(override *bool, getEnv func(string) string) (bool, error) {
 	if override != nil {
-		return *override
+		return *override, nil
 	}
-	if v := getEnv("GHTKN_ENABLE_DEVICE_FLOW"); v != "" {
-		return v == "true"
+	if v := getEnv(env.EnableDeviceFlow); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return false, fmt.Errorf("parse %s as a boolean: %w", env.EnableDeviceFlow, err)
+		}
+		return b, nil
 	}
-	return false
+	return false, nil
 }
 
-// resolveBackendType resolves the storage backend type. The GHTKN_BACKEND
-// environment variable takes precedence, then the config's backend.type. An empty
-// result selects the default (the OS keyring); backend.New maps it accordingly.
-func resolveBackendType(cfg *pubconfig.Backend, getEnv func(string) string) string {
-	if v := getEnv("GHTKN_BACKEND"); v != "" {
-		return v
-	}
+// resolveBackendType resolves the storage backend type from the (already
+// env-overridden) config's backend.type. An empty result selects the default (the OS
+// keyring); backend.New maps it accordingly. The GHTKN_BACKEND override is applied
+// upstream by config.ApplyEnvOverrides.
+func resolveBackendType(cfg *pubconfig.Backend) string {
 	if cfg != nil && cfg.Type != "" {
 		return cfg.Type
 	}
@@ -174,59 +185,47 @@ func resolveBackendType(cfg *pubconfig.Backend, getEnv func(string) string) stri
 }
 
 // resolveMinExpiration resolves the minimum time before token expiration that
-// triggers renewal. An explicit override (the -min-expiration flag) takes
-// precedence, including an explicit zero; otherwise the GHTKN_MIN_EXPIRATION
-// environment variable decides, then the config's min_expiration. It defaults to
-// zero (renew only once the token has actually expired). The environment variable
-// and config values are Go duration strings such as "1h" or "30m".
-func resolveMinExpiration(override *time.Duration, cfg string, getEnv func(string) string) (time.Duration, error) {
+// triggers renewal. An explicit override (the -min-expiration flag) takes precedence,
+// including an explicit zero; otherwise the config's min_expiration is used (with the
+// GHTKN_MIN_EXPIRATION override already folded in by config.ApplyEnvOverrides). It
+// defaults to zero (renew only once the token has actually expired). The config value
+// is a Go duration string such as "1h" or "30m".
+func resolveMinExpiration(override *time.Duration, cfg string) (time.Duration, error) {
 	if override != nil {
 		return *override, nil
-	}
-	if v := getEnv("GHTKN_MIN_EXPIRATION"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			return 0, fmt.Errorf("parse GHTKN_MIN_EXPIRATION as a duration: %w", slogerr.With(err, "min_expiration", v))
-		}
-		return d, nil
 	}
 	if cfg != "" {
 		d, err := time.ParseDuration(cfg)
 		if err != nil {
-			return 0, fmt.Errorf("parse min_expiration in the config as a duration: %w", slogerr.With(err, "min_expiration", cfg))
+			return 0, fmt.Errorf("parse min_expiration as a duration: %w", slogerr.With(err, "min_expiration", cfg))
 		}
 		return d, nil
 	}
 	return 0, nil
 }
 
-// openBrowser resolves whether the device flow may open a browser automatically.
-// The GHTKN_OPEN_BROWSER environment variable, when set, takes precedence and
-// only "false" disables the open. Otherwise the config's open_browser.enable
-// decides, defaulting to enabled. This lets users in WSL, containers, and
-// headless environments suppress the unreliable browser launch (and its noisy
-// errors) and open the URL manually instead.
-func openBrowser(cfg *pubconfig.OpenBrowser, getEnv func(string) string) bool {
-	if v := getEnv("GHTKN_OPEN_BROWSER"); v != "" {
-		return v != "false"
-	}
+// openBrowser resolves whether the device flow may open a browser automatically from
+// the (already env-overridden) config's open_browser.enable, defaulting to enabled. The
+// GHTKN_OPEN_BROWSER override is applied upstream by config.ApplyEnvOverrides, which
+// parses it with strconv.ParseBool and rejects a value it cannot parse. This lets users
+// in WSL, containers, and headless environments suppress the unreliable browser launch
+// and open the URL manually instead.
+func openBrowser(cfg *pubconfig.OpenBrowser) bool {
 	if cfg != nil && cfg.Enable != nil {
 		return *cfg.Enable
 	}
 	return true
 }
 
-// clipboard resolves whether the device flow copies the one-time code to the
-// system clipboard. An explicit override (the -clipboard flag) takes precedence;
-// otherwise the GHTKN_CLIPBOARD environment variable decides (only "true" enables
-// it), then the config's clipboard.enable, defaulting to disabled. Copying also
+// clipboard resolves whether the device flow copies the one-time code to the system
+// clipboard. An explicit override (the -clipboard flag) takes precedence; otherwise the
+// (already env-overridden) config's clipboard.enable decides, defaulting to disabled.
+// The GHTKN_CLIPBOARD override is applied upstream by config.ApplyEnvOverrides, which
+// parses it with strconv.ParseBool and rejects a value it cannot parse. Copying also
 // requires the consumer to inject an implementation via SetCopyOnetimeCodeToClipboard.
-func clipboard(override *bool, cfg *pubconfig.Clipboard, getEnv func(string) string) bool {
+func clipboard(override *bool, cfg *pubconfig.Clipboard) bool {
 	if override != nil {
 		return *override
-	}
-	if v := getEnv("GHTKN_CLIPBOARD"); v != "" {
-		return v == "true"
 	}
 	if cfg != nil && cfg.Enable != nil {
 		return *cfg.Enable
@@ -249,6 +248,30 @@ func skipAccountPicker(cfg *bool) bool {
 // and any error that occurred. The changed flag is used to determine if the token should be
 // saved back to the keyring.
 func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, bool, error) {
+	create := func() (*pubapi.AccessToken, bool, error) {
+		token, changed, err := tm.createToken(ctx, logger, input.Backend, input.MinExpiration, &deviceflow.InputCreate{
+			ClientID:          input.App.ClientID,
+			AppName:           input.App.Name,
+			SkipAccountPicker: input.SkipAccountPicker,
+			OpenBrowser:       input.OpenBrowser,
+			Clipboard:         input.Clipboard,
+		}, input.EnableDeviceFlow)
+		if err != nil {
+			return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
+		}
+		return token, changed, nil
+	}
+
+	// A backend that owns the lifecycle (the agent) checks its own cache before it starts
+	// a flow, so when the flow may run, one request does both: it returns a still-valid
+	// token if there is one. Reading it separately first would make the agent run its
+	// cache path twice, which means a second attempt to refresh an expiring token and,
+	// when that refresh fails while the refresh token is still valid, a second copy of
+	// the incident warning that failure raises.
+	if input.Backend.SupportsDeviceFlow() && input.EnableDeviceFlow {
+		return create()
+	}
+
 	// Get an access token from keyring
 	token, err := tm.getAccessTokenFromBackend(ctx, logger, input)
 	if err != nil {
@@ -258,38 +281,73 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 		return token, false, nil
 	}
 	// Create access token
-	token, err = tm.createToken(ctx, logger, &deviceflow.InputCreate{
-		ClientID:          input.App.ClientID,
-		AppName:           input.App.Name,
-		SkipAccountPicker: input.SkipAccountPicker,
-		OpenBrowser:       input.OpenBrowser,
-		Clipboard:         input.Clipboard,
-	}, input.EnableDeviceFlow)
-	if err != nil {
-		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
-	}
-	return token, true, nil
+	return create()
 }
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
-// It returns a keyring.AccessToken with the token details and expiration date.
-func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, input *deviceflow.InputCreate, enableDeviceFlow bool) (*pubapi.AccessToken, error) {
+// It returns the token and whether the caller must persist it (changed).
+//
+// When the backend runs the device flow itself (the agent), the flow runs on the
+// server: this asks it to begin and, unless the agent already has a valid token,
+// displays the one-time code with the shared UI and polls the backend until the server
+// has minted and stored the token. The server already stored it, so changed is false.
+// Otherwise the client-side device flow runs and the caller must store the token, so
+// changed is true.
+//
+// Beginning is also how a cached token is read on that backend when the flow may run:
+// the agent returns a still-valid token instead of starting a flow, so getOrCreateToken
+// comes straight here rather than reading the backend first (see its comment).
+func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, backend Backend, minExpiration time.Duration, input *deviceflow.InputCreate, enableDeviceFlow bool) (*pubapi.AccessToken, bool, error) {
 	if !enableDeviceFlow {
-		return nil, pubapi.ErrDisableDeviceFlow
+		return nil, false, pubapi.ErrDisableDeviceFlow
+	}
+	if backend.SupportsDeviceFlow() {
+		token, deviceCode, err := backend.BeginDeviceFlow(ctx, input.ClientID, minExpiration)
+		if err != nil {
+			return nil, false, fmt.Errorf("begin the device flow on the agent: %w", err)
+		}
+		if token != nil {
+			// The agent had a still-valid token (cached, refreshed, or minted
+			// concurrently), so no flow was started and there is nothing to display.
+			return token, false, nil
+		}
+		// No usable token: report the miss the way the backend read does, since this is
+		// the path that replaces it when the flow may run.
+		tm.input.Logger.AccessTokenIsNotFoundInBackend(logger)
+		if err := tm.input.DeviceFlow.Show(ctx, logger, input, deviceCode); err != nil {
+			return nil, false, fmt.Errorf("show the one-time code: %w", err)
+		}
+		token, err = backend.PollDeviceFlow(ctx, input.ClientID, minExpiration)
+		if err != nil {
+			return nil, false, fmt.Errorf("wait for the agent to mint the token: %w", err)
+		}
+		return token, false, nil
 	}
 	tk, err := tm.input.DeviceFlow.Create(ctx, logger, input)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, false, err //nolint:wrapcheck
 	}
 	return &pubapi.AccessToken{
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
-	}, nil
+	}, true, nil
 }
 
-// getAccessTokenFromBackend retrieves a cached access token from the system keyring.
-// It returns nil if the token doesn't exist or has expired based on MinExpiration.
+// getAccessTokenFromBackend retrieves a still-valid cached access token from the
+// backend, or nil when there is none. For a backend that owns the token lifecycle
+// (the agent) the expiration check runs server-side; otherwise it is checked here
+// against MinExpiration.
 func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *slog.Logger, input *inputGetOrCreateToken) (*pubapi.AccessToken, error) {
+	if input.Backend.SupportsDeviceFlow() {
+		tk, err := input.Backend.GetActive(ctx, input.App.ClientID, input.MinExpiration)
+		if err != nil {
+			return nil, err
+		}
+		if tk == nil {
+			tm.input.Logger.AccessTokenIsNotFoundInBackend(logger)
+		}
+		return tk, nil
+	}
 	// Get an access token from the backend
 	tk, err := input.Backend.Get(ctx, input.App.ClientID)
 	if err != nil {
@@ -308,17 +366,45 @@ func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *s
 	return tk, nil
 }
 
+// maxTokenLifetime is the longest a GitHub App user access token can be valid: GitHub
+// issues them for at most 8 hours. A MinExpiration greater than this cannot be satisfied
+// by any real token, so it means "always regenerate" (as 'ghtkn auth' relies on).
+const maxTokenLifetime = 8 * time.Hour
+
 // checkExpired determines if an access token should be considered expired.
 // It returns true if the token will expire within the MinExpiration duration from now.
 // This ensures tokens are renewed before they actually expire.
 func (tm *TokenManager) checkExpired(exDate time.Time, minExpiration time.Duration) bool {
+	// The zero time means the token never expires (a GitHub App with user-token
+	// expiration disabled). It is never expiring on its own, but a MinExpiration beyond
+	// the maximum token lifetime is a request to regenerate regardless (e.g. 'ghtkn auth'
+	// forcing a fresh token so a revoked one is replaced), so honor that even here.
+	if exDate.IsZero() {
+		return minExpiration > maxTokenLifetime
+	}
 	// Expiration Date - Now < Min Expiration
 	// Now + Min Expiration > Expiration Date
-	return tm.input.Now().Add(minExpiration).After(exDate)
+	return time.Now().Add(minExpiration).After(exDate)
+}
+
+// loadConfig reads the configuration file and folds the environment overrides into
+// it, so every caller works with the effective (file plus environment) config. The
+// two steps are always paired: the resolvers downstream (resolveBackendType,
+// resolveMinExpiration, openBrowser, clipboard) read the config alone and would
+// silently ignore the environment if a caller read the file without this.
+func (tm *TokenManager) loadConfig(cfg *pubconfig.Config, configFilePath string) error {
+	if err := tm.readConfig(cfg, configFilePath); err != nil {
+		return err
+	}
+	if err := config.ApplyEnvOverrides(cfg, tm.input.Getenv); err != nil {
+		return fmt.Errorf("apply environment overrides: %w", err)
+	}
+	return nil
 }
 
 // readConfig loads and validates the configuration from the configured file path.
-// It returns an error if the configuration cannot be read or is invalid.
+// It returns an error if the configuration cannot be read or is invalid. It is the
+// plain file read; use loadConfig to get the effective config.
 func (tm *TokenManager) readConfig(cfg *pubconfig.Config, configFilePath string) error {
 	if err := tm.input.ConfigReader.Read(cfg, configFilePath); err != nil {
 		return fmt.Errorf("read config: %w", slogerr.With(err, "config", configFilePath))

@@ -1,7 +1,11 @@
 package deviceflow
 
 import (
+	"context"
+	"log/slog"
+
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/deviceflow/ui"
 	publog "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 )
 
@@ -20,6 +24,22 @@ func NewClient(input *Input) *Client {
 	}
 }
 
+// Show displays the one-time code (and opens the browser / copies to the clipboard)
+// for a device flow whose device code was obtained elsewhere, such as by the agent
+// server. It reuses the same UI the client-side device flow uses, so the presentation
+// is identical regardless of which side minted the token. input carries the display
+// options (AppName, SkipAccountPicker, OpenBrowser, Clipboard) and deviceCode carries
+// the one-time code, verification URL, and expiry.
+func (c *Client) Show(ctx context.Context, logger *slog.Logger, input *InputCreate, deviceCode *pubdeviceflow.DeviceCodeResponse) error {
+	return c.input.OnetimeCodeUI.Show(ctx, logger, &ui.InputCreate{ //nolint:wrapcheck
+		ClientID:          input.ClientID,
+		AppName:           input.AppName,
+		SkipAccountPicker: input.SkipAccountPicker,
+		OpenBrowser:       input.OpenBrowser,
+		Clipboard:         input.Clipboard,
+	}, deviceCode)
+}
+
 // SetLogger updates the logger instance used by the client.
 // This allows dynamic reconfiguration of logging behavior.
 func (c *Client) SetLogger(logger *publog.Logger) {
@@ -28,18 +48,18 @@ func (c *Client) SetLogger(logger *publog.Logger) {
 
 // SetOnetimeCodeUI updates the one-time code UI implementation used by the client.
 // This allows customization of how the one-time code (user code) is presented to users.
-func (c *Client) SetOnetimeCodeUI(ui pubdeviceflow.OnetimeCodeUI) {
-	c.input.OnetimeCodeUI = ui
+func (c *Client) SetOnetimeCodeUI(o pubdeviceflow.OnetimeCodeUI) {
+	c.input.OnetimeCodeUI.SetOnetimeCodeUI(o)
 }
 
 // SetBrowser updates the browser implementation used by the client.
 // This allows customization of how verification URLs are opened in the browser.
 func (c *Client) SetBrowser(b pubdeviceflow.Browser) {
-	c.input.Browser = b
+	c.input.OnetimeCodeUI.SetBrowser(b)
 }
 
 // SetCopyOnetimeCodeToClipboard updates the clipboard implementation used to copy the one-time code.
 // This allows customization of how the one-time code is copied to the user's clipboard.
 func (c *Client) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextToClipboard) {
-	c.input.CopyOnetimeCodeToClipboard = f
+	c.input.OnetimeCodeUI.SetCopyOnetimeCodeToClipboard(f)
 }

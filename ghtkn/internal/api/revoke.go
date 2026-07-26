@@ -8,6 +8,7 @@ import (
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	pubconfig "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/config"
 )
 
@@ -41,7 +42,7 @@ func (tm *TokenManager) revokeAppNames(cfg *pubconfig.Config, input *pubapi.Inpu
 	if len(input.AppNames) > 0 {
 		return input.AppNames, nil
 	}
-	app := config.SelectApp(cfg, tm.input.Getenv("GHTKN_APP"), "")
+	app := pubconfig.ResolveApp(cfg, tm.input.Getenv(env.App), "")
 	if app == nil {
 		return nil, errors.New("app is not found in the config")
 	}
@@ -74,7 +75,10 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	if err != nil {
 		return err
 	}
-	if err := tm.readConfig(cfg, configPath); err != nil {
+	// The effective config: the file plus the environment overrides. GHTKN_BACKEND
+	// selects the backend to revoke from, so reading the file alone would revoke from
+	// the wrong backend and silently leave the real token live.
+	if err := tm.loadConfig(cfg, configPath); err != nil {
 		return err
 	}
 
@@ -83,9 +87,15 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 		return err
 	}
 
-	b, err := tm.resolveBackend(cfg)
+	b, err := tm.resolveBackend(logger, cfg)
 	if err != nil {
 		return fmt.Errorf("resolve the backend: %w", err)
+	}
+
+	// The agent owns the token lifecycle, so it revokes and deletes each stored token
+	// itself; the client only tells it which apps to revoke.
+	if b.SupportsDeviceFlow() {
+		return tm.revokeViaBackend(ctx, logger, b, cfg, appNames)
 	}
 
 	tokens := make([]string, 0, len(appNames))
@@ -94,7 +104,7 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 	// errs aggregates per-app failures so one bad app doesn't block the rest.
 	var errs []error
 	for _, name := range appNames {
-		app := config.SelectApp(cfg, name, "")
+		app := pubconfig.ResolveApp(cfg, name, "")
 		if app == nil {
 			// The intended token was not revoked: treat as a live-credential failure.
 			errs = append(errs, fmt.Errorf("app is not found in the config: %s: %w", name, pubapi.ErrRevoke))
@@ -132,6 +142,45 @@ func (tm *TokenManager) Revoke(ctx context.Context, logger *slog.Logger, input *
 		if err := b.Delete(ctx, clientID); err != nil {
 			errs = append(errs, fmt.Errorf("delete a revoked token from the backend: client_id=%s: %w: %w", clientID, err, pubapi.ErrBackendCleanup))
 		}
+	}
+	return errors.Join(errs...)
+}
+
+// revokeViaBackend revokes the apps' stored tokens through a backend that owns the
+// token lifecycle (the agent). It resolves the apps to client IDs and hands them to
+// the backend, which revokes and deletes them in one batch. The backend reports which
+// client IDs it could not revoke (ErrRevoke, the credential may be live) and which it
+// revoked but could not delete (ErrBackendCleanup), which are mapped back to app names.
+func (tm *TokenManager) revokeViaBackend(ctx context.Context, logger *slog.Logger, b Backend, cfg *pubconfig.Config, appNames []string) error {
+	var errs []error
+	clientIDs := make([]string, 0, len(appNames))
+	appByClientID := make(map[string]string, len(appNames))
+	for _, name := range appNames {
+		app := pubconfig.ResolveApp(cfg, name, "")
+		if app == nil {
+			errs = append(errs, fmt.Errorf("app is not found in the config: %s: %w", name, pubapi.ErrRevoke))
+			continue
+		}
+		clientIDs = append(clientIDs, app.ClientID)
+		appByClientID[app.ClientID] = app.Name
+	}
+	if len(clientIDs) == 0 {
+		return errors.Join(errs...)
+	}
+
+	revokeFailed, cleanupFailed, err := b.RevokeTokens(ctx, clientIDs)
+	if err != nil {
+		// The request itself failed (e.g. the agent is not running or locked), so no
+		// credential was revoked.
+		errs = append(errs, fmt.Errorf("revoke tokens through the backend: %w: %w", err, pubapi.ErrRevoke))
+		return errors.Join(errs...)
+	}
+	logger.Debug("revoked tokens through the agent", "count", len(clientIDs)-len(revokeFailed))
+	for _, clientID := range revokeFailed {
+		errs = append(errs, fmt.Errorf("revoke a token through the backend: app_name=%s: %w", appByClientID[clientID], pubapi.ErrRevoke))
+	}
+	for _, clientID := range cleanupFailed {
+		errs = append(errs, fmt.Errorf("delete a revoked token from the backend: app_name=%s: %w", appByClientID[clientID], pubapi.ErrBackendCleanup))
 	}
 	return errors.Join(errs...)
 }

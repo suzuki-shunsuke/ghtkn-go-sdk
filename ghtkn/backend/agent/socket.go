@@ -3,6 +3,8 @@ package agent
 import (
 	"errors"
 	"path/filepath"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // goosWindows is the runtime.GOOS value for Windows.
@@ -14,22 +16,22 @@ const goosWindows = "windows"
 // (%LocalAppData%\cache\ghtkn\agent.sock on Windows). Both the agent server and the
 // client resolve the socket through this function so they always agree on the path.
 func SocketPath(getEnv func(string) string, goos string) (string, error) {
-	if s := getEnv("GHTKN_AGENT_SOCKET"); s != "" {
+	if s := getEnv(env.AgentSocket); s != "" {
 		return s, nil
 	}
-	if dir := getEnv("XDG_RUNTIME_DIR"); dir != "" {
+	if dir := getEnv(env.XDGRuntimeDir); dir != "" {
 		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
 	}
-	if dir := getEnv("XDG_CACHE_HOME"); dir != "" {
+	if dir := getEnv(env.XDGCacheHome); dir != "" {
 		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
 	}
 	if goos == goosWindows {
-		if d := getEnv("LocalAppData"); d != "" {
+		if d := getEnv(env.LocalAppData); d != "" {
 			return filepath.Join(d, "cache", "ghtkn", "agent.sock"), nil
 		}
 		return "", errors.New("GHTKN_AGENT_SOCKET or LocalAppData is required to use the agent backend on Windows")
 	}
-	if home := getEnv("HOME"); home != "" {
+	if home := getEnv(env.Home); home != "" {
 		return filepath.Join(home, ".cache", "ghtkn", "agent.sock"), nil
 	}
 	return "", errors.New("GHTKN_AGENT_SOCKET, XDG_RUNTIME_DIR, XDG_CACHE_HOME, or HOME is required to use the agent backend")

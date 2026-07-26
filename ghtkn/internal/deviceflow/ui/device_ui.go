@@ -1,4 +1,4 @@
-package deviceflow
+package ui
 
 import (
 	"bufio"

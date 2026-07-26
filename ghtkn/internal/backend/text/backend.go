@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // The access token is saved in plaintext to ${XDG_CACHE_HOME}/ghtkn/tokens/<client-id>
@@ -44,7 +46,7 @@ func New(getEnv func(string) string) (*Backend, error) {
 // tokenDir resolves the directory that stores token files. GHTKN_TEXT_BACKEND_DIR
 // takes precedence; otherwise it is ${cache dir}/ghtkn/tokens.
 func tokenDir(getEnv func(string) string, goos string) (string, error) {
-	dir := getEnv("GHTKN_TEXT_BACKEND_DIR")
+	dir := getEnv(env.TextBackendDir)
 	if dir != "" {
 		return dir, nil
 	}
@@ -60,15 +62,15 @@ func tokenDir(getEnv func(string) string, goos string) (string, error) {
 // the config path is resolved.
 func cacheDir(getEnv func(string) string, goos string) (string, error) {
 	if goos == "windows" {
-		if d := getEnv("LocalAppData"); d != "" {
+		if d := getEnv(env.LocalAppData); d != "" {
 			return filepath.Join(d, "cache"), nil
 		}
 		return "", errors.New("LocalAppData is required to use the text backend on Windows")
 	}
-	if d := getEnv("XDG_CACHE_HOME"); d != "" {
+	if d := getEnv(env.XDGCacheHome); d != "" {
 		return d, nil
 	}
-	if home := getEnv("HOME"); home != "" {
+	if home := getEnv(env.Home); home != "" {
 		return filepath.Join(home, ".cache"), nil
 	}
 	return "", errors.New("XDG_CACHE_HOME or HOME is required to use the text backend")

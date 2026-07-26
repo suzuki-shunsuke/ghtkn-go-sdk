@@ -1,22 +1,17 @@
-package deviceflow
+package ui
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	pubdeviceflow "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/internal/log"
 )
 
 // recordingBrowser records whether Open was called. It does not implement the
-// availabilityChecker interface, so the device flow treats it as "available".
+// availabilityChecker interface, so Show treats it as "available".
 type recordingBrowser struct {
 	opened bool
 	url    string
@@ -35,28 +30,17 @@ type unavailableBrowser struct {
 
 func (b *unavailableBrowser) Available() bool { return false }
 
-// successHandler serves a device code then an access token, so Create completes.
-func successHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/login/device/code":
-			json.NewEncoder(w).Encode(pubdeviceflow.DeviceCodeResponse{ //nolint:errcheck
-				DeviceCode:      "device123",
-				UserCode:        "USER-CODE",
-				VerificationURI: "https://github.com/login/device",
-				ExpiresIn:       10,
-				Interval:        1,
-			})
-		case "/login/oauth/access_token":
-			json.NewEncoder(w).Encode(accessTokenResponse{ //nolint:errcheck
-				AccessToken: "gho_testtoken123",
-				ExpiresIn:   28800,
-			})
-		}
+func newTestDeviceCode() *pubdeviceflow.DeviceCodeResponse {
+	return &pubdeviceflow.DeviceCodeResponse{
+		DeviceCode:      "device123",
+		UserCode:        "USER-CODE",
+		VerificationURI: "https://github.com/login/device",
+		ExpiresIn:       10,
+		Interval:        1,
 	}
 }
 
-func TestClient_Create_clipboard(t *testing.T) {
+func TestClient_Show_clipboard(t *testing.T) {
 	t.Parallel()
 
 	const copiedMsg = "copied to your clipboard"
@@ -99,9 +83,6 @@ func TestClient_Create_clipboard(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			server := httptest.NewServer(successHandler())
-			defer server.Close()
-
 			var gotCode string
 			var copyFn pubdeviceflow.CopyTextToClipboard
 			if tt.inject {
@@ -115,27 +96,19 @@ func TestClient_Create_clipboard(t *testing.T) {
 			}
 
 			var stderr strings.Builder
-			input := &Input{
-				HTTPClient:                 &http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
-				Now:                        time.Now,
+			client := New(&Input{
 				Stderr:                     &stderr,
 				Browser:                    &recordingBrowser{},
-				NewTicker:                  func(_ time.Duration) *time.Ticker { return time.NewTicker(time.Millisecond) },
-				Logger:                     log.NewLogger(),
 				OnetimeCodeUI:              newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
 				CopyOnetimeCodeToClipboard: copyFn,
-			}
+			})
 
-			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+			if err := client.Show(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
 				ClientID:    "test-client-id",
 				OpenBrowser: true,
 				Clipboard:   tt.enabled,
-			})
-			if err != nil {
-				t.Fatalf("Create() error = %v", err)
-			}
-			if tk.AccessToken != "gho_testtoken123" {
-				t.Fatalf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
+			}, newTestDeviceCode()); err != nil {
+				t.Fatalf("Show() error = %v", err)
 			}
 			called := gotCode != ""
 			if called != tt.wantCalled {
@@ -151,7 +124,7 @@ func TestClient_Create_clipboard(t *testing.T) {
 	}
 }
 
-func TestClient_Create_browser(t *testing.T) {
+func TestClient_Show_browser(t *testing.T) {
 	t.Parallel()
 
 	const manualMsg = "Open the following URL in your browser"
@@ -194,6 +167,15 @@ func TestClient_Create_browser(t *testing.T) {
 			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
 		},
 		{
+			name:              "skip_account_picker shown in the manual-open URL",
+			setup:             func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
+			openBrowser:       false,
+			skipAccountPicker: true,
+			wantOpened:        false,
+			wantManual:        true,
+			wantStderrURL:     "https://github.com/login/device?skip_account_picker=true",
+		},
+		{
 			name:        "open browser disabled asks the user to open the URL",
 			setup:       func() (pubdeviceflow.Browser, *bool, *string) { b := &recordingBrowser{}; return b, &b.opened, &b.url },
 			openBrowser: false,
@@ -206,31 +188,20 @@ func TestClient_Create_browser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			server := httptest.NewServer(successHandler())
-			defer server.Close()
-
 			br, opened, browserURL := tt.setup()
 			var stderr strings.Builder
-			input := &Input{
-				HTTPClient:    &http.Client{Transport: &testTransport{server: server, base: http.DefaultTransport}},
-				Now:           time.Now,
+			client := New(&Input{
 				Stderr:        &stderr,
 				Browser:       br,
-				NewTicker:     func(_ time.Duration) *time.Ticker { return time.NewTicker(time.Millisecond) },
-				Logger:        log.NewLogger(),
 				OnetimeCodeUI: newOnetimeCodeUI(strings.NewReader("\n"), &stderr, &mockWaiter{}),
-			}
+			})
 
-			tk, err := NewClient(input).Create(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
+			if err := client.Show(t.Context(), slog.New(slog.DiscardHandler), &InputCreate{
 				ClientID:          "test-client-id",
 				SkipAccountPicker: tt.skipAccountPicker,
 				OpenBrowser:       tt.openBrowser,
-			})
-			if err != nil {
-				t.Fatalf("Create() error = %v", err)
-			}
-			if tk.AccessToken != "gho_testtoken123" {
-				t.Fatalf("AccessToken = %q, want gho_testtoken123", tk.AccessToken)
+			}, newTestDeviceCode()); err != nil {
+				t.Fatalf("Show() error = %v", err)
 			}
 			if *opened != tt.wantOpened {
 				t.Errorf("browser opened = %v, want %v", *opened, tt.wantOpened)

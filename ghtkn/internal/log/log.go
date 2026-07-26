@@ -32,6 +32,11 @@ func NewLogger() *publog.Logger {
 		AccessTokenIsNotFoundInBackend: func(logger *slog.Logger) {
 			logger.Debug("access token is not found in backend")
 		},
+		AgentWarning: func(_ *slog.Logger, stderr io.Writer, message string) {
+			// Write only to stderr so the human sees it; the slog logger commonly
+			// writes to stderr too, so also emitting a slog record would double it.
+			fmt.Fprintf(stderr, "WARNING: ghtkn agent: %s\n", message) //nolint:errcheck
+		},
 	}
 }
 
@@ -54,5 +59,8 @@ func InitLogger(l *publog.Logger) {
 	}
 	if l.AccessTokenIsNotFoundInBackend == nil {
 		l.AccessTokenIsNotFoundInBackend = defaultLogger.AccessTokenIsNotFoundInBackend
+	}
+	if l.AgentWarning == nil {
+		l.AgentWarning = defaultLogger.AgentWarning
 	}
 }

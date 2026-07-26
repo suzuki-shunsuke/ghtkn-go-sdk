@@ -13,8 +13,15 @@ import (
 )
 
 type mockDeviceFlow struct {
-	token *deviceflow.AccessToken
-	err   error
+	token      *deviceflow.AccessToken
+	err        error
+	showCalled bool
+	showErr    error
+}
+
+func (m *mockDeviceFlow) Show(_ context.Context, _ *slog.Logger, _ *deviceflow.InputCreate, _ *pubdeviceflow.DeviceCodeResponse) error {
+	m.showCalled = true
+	return m.showErr
 }
 
 func (m *mockDeviceFlow) SetLogger(_ *publog.Logger) {}
@@ -62,10 +69,6 @@ func TestNewInput(t *testing.T) {
 	// leaves it nil and resolveBackend builds it on demand in Get/Revoke.
 	if input.Backend != nil {
 		t.Error("NewInput().Backend should be nil; it is resolved lazily")
-	}
-
-	if input.Now == nil {
-		t.Error("NewInput().Now is nil")
 	}
 }
 

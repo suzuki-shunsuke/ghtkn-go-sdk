@@ -69,9 +69,17 @@ func TestBackend_Get(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "invalid token fails validation",
-			inner:   &mockInner{data: []byte(`{"access_token":"tok"}`)},
+			name:    "missing access_token fails validation",
+			inner:   &mockInner{data: []byte(`{"expiration_date":"2025-01-15T10:30:00Z"}`)},
 			wantErr: true,
+		},
+		{
+			// A never-expiring token (no expiration_date) round-trips: it is valid on read
+			// and returned with a zero ExpirationDate, which the expiry checks treat as
+			// never-expiring.
+			name:  "never-expiring token round-trips",
+			inner: &mockInner{data: []byte(`{"access_token":"tok"}`)},
+			want:  &api.AccessToken{AccessToken: "tok"},
 		},
 	}
 	for _, tt := range tests {
@@ -176,7 +184,7 @@ func TestBackend_Delete(t *testing.T) {
 func TestNew(t *testing.T) {
 	t.Parallel()
 	t.Run("empty defaults to keyring", func(t *testing.T) {
-		b, err := New("", os.Getenv)
+		b, err := New("", os.Getenv, nil, nil)
 		if err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
@@ -186,7 +194,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("keyring", func(t *testing.T) {
-		if _, err := New("keyring", os.Getenv); err != nil {
+		if _, err := New("keyring", os.Getenv, nil, nil); err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
 	})
@@ -197,13 +205,13 @@ func TestNew(t *testing.T) {
 				return t.TempDir()
 			}
 			return os.Getenv(s)
-		}); err != nil {
+		}, nil, nil); err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
 	})
 
 	t.Run("unsupported backend errors", func(t *testing.T) {
-		if _, err := New("bogus", os.Getenv); err == nil {
+		if _, err := New("bogus", os.Getenv, nil, nil); err == nil {
 			t.Error("New() expected an error for an unsupported backend")
 		}
 	})

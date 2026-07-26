@@ -29,6 +29,15 @@ var ErrAgentNotRunning = errors.New("the ghtkn agent is not running; run 'ghtkn 
 // agent to ask the user to unlock it instead of trying itself.
 var ErrAgentLocked = errors.New("the ghtkn agent is locked. Unlocking it requires a passphrase entered in an interactive terminal, which a background or non-interactive process can't do. If you are a coding agent, do NOT try to unlock it yourself; instead, ask the user to run `ghtkn agent unlock` in their own interactive terminal")
 
+// ErrObsoleteAgent is returned by the agent backend when the running agent is too old
+// for this client: it either predates protocol versioning (Response.ProtocolVersion is
+// absent) or reports RespObsoleteAgent. Such an agent ignores the request fields the
+// token lifecycle depends on, so it would answer a freshness-checked GET with whatever
+// it has cached, including an expired token. Upgrading ghtkn does not fix a running
+// agent: the process must be restarted to pick up the new binary. Detect it with
+// errors.Is.
+var ErrObsoleteAgent = errors.New("the running ghtkn agent is older than this client and does not speak the current agent protocol. Upgrading ghtkn is not enough: the already-running agent keeps the old binary, so it must be restarted with `ghtkn agent stop` and then `ghtkn agent start`")
+
 // Send opens a connection to the agent at path, writes a single newline-delimited
 // JSON request, and reads the single newline-delimited JSON response. It returns
 // ErrAgentNotRunning when no agent is listening.
@@ -43,12 +52,25 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 	}
 	defer conn.Close() //nolint:errcheck
 
+	// Stamp the current protocol version so the server can detect and reject
+	// obsolete clients. Pre-versioning clients never set this field, so the server
+	// sees version 0 for them.
+	req.ProtocolVersion = ProtocolVersion
 	b, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal the request: %w", err)
 	}
-	if _, err := conn.Write(append(b, '\n')); err != nil {
-		return nil, fmt.Errorf("send the request: %w", err)
+	// An UNLOCK request line carries the passphrase in the clear, so zero the marshaled
+	// bytes right after the write, not at function exit: otherwise the plaintext lingers
+	// through the blocking response read, which for UNLOCK spans the agent's (deliberately
+	// slow) Argon2id derivation. Both buffers are zeroed because append may or may not
+	// reuse b's array; zeroing the same array twice is harmless.
+	reqLine := append(b, '\n')
+	_, werr := conn.Write(reqLine)
+	zero(b)
+	zero(reqLine)
+	if werr != nil {
+		return nil, fmt.Errorf("send the request: %w", werr)
 	}
 
 	// ReadBytes returns io.EOF together with the data when the agent closes the
@@ -67,11 +89,6 @@ func Send(ctx context.Context, path string, req *Request) (*Response, error) {
 // IsNotRunning reports whether err indicates that no agent is listening.
 func IsNotRunning(err error) bool {
 	return errors.Is(err, ErrAgentNotRunning)
-}
-
-// IsLocked reports whether err indicates that the agent is running but locked.
-func IsLocked(err error) bool {
-	return errors.Is(err, ErrAgentLocked)
 }
 
 // isDialDown reports whether a dial error means no agent is listening.

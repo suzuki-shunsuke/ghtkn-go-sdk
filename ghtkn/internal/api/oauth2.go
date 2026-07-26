@@ -20,7 +20,6 @@ func (tm *TokenManager) TokenSource(logger *slog.Logger, input *pubapi.InputGet)
 		tm:     tm,
 		logger: logger,
 		input:  input,
-		now:    time.Now,
 	}
 }
 
@@ -32,7 +31,6 @@ type TokenSource struct {
 	tm     tokenSourceClient // Token manager instance for retrieving tokens
 	logger *slog.Logger      // Logger for debugging and error reporting
 	input  *pubapi.InputGet  // Input parameters for token retrieval
-	now    func() time.Time
 }
 
 type tokenSourceClient interface {
@@ -47,7 +45,7 @@ func (ks *TokenSource) Token() (*oauth2.Token, error) {
 	ks.mutex.Lock()
 	defer ks.mutex.Unlock()
 	token := ks.token
-	if token != nil && !isExpired(token, ks.now()) {
+	if token != nil && !isExpired(token, time.Now()) {
 		return token, nil
 	}
 

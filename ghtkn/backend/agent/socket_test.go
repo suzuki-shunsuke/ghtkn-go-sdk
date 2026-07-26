@@ -1,8 +1,10 @@
-package agent
+package agent_test
 
 import (
 	"path/filepath"
 	"testing"
+
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 func TestSocketPath(t *testing.T) {
@@ -61,7 +63,7 @@ func TestSocketPath(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			getEnv := func(k string) string { return d.env[k] }
-			got, err := SocketPath(getEnv, d.goos)
+			got, err := agentapi.SocketPath(getEnv, d.goos)
 			if d.wantErr {
 				if err == nil {
 					t.Fatal("expected an error")

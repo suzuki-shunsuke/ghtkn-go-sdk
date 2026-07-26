@@ -45,7 +45,9 @@ type Browser interface {
 }
 
 // DeviceCodeResponse represents the response from GitHub's device code endpoint.
-// It contains the device code and user code needed for authentication.
+// It contains the device code and user code needed for authentication. This is the
+// SDK's own contract type: the internal device flow converts the underlying library
+// response into this so the public API stays decoupled from that library.
 type DeviceCodeResponse struct {
 	DeviceCode      string `json:"device_code"`
 	UserCode        string `json:"user_code"`
