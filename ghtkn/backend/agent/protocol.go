@@ -191,6 +191,20 @@ type Response struct {
 	// start_device_flow, await_device_flow), which is why the agent backend refuses to
 	// use it (see ErrObsoleteAgent) instead of trusting its answers.
 	ProtocolVersion int `json:"protocol_version,omitempty"`
+	// MinProtocolVersion is the oldest protocol version the agent still serves (see
+	// MinProtocolVersion). The agent reports it in the STATUS response, so a client such
+	// as `ghtkn info` can show the whole range of versions the running agent accepts,
+	// not just its newest one. An agent that predates this field omits it, which decodes
+	// to 0; reading that as "accepts version 0" is correct, because MinProtocolVersion
+	// has been 0 in every release that could omit the field.
+	MinProtocolVersion int `json:"min_protocol_version,omitempty"`
+	// Version is the ghtkn version of the running agent (returned by STATUS). The agent
+	// is a long-running process, so upgrading ghtkn does not upgrade it: it keeps running
+	// the old binary until it is restarted, and reporting the version makes that mismatch
+	// visible in `ghtkn info`. An agent built without version information reports
+	// "unknown" rather than an empty string, so an absent field means an agent too old to
+	// report its version at all.
+	Version string `json:"version,omitempty"`
 	// OK reports whether the command succeeded.
 	OK bool `json:"ok"`
 	// Token is the cached access token payload (returned by a successful GET).
