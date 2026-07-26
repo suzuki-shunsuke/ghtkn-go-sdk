@@ -31,6 +31,31 @@ func TestSecretBytes_wireFormat(t *testing.T) {
 	}
 }
 
+// TestResponse_agentVersion verifies how the STATUS version fields survive the wire: a
+// response from an agent too old to report them decodes to the zero values, which the
+// client reads as "version unknown, minimum protocol version 0".
+func TestResponse_agentVersion(t *testing.T) {
+	t.Parallel()
+	b, err := json.Marshal(&agent.Response{OK: true, ProtocolVersion: 1, MinProtocolVersion: 0, Version: "v0.3.4"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"version":"v0.3.4"`) {
+		t.Fatalf("the agent version must be on the wire, got %s", b)
+	}
+
+	var resp agent.Response
+	if err := json.Unmarshal([]byte(`{"ok":true,"protocol_version":1}`), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Version != "" {
+		t.Fatalf("version = %q, want an empty string for an agent that does not report it", resp.Version)
+	}
+	if resp.MinProtocolVersion != 0 {
+		t.Fatalf("min protocol version = %d, want 0 for an agent that does not report it", resp.MinProtocolVersion)
+	}
+}
+
 // TestSecretBytes_omitempty verifies an empty passphrase is omitted from the wire.
 func TestSecretBytes_omitempty(t *testing.T) {
 	t.Parallel()
