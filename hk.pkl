@@ -1,10 +1,12 @@
-amends "package://github.com/jdx/hk/releases/download/v1.45.0/hk@1.45.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.45.0/hk@1.45.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Builtins.pkl"
 
 local linters = new Mapping<String, Step> {
   ["golangci-lint"] = Builtins.golangci_lint
   ["gomod-tidy"] = Builtins.gomod_tidy
-  ["typos"] = Builtins.typos
+  ["typos"] = (Builtins.typos) {
+    fix = check
+  }
   // ["lychee"] = Builtins.lychee
   ["nllint"] {
     glob = List("**/*")
