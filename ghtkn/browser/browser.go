@@ -112,10 +112,26 @@ func (b *Browser) runCmd(ctx context.Context, url string) error {
 // writer from stdoutWriter instead of the standard output of this process. See
 // SetStdout for why that output must not go to os.Stdout.
 //
+// Its standard input is nil, so the command reads from the null device rather than
+// from the standard input of this process. That input is not spare either: a git
+// credential helper built on this SDK is fed git's credential request on it, and
+// deviceflow's UI reads the user's Enter key from it. A browser command that reads a
+// byte of it takes that byte away from its owner, and the failure looks like a
+// truncated credential request rather than like the browser. A command that opens a
+// GUI browser never reads stdin, but on Linux the command can be a text browser,
+// since the www-browser alternative resolves to w3m or lynx on some hosts, and those
+// read stdin as keyboard input.
+//
+// A text browser therefore sees EOF and exits instead of taking over the terminal.
+// That is the intended outcome: the verification URL is already on stderr, so the
+// user can open it, whereas a text browser driven by a credential request is not a
+// state anyone can act on.
+//
 // The rest of the defaults, including stderr and the signal handling, come from
 // command, which is kept identical to its upstream copy.
 func (b *Browser) browserCmd(ctx context.Context, name, url string) *exec.Cmd {
 	cmd := command(ctx, name, url)
 	cmd.Stdout = b.stdoutWriter()
+	cmd.Stdin = nil
 	return cmd
 }
