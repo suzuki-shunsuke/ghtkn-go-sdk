@@ -60,8 +60,8 @@ type Backend struct {
 
 // Validate checks if the Config is valid.
 // It ensures the config is not nil and contains at least one app.
-// It also validates each app in the configuration, and that name, client_id, and
-// git_owner are each unique across the apps.
+// It also validates each app in the configuration, and that name, client_id, and each
+// repository owner (git_owner and the git_owners elements) are unique across the apps.
 func (c *Config) Validate() error {
 	if c == nil {
 		return errors.New("config is required")
@@ -70,7 +70,9 @@ func (c *Config) Validate() error {
 		return errors.New("apps is required")
 	}
 	names := map[string]struct{}{}
-	owners := map[string]struct{}{}
+	// owners maps a repository owner to the app that declared it, so a duplicate can
+	// name the other app instead of only the owner.
+	owners := map[string]string{}
 	// clientIDs maps a client ID to the app that declared it, so a duplicate can name
 	// the other app instead of only the ID.
 	clientIDs := map[string]string{}
@@ -91,16 +93,18 @@ func (c *Config) Validate() error {
 			return fmt.Errorf(
 				"app client_id must be unique: %q and %q share the client id %s. "+
 					"They would share one access token, so revoking or minting for one would silently do it for the other. "+
-					"Keep a single app for that client id; to use it for several repository owners, "+
-					"select it with the GHTKN_APP or GHTKN_GIT_APP environment variable instead of a second git_owner entry",
+					"Keep a single app for that client id; to select it for several repository owners, "+
+					"list them in that app's git_owners instead of adding a second entry",
 				other, app.Name, app.ClientID)
 		}
 		clientIDs[app.ClientID] = app.Name
-		if app.GitOwner != "" {
-			if _, ok := owners[app.GitOwner]; ok {
-				return fmt.Errorf("app git_owner must be unique: %s", app.GitOwner)
+		for _, owner := range app.gitOwners() {
+			if other, ok := owners[owner]; ok {
+				return fmt.Errorf(
+					"a repository owner must be unique across apps: %q and %q both declare the owner %s",
+					other, app.Name, owner)
 			}
-			owners[app.GitOwner] = struct{}{}
+			owners[owner] = app.Name
 		}
 	}
 	return nil
@@ -112,10 +116,16 @@ type App struct {
 	Name     string `json:"name"`
 	ClientID string `json:"client_id" yaml:"client_id"`
 	GitOwner string `json:"git_owner,omitempty" yaml:"git_owner"`
+	// GitOwners is git_owner for an app shared by several repository owners, such as an
+	// Enterprise GitHub App installed on several organizations. The app can't be
+	// repeated once per owner because client_id must be unique across apps, so the
+	// owners are listed here instead. GitOwner and GitOwners are mutually exclusive.
+	GitOwners []string `json:"git_owners,omitempty" yaml:"git_owners"`
 }
 
 // Validate checks if the App configuration is valid.
-// It ensures both Name and ClientID fields are present.
+// It ensures both Name and ClientID fields are present, and that git_owner and
+// git_owners are not both set and that git_owners holds no empty or duplicate owner.
 func (app *App) Validate() error {
 	if app.Name == "" {
 		return errors.New("name is required")
@@ -123,5 +133,28 @@ func (app *App) Validate() error {
 	if app.ClientID == "" {
 		return errors.New("client_id is required")
 	}
+	if app.GitOwner != "" && len(app.GitOwners) > 0 {
+		return errors.New("git_owner and git_owners are mutually exclusive: set only one of them")
+	}
+	owners := make(map[string]struct{}, len(app.GitOwners))
+	for _, owner := range app.GitOwners {
+		if owner == "" {
+			return errors.New("git_owners must not contain an empty string")
+		}
+		if _, ok := owners[owner]; ok {
+			return fmt.Errorf("git_owners must not contain a duplicate: %s", owner)
+		}
+		owners[owner] = struct{}{}
+	}
 	return nil
+}
+
+// gitOwners returns the repository owners this app is selected for. git_owner and
+// git_owners are mutually exclusive (App.Validate rejects setting both), so this
+// returns whichever one is set.
+func (app *App) gitOwners() []string {
+	if app.GitOwner != "" {
+		return []string{app.GitOwner}
+	}
+	return app.GitOwners
 }

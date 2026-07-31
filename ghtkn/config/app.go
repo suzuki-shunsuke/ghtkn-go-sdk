@@ -1,8 +1,10 @@
 package config
 
+import "slices"
+
 // ResolveApp resolves the app ghtkn should use from cfg by applying the selection
 // priority:
-//  1. If owner is non-empty and matches an app's GitOwner, that app.
+//  1. If owner is non-empty and matches an app's GitOwner or one of its GitOwners, that app.
 //  2. If key is empty (regardless of whether owner matched), the first app in the list
 //     (the default app).
 //  3. Otherwise the app whose Name equals key (nil when none matches).
@@ -16,7 +18,7 @@ func ResolveApp(cfg *Config, key, owner string) *App {
 	}
 	if owner != "" {
 		for _, a := range cfg.Apps {
-			if a.GitOwner == owner {
+			if slices.Contains(a.gitOwners(), owner) {
 				return a
 			}
 		}
