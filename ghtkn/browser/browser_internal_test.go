@@ -4,8 +4,24 @@ package browser
 
 import (
 	"errors"
+	"os"
 	"testing"
 )
+
+// TestBrowserCmd checks that opening a browser can't write to the standard output of
+// the process opening it, which carries the access token in 'ghtkn get' and git's
+// credential protocol in 'ghtkn git-credential'.
+func TestBrowserCmd(t *testing.T) {
+	t.Parallel()
+
+	cmd := browserCmd(t.Context(), "xdg-open", "https://github.com/login/device")
+	if cmd.Stdout != os.Stderr {
+		t.Errorf("Stdout = %v, want os.Stderr", cmd.Stdout)
+	}
+	if cmd.Stderr != os.Stderr {
+		t.Errorf("Stderr = %v, want os.Stderr", cmd.Stderr)
+	}
+}
 
 func TestBrowser_Available(t *testing.T) {
 	t.Parallel()

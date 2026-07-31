@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
 
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -64,10 +65,29 @@ func (b *Browser) runCmd(ctx context.Context, url string) error {
 		if _, err := b.findCmd(cmd); err != nil {
 			continue
 		}
-		if err := command(ctx, cmd, url).Run(); err != nil {
+		if err := browserCmd(ctx, cmd, url).Run(); err != nil {
 			return fmt.Errorf("open the browser: %w", slogerr.With(err, "command_to_open_browser", cmd))
 		}
 		return nil
 	}
 	return ErrNoCommandFound
+}
+
+// browserCmd builds the command that opens url, sending its standard output to
+// standard error.
+//
+// Nothing a browser command writes to stdout is meaningful, while the stdout of the
+// process opening the browser carries data its caller parses: 'ghtkn get' writes the
+// access token there, and 'ghtkn git-credential' speaks git's credential protocol.
+// A single line from the browser command would corrupt either one, and the resulting
+// failure would look like a bad token rather than like browser output. On Linux the
+// browser command can even be a text browser, since the www-browser alternative
+// resolves to w3m or lynx on some hosts, and those render the whole page to stdout.
+//
+// The rest of the defaults, including stderr and the signal handling, come from
+// command, which is kept identical to its upstream copy.
+func browserCmd(ctx context.Context, name, url string) *exec.Cmd {
+	cmd := command(ctx, name, url)
+	cmd.Stdout = os.Stderr
+	return cmd
 }
