@@ -12,6 +12,7 @@ func TestResolveApp(t *testing.T) {
 	cfg := &config.Config{Apps: []*config.App{
 		{Name: "first", ClientID: "Iv1.first", GitOwner: "owner-a"},
 		{Name: "second", ClientID: "Iv1.second", GitOwner: "owner-b"},
+		{Name: "third", ClientID: "Iv1.third", GitOwners: []string{"owner-c", "owner-d"}},
 	}}
 
 	tests := []struct {
@@ -22,6 +23,8 @@ func TestResolveApp(t *testing.T) {
 		want  string // expected app Name, or "" when the result is nil
 	}{
 		{name: "owner match wins over key", cfg: cfg, key: "first", owner: "owner-b", want: "second"},
+		{name: "git_owners first element match", cfg: cfg, key: "", owner: "owner-c", want: "third"},
+		{name: "git_owners later element match", cfg: cfg, key: "first", owner: "owner-d", want: "third"},
 		{name: "key match", cfg: cfg, key: "second", owner: "", want: "second"},
 		{name: "key not found is nil", cfg: cfg, key: "missing", owner: "", want: ""},
 		{name: "both empty is the first app", cfg: cfg, key: "", owner: "", want: "first"},

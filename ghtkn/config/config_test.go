@@ -153,6 +153,62 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 			},
 			wantErr: false,
 		},
+		{
+			// The owner is declared by git_owner in one app and by git_owners in the
+			// other, so the uniqueness check must span both fields.
+			name: "duplicate git owners across git_owner and git_owners",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:     "app1",
+						ClientID: "xxx",
+						GitOwner: "same-owner",
+					},
+					{
+						Name:      "app2",
+						ClientID:  "yyy",
+						GitOwners: []string{"owner2", "same-owner"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "duplicate git owners across git_owners",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:      "app1",
+						ClientID:  "xxx",
+						GitOwners: []string{"owner1", "same-owner"},
+					},
+					{
+						Name:      "app2",
+						ClientID:  "yyy",
+						GitOwners: []string{"same-owner", "owner2"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid config with git_owners",
+			config: &config.Config{
+				Apps: []*config.App{
+					{
+						Name:      "enterprise",
+						ClientID:  "xxx",
+						GitOwners: []string{"owner1", "owner2"},
+					},
+					{
+						Name:     "app2",
+						ClientID: "yyy",
+						GitOwner: "owner3",
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -204,6 +260,43 @@ func TestApp_Validate(t *testing.T) {
 			app: &config.App{
 				Name:     "",
 				ClientID: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid app with git_owners",
+			app: &config.App{
+				Name:      "test-app",
+				ClientID:  "xxx",
+				GitOwners: []string{"owner1", "owner2"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "git_owner and git_owners are mutually exclusive",
+			app: &config.App{
+				Name:      "test-app",
+				ClientID:  "xxx",
+				GitOwner:  "owner1",
+				GitOwners: []string{"owner2"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty git owner in git_owners",
+			app: &config.App{
+				Name:      "test-app",
+				ClientID:  "xxx",
+				GitOwners: []string{"owner1", ""},
+			},
+			wantErr: true,
+		},
+		{
+			name: "duplicate git owners in git_owners",
+			app: &config.App{
+				Name:      "test-app",
+				ClientID:  "xxx",
+				GitOwners: []string{"owner1", "owner1"},
 			},
 			wantErr: true,
 		},
