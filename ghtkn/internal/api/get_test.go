@@ -38,14 +38,21 @@ type mockKeyring struct {
 	err     error
 	delErr  error
 	deleted []string
+	// stored is the last token written by Set. Auth returns no token, so this is how a
+	// test sees what it produced.
+	stored *pubapi.AccessToken
 }
 
 func (m *mockKeyring) Get(_ context.Context, _ string) (*pubapi.AccessToken, error) {
 	return m.token, m.err
 }
 
-func (m *mockKeyring) Set(_ context.Context, _ string, _ *pubapi.AccessToken) error {
-	return m.err
+func (m *mockKeyring) Set(_ context.Context, _ string, token *pubapi.AccessToken) error {
+	if m.err != nil {
+		return m.err
+	}
+	m.stored = token
+	return nil
 }
 
 func (m *mockKeyring) Delete(_ context.Context, clientID string) error {
@@ -238,11 +245,18 @@ func TestTokenManager_Auth(t *testing.T) {
 		ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 	}
 
+	// wantStored is what the backend must hold once Auth returns. Auth hands back no
+	// token, so the stored one is the only evidence of what it produced.
+	wantStored := &pubapi.AccessToken{
+		AccessToken:    newToken.AccessToken,
+		ExpirationDate: newToken.ExpirationDate,
+	}
+
 	tests := []struct {
 		name       string
 		setupInput func() *Input
 		wantErr    bool
-		wantToken  *pubapi.AccessToken
+		wantStored *pubapi.AccessToken
 		input      *pubapi.InputAuth
 	}{
 		{
@@ -253,11 +267,28 @@ func TestTokenManager_Auth(t *testing.T) {
 				input.Backend = &mockKeyring{}
 				return input
 			},
-			input: &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
-			wantToken: &pubapi.AccessToken{
-				AccessToken:    newToken.AccessToken,
-				ExpirationDate: newToken.ExpirationDate,
+			input:      &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
+			wantStored: wantStored,
+		},
+		{
+			// GHTKN_GITHUB_TOKEN short-circuits Get, handing the caller a token ghtkn
+			// never minted. Auth must ignore it: authenticating is the point, and
+			// returning early would leave the backend untouched while reporting success.
+			name: "GHTKN_GITHUB_TOKEN does not short-circuit authentication",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.Getenv = func(key string) string {
+					if key == "GHTKN_GITHUB_TOKEN" {
+						return "env-token"
+					}
+					return ""
+				}
+				input.DeviceFlow = &mockDeviceFlow{token: newToken}
+				input.Backend = &mockKeyring{}
+				return input
 			},
+			input:      &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
+			wantStored: wantStored,
 		},
 		{
 			// Auth asks for more validity than GitHub's 8h maximum, so every real token
@@ -276,11 +307,8 @@ func TestTokenManager_Auth(t *testing.T) {
 				}
 				return input
 			},
-			input: &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
-			wantToken: &pubapi.AccessToken{
-				AccessToken:    newToken.AccessToken,
-				ExpirationDate: newToken.ExpirationDate,
-			},
+			input:      &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
+			wantStored: wantStored,
 		},
 		{
 			name: "token creation error",
@@ -303,10 +331,11 @@ func TestTokenManager_Auth(t *testing.T) {
 
 			// See TestTokenManager_Get for why this runs under synctest.
 			synctest.Test(t, func(t *testing.T) {
-				tm := New(tt.setupInput())
+				input := tt.setupInput()
+				tm := New(input)
 				logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-				token, _, err := tm.Auth(t.Context(), logger, tt.input)
+				err := tm.Auth(t.Context(), logger, tt.input)
 				if err != nil {
 					if !tt.wantErr {
 						t.Error(err)
@@ -317,7 +346,11 @@ func TestTokenManager_Auth(t *testing.T) {
 					t.Error("expected error but got nil")
 					return
 				}
-				if diff := cmp.Diff(tt.wantToken, token); diff != "" {
+				backend, ok := input.Backend.(*mockKeyring)
+				if !ok {
+					t.Fatalf("backend is %T, want *mockKeyring", input.Backend)
+				}
+				if diff := cmp.Diff(tt.wantStored, backend.stored); diff != "" {
 					t.Error(diff)
 				}
 			})

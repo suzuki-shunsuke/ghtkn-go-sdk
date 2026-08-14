@@ -14,6 +14,7 @@ Get is safe to call from a background or non-interactive process: it never block
 
 `Client.Auth` is the only method that runs the Device Flow, so a token is never created on a caller's behalf.
 Call it only from a foreground, interactive context.
+It stores the token instead of returning it; read it back with `Get`.
 Most applications should call `Get` and leave authentication to the `ghtkn` CLI.
 
 ## Examples

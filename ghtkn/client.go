@@ -67,15 +67,18 @@ func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) 
 }
 
 // Auth authenticates to GitHub and stores a GitHub App access token in the backend,
-// running the OAuth device flow when it needs to. It returns the access token and the
-// resolved app configuration.
+// running the OAuth device flow when it needs to. This is what the `ghtkn auth` command
+// does, and most applications should leave authenticating to that command and call Get.
 //
 // It is the only operation that runs the device flow, so a token is only ever created
 // by an explicit authentication and never on a caller's behalf. The device flow is
 // interactive: it displays a one-time code and waits for the user to enter it, so only
 // call this from a foreground, interactive context. It also always regenerates,
 // ignoring any cached token, so that running it refreshes the token before it expires.
-func (c *Client) Auth(ctx context.Context, logger *slog.Logger, input *InputAuth) (*AccessToken, *AppConfig, error) {
+//
+// It returns no token, only whether authenticating succeeded. Read the token it stored
+// with Get; that keeps a token something you obtain without ever risking a device flow.
+func (c *Client) Auth(ctx context.Context, logger *slog.Logger, input *InputAuth) error {
 	return c.tm.Auth(ctx, logger, input)
 }
 

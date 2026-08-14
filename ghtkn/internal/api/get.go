@@ -73,6 +73,12 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	if input == nil {
 		input = &pubapi.InputGet{}
 	}
+	// Only Get honors this. Auth authenticates, and handing back whatever
+	// GHTKN_GITHUB_TOKEN holds would neither create nor store a GitHub App user token,
+	// leaving the backend untouched while reporting success.
+	if token := tm.input.Getenv(env.GitHubToken); token != "" {
+		return &pubapi.AccessToken{AccessToken: token}, nil, nil
+	}
 	return tm.get(ctx, logger, &inputGet{
 		AppName:        input.AppName,
 		ConfigFilePath: input.ConfigFilePath,
@@ -81,30 +87,31 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 	})
 }
 
-// Auth regenerates a GitHub App access token, running the device flow when it needs to.
-// It is the only operation that may run the device flow, so a token is only ever created
-// by an explicit, interactive authentication. It always regenerates: alwaysRenew asks for
-// more validity than any token can have, so the cached token is never accepted.
-func (tm *TokenManager) Auth(ctx context.Context, logger *slog.Logger, input *pubapi.InputAuth) (*pubapi.AccessToken, *pubconfig.App, error) {
+// Auth authenticates and stores a GitHub App access token in the backend, running the
+// device flow when it needs to. It is the only operation that may run the device flow,
+// so a token is only ever created by an explicit, interactive authentication. It always
+// regenerates: alwaysRenew asks for more validity than any token can have, so the cached
+// token is never accepted. GHTKN_GITHUB_TOKEN does not short-circuit it.
+//
+// It returns no token. Authenticating is all it does; reading the result is Get.
+func (tm *TokenManager) Auth(ctx context.Context, logger *slog.Logger, input *pubapi.InputAuth) error {
 	if input == nil {
 		input = &pubapi.InputAuth{}
 	}
 	minExpiration := alwaysRenew
-	return tm.get(ctx, logger, &inputGet{
+	_, _, err := tm.get(ctx, logger, &inputGet{
 		AppName:          input.AppName,
 		ConfigFilePath:   input.ConfigFilePath,
 		MinExpiration:    &minExpiration,
 		Clipboard:        input.Clipboard,
 		EnableDeviceFlow: true,
 	})
+	return err
 }
 
 // get is the shared body of Get and Auth. See their comments for what each of them
 // means; everything below this point is identical for the two.
 func (tm *TokenManager) get(ctx context.Context, logger *slog.Logger, input *inputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
-	if token := tm.input.Getenv(env.GitHubToken); token != "" {
-		return &pubapi.AccessToken{AccessToken: token}, nil, nil
-	}
 	cfg := &pubconfig.Config{}
 
 	// Get a config file path and read the config file
