@@ -473,48 +473,6 @@ func TestTokenManager_createToken_agentBeginReturnsToken(t *testing.T) {
 	}
 }
 
-func TestEnableDeviceFlow(t *testing.T) {
-	t.Parallel()
-	data := []struct {
-		name     string
-		override *bool
-		env      string
-		want     bool
-		wantErr  bool
-	}{
-		{name: "default disabled when all unset", override: nil, env: "", want: false},
-		{name: "env true enables", override: nil, env: "true", want: true},
-		{name: "env false disables", override: nil, env: "false", want: false},
-		{name: "env 1 enables", override: nil, env: "1", want: true},
-		{name: "env 0 disables", override: nil, env: "0", want: false},
-		{name: "env unparsable value errors", override: nil, env: "yes", wantErr: true},
-		{name: "override true beats env false", override: new(true), env: "false", want: true},
-		{name: "override false beats env true", override: new(false), env: "true", want: false},
-		{name: "override wins over an unparsable env value", override: new(true), env: "yes", want: true},
-	}
-	for _, d := range data {
-		t.Run(d.name, func(t *testing.T) {
-			t.Parallel()
-			getEnv := func(k string) string {
-				if k == "GHTKN_ENABLE_DEVICE_FLOW" {
-					return d.env
-				}
-				return ""
-			}
-			got, err := enableDeviceFlow(d.override, getEnv)
-			if (err != nil) != d.wantErr {
-				t.Fatalf("enableDeviceFlow error = %v, wantErr %v", err, d.wantErr)
-			}
-			if d.wantErr {
-				return
-			}
-			if got != d.want {
-				t.Errorf("enableDeviceFlow = %v, want %v", got, d.want)
-			}
-		})
-	}
-}
-
 func TestResolveMinExpiration(t *testing.T) {
 	t.Parallel()
 	data := []struct {

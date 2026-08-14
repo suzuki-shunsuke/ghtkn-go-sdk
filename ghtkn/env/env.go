@@ -6,22 +6,21 @@ package env
 
 // GHTKN_* variables: ghtkn's own configuration and lifecycle variables.
 const (
-	App              = "GHTKN_APP"
-	AgentKey         = "GHTKN_AGENT_KEY"
-	AgentSocket      = "GHTKN_AGENT_SOCKET"
-	AgentTokenDir    = "GHTKN_AGENT_TOKEN_DIR"
-	Backend          = "GHTKN_BACKEND"
-	Clipboard        = "GHTKN_CLIPBOARD"
-	Config           = "GHTKN_CONFIG"
-	Enable           = "GHTKN_ENABLE"
-	EnableDeviceFlow = "GHTKN_ENABLE_DEVICE_FLOW"
-	GitApp           = "GHTKN_GIT_APP"
-	GitHubToken      = "GHTKN_GITHUB_TOKEN"
-	LogLevel         = "GHTKN_LOG_LEVEL"
-	MinExpiration    = "GHTKN_MIN_EXPIRATION"
-	OpenBrowser      = "GHTKN_OPEN_BROWSER"
-	OutputFormat     = "GHTKN_OUTPUT_FORMAT"
-	TextBackendDir   = "GHTKN_TEXT_BACKEND_DIR"
+	App            = "GHTKN_APP"
+	AgentKey       = "GHTKN_AGENT_KEY"
+	AgentSocket    = "GHTKN_AGENT_SOCKET"
+	AgentTokenDir  = "GHTKN_AGENT_TOKEN_DIR"
+	Backend        = "GHTKN_BACKEND"
+	Clipboard      = "GHTKN_CLIPBOARD"
+	Config         = "GHTKN_CONFIG"
+	Enable         = "GHTKN_ENABLE"
+	GitApp         = "GHTKN_GIT_APP"
+	GitHubToken    = "GHTKN_GITHUB_TOKEN"
+	LogLevel       = "GHTKN_LOG_LEVEL"
+	MinExpiration  = "GHTKN_MIN_EXPIRATION"
+	OpenBrowser    = "GHTKN_OPEN_BROWSER"
+	OutputFormat   = "GHTKN_OUTPUT_FORMAT"
+	TextBackendDir = "GHTKN_TEXT_BACKEND_DIR"
 )
 
 // OS and XDG base-directory variables ghtkn reads to resolve file paths (config file,
@@ -48,7 +47,6 @@ var All = []string{ //nolint:gochecknoglobals // an intentional read-only regist
 	Clipboard,
 	Config,
 	Enable,
-	EnableDeviceFlow,
 	GitApp,
 	GitHubToken,
 	LogLevel,

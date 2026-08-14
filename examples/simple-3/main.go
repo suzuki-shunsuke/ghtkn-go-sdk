@@ -57,7 +57,10 @@ func core(logger *slog.Logger) error {
 	client.SetOnetimeCodeUI(&UI{})
 	client.SetBrowser(&Browser{})
 
-	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{})
+	// Auth, not Get: the one-time code UI and the browser are only used by the device
+	// flow, and Auth is the only method that runs it. Auth is interactive, so run it
+	// from a foreground terminal.
+	token, _, err := client.Auth(context.Background(), logger, &ghtkn.InputAuth{})
 	if err != nil {
 		return err
 	}

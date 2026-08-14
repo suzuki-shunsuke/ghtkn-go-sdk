@@ -5,6 +5,17 @@
 
 Go SDK to enable your Go application to create GitHub User Access Tokens for GitHub Apps easily.
 
+## Getting a token vs authenticating
+
+`Client.Get` reads the token stored by ghtkn and never creates one.
+When no valid token is stored it fails with `ghtkn.ErrDisableDeviceFlow`, because creating a token runs GitHub's OAuth Device Flow, which is interactive.
+Ask the user to run `ghtkn auth` in their terminal, then try again.
+Get is safe to call from a background or non-interactive process: it never blocks waiting for a user.
+
+`Client.Auth` is the only method that runs the Device Flow, so a token is never created on a caller's behalf.
+Call it only from a foreground, interactive context.
+Most applications should call `Get` and leave authentication to the `ghtkn` CLI.
+
 ## Examples
 
 - [Simple](examples/simple-1/main.go)

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"time"
 
 	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
@@ -45,8 +44,25 @@ func (tm *TokenManager) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextTo
 	tm.input.DeviceFlow.SetCopyOnetimeCodeToClipboard(f)
 }
 
+// inputGet is the resolved request Get and Auth share. The two differ only in whether
+// the device flow may run and in how the fields below are filled, so the body they both
+// need lives in get and is written once.
+type inputGet struct {
+	AppName        string
+	ConfigFilePath string
+	AppOwner       string
+	MinExpiration  *time.Duration
+	Clipboard      *bool
+	// EnableDeviceFlow is true only for Auth. It is not configurable: the device flow
+	// must never be startable through Get, so that no wrapper script, credential helper,
+	// or tool embedding this SDK can start one on the user's behalf.
+	EnableDeviceFlow bool
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
-// It checks for cached tokens and creates new tokens if needed.
+// It returns the cached token when one is still valid, and otherwise fails with
+// pubapi.ErrDisableDeviceFlow: creating a token needs the device flow, which only Auth
+// may run.
 //
 // If the GHTKN_GITHUB_TOKEN environment variable is set, its value is returned
 // as is without reading the config or contacting GitHub. This is useful when a
@@ -54,11 +70,40 @@ func (tm *TokenManager) SetCopyOnetimeCodeToClipboard(f pubdeviceflow.CopyTextTo
 // In this case the returned app config is nil and the access token has no
 // expiration date.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pubapi.InputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
-	if token := tm.input.Getenv(env.GitHubToken); token != "" {
-		return &pubapi.AccessToken{AccessToken: token}, nil, nil
-	}
 	if input == nil {
 		input = &pubapi.InputGet{}
+	}
+	return tm.get(ctx, logger, &inputGet{
+		AppName:        input.AppName,
+		ConfigFilePath: input.ConfigFilePath,
+		AppOwner:       input.AppOwner,
+		MinExpiration:  input.MinExpiration,
+	})
+}
+
+// Auth regenerates a GitHub App access token, running the device flow when it needs to.
+// It is the only operation that may run the device flow, so a token is only ever created
+// by an explicit, interactive authentication. It always regenerates: alwaysRenew asks for
+// more validity than any token can have, so the cached token is never accepted.
+func (tm *TokenManager) Auth(ctx context.Context, logger *slog.Logger, input *pubapi.InputAuth) (*pubapi.AccessToken, *pubconfig.App, error) {
+	if input == nil {
+		input = &pubapi.InputAuth{}
+	}
+	minExpiration := alwaysRenew
+	return tm.get(ctx, logger, &inputGet{
+		AppName:          input.AppName,
+		ConfigFilePath:   input.ConfigFilePath,
+		MinExpiration:    &minExpiration,
+		Clipboard:        input.Clipboard,
+		EnableDeviceFlow: true,
+	})
+}
+
+// get is the shared body of Get and Auth. See their comments for what each of them
+// means; everything below this point is identical for the two.
+func (tm *TokenManager) get(ctx context.Context, logger *slog.Logger, input *inputGet) (*pubapi.AccessToken, *pubconfig.App, error) {
+	if token := tm.input.Getenv(env.GitHubToken); token != "" {
+		return &pubapi.AccessToken{AccessToken: token}, nil, nil
 	}
 	cfg := &pubconfig.Config{}
 
@@ -106,16 +151,11 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *pub
 		"min_expiration", minExpiration,
 	)
 
-	enableDF, err := enableDeviceFlow(input.EnableDeviceFlow, tm.input.Getenv)
-	if err != nil {
-		return nil, nil, fmt.Errorf("resolve whether the device flow is enabled: %w", attrs.With(err))
-	}
-
 	token, changed, err := tm.getOrCreateToken(ctx, logger, &inputGetOrCreateToken{
 		MinExpiration:     minExpiration,
 		App:               app,
 		Backend:           b,
-		EnableDeviceFlow:  enableDF,
+		EnableDeviceFlow:  input.EnableDeviceFlow,
 		SkipAccountPicker: skipAccountPicker(cfg.SkipAccountPicker),
 		OpenBrowser:       openBrowser(cfg.OpenBrowser),
 		Clipboard:         clipboard(input.Clipboard, cfg.Clipboard),
@@ -152,25 +192,6 @@ type inputGetOrCreateToken struct {
 	SkipAccountPicker bool           // Whether the GitHub account picker should be skipped
 	OpenBrowser       bool           // Whether the device flow may open a browser automatically
 	Clipboard         bool           // Whether the device flow copies the one-time code to the clipboard
-}
-
-// enableDeviceFlow resolves whether the device flow may run. An explicit override
-// (the -device-flow flag) takes precedence; otherwise the GHTKN_ENABLE_DEVICE_FLOW
-// environment variable decides (a boolean parsed by strconv.ParseBool; an
-// unparsable value is a hard error). The device flow is disabled by default so it
-// is never started automatically; it must be enabled explicitly (e.g. by `ghtkn auth`).
-func enableDeviceFlow(override *bool, getEnv func(string) string) (bool, error) {
-	if override != nil {
-		return *override, nil
-	}
-	if v := getEnv(env.EnableDeviceFlow); v != "" {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return false, fmt.Errorf("parse %s as a boolean: %w", env.EnableDeviceFlow, err)
-		}
-		return b, nil
-	}
-	return false, nil
 }
 
 // resolveBackendType resolves the storage backend type from the (already
@@ -218,7 +239,7 @@ func openBrowser(cfg *pubconfig.OpenBrowser) bool {
 }
 
 // clipboard resolves whether the device flow copies the one-time code to the system
-// clipboard. An explicit override (the -clipboard flag) takes precedence; otherwise the
+// clipboard. An explicit override (the --clipboard flag) takes precedence; otherwise the
 // (already env-overridden) config's clipboard.enable decides, defaulting to disabled.
 // The GHTKN_CLIPBOARD override is applied upstream by config.ApplyEnvOverrides, which
 // parses it with strconv.ParseBool and rejects a value it cannot parse. Copying also
@@ -370,6 +391,11 @@ func (tm *TokenManager) getAccessTokenFromBackend(ctx context.Context, logger *s
 // issues them for at most 8 hours. A MinExpiration greater than this cannot be satisfied
 // by any real token, so it means "always regenerate" (as 'ghtkn auth' relies on).
 const maxTokenLifetime = 8 * time.Hour
+
+// alwaysRenew is the MinExpiration Auth uses so that it always regenerates the token.
+// It has to exceed maxTokenLifetime, because that is what makes checkExpired treat every
+// cached token as expiring, including a non-expiring one.
+const alwaysRenew = maxTokenLifetime + time.Hour
 
 // checkExpired determines if an access token should be considered expired.
 // It returns true if the token will expire within the MinExpiration duration from now.

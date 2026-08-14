@@ -19,11 +19,16 @@ type InputGet struct {
 	// renew only once the token has actually expired). A non-nil value, including a
 	// pointer to zero, takes precedence.
 	MinExpiration *time.Duration
-	// EnableDeviceFlow overrides whether the OAuth device flow may run to create a
-	// new token. nil means "not specified", in which case the GHTKN_ENABLE_DEVICE_FLOW
-	// environment variable decides (default disabled; the value is a boolean parsed
-	// with strconv.ParseBool, and a value it cannot parse is an error).
-	EnableDeviceFlow *bool
+}
+
+// InputAuth contains the input parameters for Client.Auth, the only operation that
+// runs the OAuth device flow. It has no MinExpiration because Auth always regenerates
+// the token regardless of any cached one, and no AppOwner because selecting an app by
+// Git repository owner is a Git credential helper concern, and the credential helper
+// never authenticates.
+type InputAuth struct {
+	AppName        string // Name of the app to use (defaults to GHTKN_APP environment variable)
+	ConfigFilePath string // Path to configuration file (auto-detected if empty)
 	// Clipboard overrides whether the device flow copies the one-time code to the
 	// system clipboard. nil means "not specified", in which case the GHTKN_CLIPBOARD
 	// environment variable and then the config's clipboard.enable decide (default
@@ -66,15 +71,13 @@ var (
 	ErrBackendCleanup = errors.New("delete a revoked token from the backend")
 )
 
-// ErrDisableDeviceFlow is returned when a new GitHub App access token is needed
-// but the device flow is disabled. The device flow is disabled by default so it
-// is never started automatically; it must be enabled explicitly (by running
-// `ghtkn auth`, or via GHTKN_ENABLE_DEVICE_FLOW=true). GHTKN_ENABLE_DEVICE_FLOW
-// is a temporary opt-in and is planned to be removed in the future; see
-// https://github.com/suzuki-shunsuke/ghtkn/issues/474. The device flow is
-// interactive (it waits for a one-time code), so it can't be completed by a
-// background or non-interactive process such as a coding agent. Rather than
-// blocking, the operation fails immediately. The message instructs a coding
-// agent NOT to run `ghtkn get` itself (it would fail the same way) but to ask
-// the user to run `ghtkn auth` in their own interactive terminal.
-var ErrDisableDeviceFlow = errors.New("a GitHub App User access token can't be created via Device Flow because the Device Flow is disabled. It is disabled by default and is never started automatically; it must be enabled explicitly by running `ghtkn auth` or by setting GHTKN_ENABLE_DEVICE_FLOW=true. Note that GHTKN_ENABLE_DEVICE_FLOW is a temporary opt-in and is planned to be removed in the future; see https://github.com/suzuki-shunsuke/ghtkn/issues/474 . The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own interactive terminal to authenticate")
+// ErrDisableDeviceFlow is returned by Get and TokenSource when a new GitHub App
+// access token is needed. Only Auth, which the `ghtkn auth` command runs, may
+// start the device flow, so it is never started on a caller's behalf and can't be
+// triggered by a wrapper script, a Git credential helper, or a tool that embeds
+// this SDK. The device flow is interactive (it waits for a one-time code), so it
+// can't be completed by a background or non-interactive process such as a coding
+// agent. Rather than blocking, the operation fails immediately. The message
+// instructs a coding agent NOT to run `ghtkn get` itself (it would fail the same
+// way) but to ask the user to run `ghtkn auth` in their own interactive terminal.
+var ErrDisableDeviceFlow = errors.New("no valid GitHub App User access token is available, and a new one can't be created here. A token is only created by the Device Flow, which is only started by `ghtkn auth`, so that it is never started on your behalf. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own interactive terminal to authenticate")

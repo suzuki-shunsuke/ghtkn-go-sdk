@@ -151,53 +151,42 @@ func TestTokenManager_Get(t *testing.T) {
 			},
 		},
 		{
-			name: "expired token in keyring triggers new token creation",
+			name: "an expired token can't be replaced because Get never runs the device flow",
 			setupInput: func() *Input {
 				input := newMockInput()
+				input.Backend = &mockKeyring{
+					token: &pubapi.AccessToken{
+						AccessToken:    "expired-token",
+						ExpirationDate: time.Now().Add(-time.Hour),
+					},
+				}
+				return input
+			},
+			input:     &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
+			wantErr:   true,
+			wantErrIs: pubapi.ErrDisableDeviceFlow,
+		},
+		{
+			// GHTKN_ENABLE_DEVICE_FLOW was the temporary opt-in removed with
+			// https://github.com/suzuki-shunsuke/ghtkn/issues/474. Nothing in the
+			// environment may bring the device flow back to Get, so a stale export of it
+			// must not change the outcome above.
+			name: "GHTKN_ENABLE_DEVICE_FLOW is not read",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.Getenv = func(key string) string {
+					if key == "GHTKN_ENABLE_DEVICE_FLOW" {
+						return "true"
+					}
+					return ""
+				}
 				input.DeviceFlow = &mockDeviceFlow{
 					token: &deviceflow.AccessToken{
 						AccessToken:    "new-token",
-						ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+						ExpirationDate: futureTime,
 					},
-				}
-				input.Backend = &mockKeyring{
-					token: &pubapi.AccessToken{
-						AccessToken:    "expired-token",
-						ExpirationDate: time.Now().Add(-time.Hour),
-					},
-				}
-				return input
-			},
-			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml", EnableDeviceFlow: new(true)},
-			wantErr: false,
-			wantToken: &pubapi.AccessToken{
-				AccessToken:    "new-token",
-				ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
-			},
-		},
-		{
-			name: "token creation error",
-			setupInput: func() *Input {
-				input := newMockInput()
-				input.DeviceFlow = &mockDeviceFlow{
-					err: errors.New("token creation failed"),
 				}
 				input.Backend = &mockKeyring{}
-				return input
-			},
-			input:   &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml", EnableDeviceFlow: new(true)},
-			wantErr: true,
-		},
-		{
-			name: "device flow is disabled by default",
-			setupInput: func() *Input {
-				input := newMockInput()
-				input.Backend = &mockKeyring{
-					token: &pubapi.AccessToken{
-						AccessToken:    "expired-token",
-						ExpirationDate: time.Now().Add(-time.Hour),
-					},
-				}
 				return input
 			},
 			input:     &pubapi.InputGet{ConfigFilePath: "/path/to/config.yaml"},
@@ -226,6 +215,101 @@ func TestTokenManager_Get(t *testing.T) {
 					}
 					if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
 						t.Errorf("error = %v, want it to wrap %v", err, tt.wantErrIs)
+					}
+					return
+				}
+				if tt.wantErr {
+					t.Error("expected error but got nil")
+					return
+				}
+				if diff := cmp.Diff(tt.wantToken, token); diff != "" {
+					t.Error(diff)
+				}
+			})
+		})
+	}
+}
+
+func TestTokenManager_Auth(t *testing.T) {
+	t.Parallel()
+
+	newToken := &deviceflow.AccessToken{
+		AccessToken:    "new-token",
+		ExpirationDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	tests := []struct {
+		name       string
+		setupInput func() *Input
+		wantErr    bool
+		wantToken  *pubapi.AccessToken
+		input      *pubapi.InputAuth
+	}{
+		{
+			name: "no cached token runs the device flow",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.DeviceFlow = &mockDeviceFlow{token: newToken}
+				input.Backend = &mockKeyring{}
+				return input
+			},
+			input: &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
+			wantToken: &pubapi.AccessToken{
+				AccessToken:    newToken.AccessToken,
+				ExpirationDate: newToken.ExpirationDate,
+			},
+		},
+		{
+			// Auth asks for more validity than GitHub's 8h maximum, so every real token
+			// reads as expiring and is replaced. This is what makes 'ghtkn auth' refresh
+			// proactively, and what lets it replace a revoked token. The cached token here
+			// still has half its life left, which 'ghtkn get' would happily return.
+			name: "a still-valid cached token is regenerated anyway",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.DeviceFlow = &mockDeviceFlow{token: newToken}
+				input.Backend = &mockKeyring{
+					token: &pubapi.AccessToken{
+						AccessToken:    "cached-token",
+						ExpirationDate: time.Now().Add(4 * time.Hour),
+					},
+				}
+				return input
+			},
+			input: &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
+			wantToken: &pubapi.AccessToken{
+				AccessToken:    newToken.AccessToken,
+				ExpirationDate: newToken.ExpirationDate,
+			},
+		},
+		{
+			name: "token creation error",
+			setupInput: func() *Input {
+				input := newMockInput()
+				input.DeviceFlow = &mockDeviceFlow{
+					err: errors.New("token creation failed"),
+				}
+				input.Backend = &mockKeyring{}
+				return input
+			},
+			input:   &pubapi.InputAuth{ConfigFilePath: "/path/to/config.yaml"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// See TestTokenManager_Get for why this runs under synctest.
+			synctest.Test(t, func(t *testing.T) {
+				tm := New(tt.setupInput())
+				logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+				token, _, err := tm.Auth(t.Context(), logger, tt.input)
+				if err != nil {
+					if !tt.wantErr {
+						t.Error(err)
 					}
 					return
 				}
