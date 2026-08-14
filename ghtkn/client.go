@@ -33,9 +33,10 @@ type (
 	InputRevoke        = api.InputRevoke
 )
 
-// ErrDisableDeviceFlow is returned by Get and TokenSource when a new token is
-// needed. Creating one runs the device flow, which only Auth may do, so that a
-// token is never created on the caller's behalf. Detect it with errors.Is.
+// ErrDisableDeviceFlow is returned by Get and TokenSource when only the device flow
+// could produce a token: nothing valid is stored and no usable refresh token is left
+// either. Starting one is something only Auth may do, so it is never started on the
+// caller's behalf. Detect it with errors.Is.
 var ErrDisableDeviceFlow = api.ErrDisableDeviceFlow
 
 // Client retrieves GitHub App access tokens.
@@ -58,10 +59,14 @@ func New() (*Client, error) {
 }
 
 // Get retrieves a GitHub App access token from the backend.
-// It returns the access token and the resolved app configuration. It never creates a
-// token: when no valid one is stored it fails with ErrDisableDeviceFlow, because
-// creating one runs the interactive device flow and only Auth may do that. Call it
-// freely from a background or non-interactive process; it never blocks on a user.
+// It returns the access token and the resolved app configuration. It never starts the
+// device flow, which only Auth may do, so it fails with ErrDisableDeviceFlow when
+// producing a token would need one. Call it freely from a background or
+// non-interactive process; it never blocks on a user.
+//
+// It is the device flow that is closed off, not token creation as such: with the agent
+// backend and refresh enabled, an expiring token is refreshed silently from the stored
+// refresh token, so Get can return a token minted just then.
 func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*AccessToken, *AppConfig, error) {
 	return c.tm.Get(ctx, logger, input)
 }
