@@ -60,9 +60,11 @@ type inputGet struct {
 }
 
 // Get executes the main logic for retrieving a GitHub App access token.
-// It returns the cached token when one is still valid, and otherwise fails with
-// pubapi.ErrDisableDeviceFlow: creating a token needs the device flow, which only Auth
-// may run.
+// It returns whatever token the backend can supply without asking the user anything: a
+// still-valid cached one, or, on a backend that owns the lifecycle (the agent) with
+// refresh enabled, one silently refreshed from the stored refresh token. It fails with
+// pubapi.ErrDisableDeviceFlow when neither is available, since the only way left is the
+// device flow, which only Auth may run.
 //
 // If the GHTKN_GITHUB_TOKEN environment variable is set, its value is returned
 // as is without reading the config or contacting GitHub. This is useful when a
