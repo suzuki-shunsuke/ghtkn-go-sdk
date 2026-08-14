@@ -29,13 +29,13 @@ type (
 	InputShow          = deviceflow.InputShow
 	DefaultBrowser     = browser.Browser
 	InputGet           = api.InputGet
+	InputAuth          = api.InputAuth
 	InputRevoke        = api.InputRevoke
 )
 
-// ErrDisableDeviceFlow is returned by Get when a new token is needed but the
-// device flow is disabled. It is disabled by default; enable it explicitly with
-// GHTKN_ENABLE_DEVICE_FLOW=true or InputGet.EnableDeviceFlow set to true.
-// Detect it with errors.Is.
+// ErrDisableDeviceFlow is returned by Get and TokenSource when a new token is
+// needed. Creating one runs the device flow, which only Auth may do, so that a
+// token is never created on the caller's behalf. Detect it with errors.Is.
 var ErrDisableDeviceFlow = api.ErrDisableDeviceFlow
 
 // Client retrieves GitHub App access tokens.
@@ -57,10 +57,29 @@ func New() (*Client, error) {
 	}, nil
 }
 
-// Get retrieves a GitHub App access token, creating or renewing it when needed.
-// It returns the access token and the resolved app configuration.
+// Get retrieves a GitHub App access token from the backend.
+// It returns the access token and the resolved app configuration. It never creates a
+// token: when no valid one is stored it fails with ErrDisableDeviceFlow, because
+// creating one runs the interactive device flow and only Auth may do that. Call it
+// freely from a background or non-interactive process; it never blocks on a user.
 func (c *Client) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*AccessToken, *AppConfig, error) {
 	return c.tm.Get(ctx, logger, input)
+}
+
+// Auth authenticates to GitHub and stores a GitHub App access token in the backend,
+// running the OAuth device flow when it needs to. This is what the `ghtkn auth` command
+// does, and most applications should leave authenticating to that command and call Get.
+//
+// It is the only operation that runs the device flow, so a token is only ever created
+// by an explicit authentication and never on a caller's behalf. The device flow is
+// interactive: it displays a one-time code and waits for the user to enter it, so only
+// call this from a foreground, interactive context. It also always regenerates,
+// ignoring any cached token, so that running it refreshes the token before it expires.
+//
+// It returns no token, only whether authenticating succeeded. Read the token it stored
+// with Get; that keeps a token something you obtain without ever risking a device flow.
+func (c *Client) Auth(ctx context.Context, logger *slog.Logger, input *InputAuth) error {
+	return c.tm.Auth(ctx, logger, input)
 }
 
 // Revoke revokes GitHub credentials and removes the revoked tokens from the backend.

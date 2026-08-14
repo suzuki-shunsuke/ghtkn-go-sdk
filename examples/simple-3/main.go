@@ -57,7 +57,16 @@ func core(logger *slog.Logger) error {
 	client.SetOnetimeCodeUI(&UI{})
 	client.SetBrowser(&Browser{})
 
-	token, _, err := client.Get(context.Background(), logger, &ghtkn.InputGet{})
+	ctx := context.Background()
+	// Auth, not Get: the one-time code UI and the browser are only used by the device
+	// flow, and Auth is the only method that runs it. Auth is interactive, so run it
+	// from a foreground terminal. It stores the token rather than returning it, so Get
+	// reads it back afterwards. Normally the `ghtkn auth` command does this part and an
+	// application only calls Get.
+	if err := client.Auth(ctx, logger, &ghtkn.InputAuth{}); err != nil {
+		return err
+	}
+	token, _, err := client.Get(ctx, logger, &ghtkn.InputGet{})
 	if err != nil {
 		return err
 	}
