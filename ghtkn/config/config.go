@@ -12,25 +12,25 @@ import (
 // Config represents the main configuration structure for ghtkn.
 // It contains settings a list of GitHub Apps.
 type Config struct {
-	Apps []*App `json:"apps"`
+	Apps []*App `json:"apps" jsonschema_description:"GitHub Apps which ghtkn creates access tokens from. At least one app is required. The first app is the default app, which is used when no app is selected by name or repository owner"`
 	// SkipAccountPicker skips the GitHub Device Flow account picker by appending
 	// GitHub's unofficial skip_account_picker query parameter to the verification
 	// URL. nil means "not specified" and defaults to true (the picker is skipped);
 	// set it to false to show the account picker.
-	SkipAccountPicker *bool `json:"skip_account_picker,omitempty" yaml:"skip_account_picker"`
+	SkipAccountPicker *bool `json:"skip_account_picker,omitempty" yaml:"skip_account_picker" jsonschema_description:"Skip the GitHub Device Flow account picker by appending GitHub's unofficial skip_account_picker query parameter to the verification URL. The default value is true. Set it to false to show the account picker"`
 	// OpenBrowser controls whether the device flow opens a browser automatically.
-	OpenBrowser *OpenBrowser `json:"open_browser,omitempty" yaml:"open_browser"`
+	OpenBrowser *OpenBrowser `json:"open_browser,omitempty" yaml:"open_browser" jsonschema_description:"Control whether the device flow opens a browser automatically"`
 	// MinExpiration is the minimum time before token expiration that triggers
 	// renewal, as a Go duration string (e.g. "1h", "30m"). Empty means "not
 	// specified" and defaults to zero (renew only once the token has actually
 	// expired). The -min-expiration flag and the GHTKN_MIN_EXPIRATION environment
 	// variable take precedence over this value.
-	MinExpiration string `json:"min_expiration,omitempty" yaml:"min_expiration"`
+	MinExpiration string `json:"min_expiration,omitempty" yaml:"min_expiration" jsonschema_description:"The minimum time before token expiration that triggers renewal, as a Go duration string such as '1h' and '30m'. By default a token is renewed only once it has actually expired. The -min-expiration flag and the GHTKN_MIN_EXPIRATION environment variable take precedence over this value"`
 	// Backend selects the storage backend for access tokens.
-	Backend *Backend `json:"backend,omitempty" yaml:"backend"`
+	Backend *Backend `json:"backend,omitempty" yaml:"backend" jsonschema_description:"Select the storage backend for access tokens"`
 	// Clipboard configures whether the device flow copies the one-time code to the
 	// system clipboard.
-	Clipboard *Clipboard `json:"clipboard,omitempty" yaml:"clipboard"`
+	Clipboard *Clipboard `json:"clipboard,omitempty" yaml:"clipboard" jsonschema_description:"Configure whether the device flow copies the one-time code to the system clipboard"`
 }
 
 // OpenBrowser configures automatic browser opening for the device flow.
@@ -38,7 +38,7 @@ type OpenBrowser struct {
 	// Enable toggles automatic browser opening. nil means "not specified" and
 	// defaults to true. The GHTKN_OPEN_BROWSER environment variable, when set,
 	// takes precedence over this value.
-	Enable *bool `json:"enable,omitempty" yaml:"enable"`
+	Enable *bool `json:"enable,omitempty" yaml:"enable" jsonschema_description:"Open a browser automatically in the device flow. The default value is true. The GHTKN_OPEN_BROWSER environment variable takes precedence over this value"`
 }
 
 // Clipboard configures whether the device flow copies the one-time code to the
@@ -47,7 +47,7 @@ type Clipboard struct {
 	// Enable toggles copying the one-time code to the clipboard. nil means "not
 	// specified" and defaults to false. The -clipboard flag and the GHTKN_CLIPBOARD
 	// environment variable take precedence over this value.
-	Enable *bool `json:"enable,omitempty" yaml:"enable"`
+	Enable *bool `json:"enable,omitempty" yaml:"enable" jsonschema_description:"Copy the one-time code to the system clipboard in the device flow. The default value is false. The -clipboard flag and the GHTKN_CLIPBOARD environment variable take precedence over this value"`
 }
 
 // Backend selects the storage backend for access tokens.
@@ -55,7 +55,7 @@ type Backend struct {
 	// Type is the backend type: "keyring" (the default), "text", or "agent". Empty
 	// means "not specified". The GHTKN_BACKEND environment variable takes precedence
 	// over this value.
-	Type string `json:"type,omitempty" yaml:"type"`
+	Type string `json:"type,omitempty" yaml:"type" jsonschema_description:"The backend type where access tokens are stored. Either 'keyring' (the default), 'text', or 'agent'. The GHTKN_BACKEND environment variable takes precedence over this value"`
 }
 
 // Validate checks if the Config is valid.
@@ -113,14 +113,14 @@ func (c *Config) Validate() error {
 // App represents a GitHub App configuration.
 // Each app must have a unique name and a client ID for authentication.
 type App struct {
-	Name     string `json:"name"`
-	ClientID string `json:"client_id" yaml:"client_id"`
-	GitOwner string `json:"git_owner,omitempty" yaml:"git_owner"`
+	Name     string `json:"name" jsonschema_description:"The app name. It must be unique across apps. It is used to select the app by the -app flag and the GHTKN_APP environment variable"`
+	ClientID string `json:"client_id" yaml:"client_id" jsonschema_description:"The client ID of the GitHub App. It must be unique across apps because access tokens are stored per client ID"`
+	GitOwner string `json:"git_owner,omitempty" yaml:"git_owner" jsonschema_description:"The repository owner which the app is used for. It must be unique across apps. It is used to select the app by the repository owner, such as in the git credential helper. git_owner and git_owners are mutually exclusive"`
 	// GitOwners is git_owner for an app shared by several repository owners, such as an
 	// Enterprise GitHub App installed on several organizations. The app can't be
 	// repeated once per owner because client_id must be unique across apps, so the
 	// owners are listed here instead. GitOwner and GitOwners are mutually exclusive.
-	GitOwners []string `json:"git_owners,omitempty" yaml:"git_owners"`
+	GitOwners []string `json:"git_owners,omitempty" yaml:"git_owners" jsonschema_description:"git_owner for an app shared by several repository owners, such as an Enterprise GitHub App installed on several organizations. Each owner must be unique across apps. git_owner and git_owners are mutually exclusive"`
 }
 
 // Validate checks if the App configuration is valid.
