@@ -10,7 +10,7 @@ require (
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/zalando/go-keyring v0.2.8
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
