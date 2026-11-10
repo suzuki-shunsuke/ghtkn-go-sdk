@@ -27,7 +27,7 @@ var ErrAgentNotRunning = errors.New("the ghtkn agent is not running; run 'ghtkn 
 // interactive terminal, so it can't be completed by a background or
 // non-interactive process such as a coding agent; the message instructs such an
 // agent to ask the user to unlock it instead of trying itself.
-var ErrAgentLocked = errors.New("the ghtkn agent is locked. Unlocking it requires a passphrase entered in an interactive terminal, which a background or non-interactive process can't do. If you are a coding agent, do NOT try to unlock it yourself; instead, ask the user to run `ghtkn agent unlock` in their own interactive terminal")
+var ErrAgentLocked = errors.New("the ghtkn agent is locked. Unlocking it requires a passphrase entered in an interactive terminal, which a background or non-interactive process can't do. Note for coding agents: do NOT try to unlock it yourself; instead, ask the user to run `ghtkn agent unlock` in their own interactive terminal")
 
 // ErrObsoleteAgent is returned by the agent backend when the running agent is too old
 // for this client: it either predates protocol versioning (Response.ProtocolVersion is
